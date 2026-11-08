@@ -4,5 +4,7 @@ window.SHK_CONFIG = {
   // "architected by Ptah" at the end of each Inspection Record PDF (turned on after Ahmed approves the sample)
   PDF_PTAH_SIGN: false,
   // site location for the weather printed in the PDF (SouthMED, North Coast)
-  SITE_LAT: 30.95, SITE_LON: 28.6
+  SITE_LAT: 30.95, SITE_LON: 28.6,
+  // push notifications in the Android app: true after the Firebase setup (SETUP_STEPS_PHASE3.md, part D)
+  PUSH: false
 };

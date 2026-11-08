@@ -821,7 +821,7 @@
     const IMG = { sig: null, photos: [] };
     if (d.ptahSign) { try { SIG = await doc.embedPng(b64(PTAH_SIGN_PNG)); } catch (e) { console.warn('ptah sign', e); } }
     if (d.signature) { try { IMG.sig = await doc.embedPng(b64(d.signature)); } catch (e) { console.warn('signature', e); } }
-    for (const ph of (d.photos || [])) { try { IMG.photos.push({ img: await doc.embedJpg(b64(ph.data)), cap: ph.cap || '' }); } catch (e) { console.warn('photo', e); } }
+    for (const ph of (d.photos || [])) { try { IMG.photos.push({ img: await doc.embedJpg(b64(ph.data)), cap: ph.cap || '', tag: ph.tag || '' }); } catch (e) { console.warn('photo', e); } }
     // Arabic: Noto Sans Arabic for Arabic letters, bidi-js for right-to-left order
     const hasAr = L.arReg ? (t => AR_RE.test(String(t))) : (() => false);
     let AR = null, AB = null, arFk = null;
@@ -1025,24 +1025,37 @@
       if (i === 2) T(d.date, x + 4, y - 22, B, 8.6, C.ink);
     });
 
-    // ---- site photos (2 per row, after the record) ----
-    if (IMG.photos.length) {
+    // ---- photos after the record: BEFORE / AFTER side by side, then the other site photos (2 per row) ----
+    const photoRows = (title, rows) => {
+      if (!rows.length) return;
       if (room() < 120) newPage(); else y += 24;
-      spaced('SITE PHOTOS', M, y, B, 6.5, C.sub, 1.8); y += 12;
+      spaced(title, M, y, B, 6.5, C.sub, 1.8); y += 12;
       const gap = 10, pw = (CW - gap) / 2;
-      for (let i = 0; i < IMG.photos.length; i += 2) {
-        const pair = IMG.photos.slice(i, i + 2);
-        const hs = pair.map(p => Math.min(250, pw * p.img.height / p.img.width));
+      rows.forEach(pair => {
+        const hs = pair.map(c => c ? Math.min(250, pw * c.p.img.height / c.p.img.width) : 0);
         const rowH = Math.max(...hs) + 14;
-        if (room() < rowH) { newPage(); spaced('SITE PHOTOS', M, y, B, 6.5, C.sub, 1.8); y += 12; }
-        pair.forEach((p, j) => {
-          const x = M + j * (pw + gap), w = hs[j] * p.img.width / p.img.height;
+        if (room() < rowH) { newPage(); spaced(title, M, y, B, 6.5, C.sub, 1.8); y += 12; }
+        pair.forEach((c, j) => {
+          if (!c) return;
+          const x = M + j * (pw + gap), w = hs[j] * c.p.img.width / c.p.img.height;
           box(x, y, pw, hs[j], C.card);
-          page.drawImage(p.img, { x: x + (pw - w) / 2, y: H - y - hs[j], width: w, height: hs[j] });
-          T((i + j + 1) + ' · ' + p.cap, x, y + hs[j] + 3, R, 6.6, C.sub);
+          page.drawImage(c.p.img, { x: x + (pw - w) / 2, y: H - y - hs[j], width: w, height: hs[j] });
+          if (c.head) { box(x, y, spacedW(c.head, B, 6.4, 1.2) + 10, 13, c.head === 'BEFORE' ? C.sub : C.ok); spaced(c.head, x + 5, y + 3.6, B, 6.4, C.white, 1.2); }
+          T(c.label, x, y + hs[j] + 3, R, 6.6, C.sub);
         });
         y += rowH + 6;
-      }
+      });
+    };
+    if (IMG.photos.length) {
+      const bef = IMG.photos.filter(p => p.tag === 'before'), aft = IMG.photos.filter(p => p.tag === 'after');
+      const nPairs = Math.min(bef.length, aft.length), used = new Set(bef.slice(0, nPairs).concat(aft.slice(0, nPairs)));
+      const pairs = [];
+      for (let k = 0; k < nPairs; k++) pairs.push([{ p: bef[k], head: 'BEFORE', label: 'Before · ' + bef[k].cap }, { p: aft[k], head: 'AFTER', label: 'After · ' + aft[k].cap }]);
+      photoRows('BEFORE / AFTER', pairs);
+      const rest = IMG.photos.filter(p => !used.has(p)), rows = [];
+      for (let k = 0; k < rest.length; k += 2)
+        rows.push(rest.slice(k, k + 2).map((p, j) => ({ p, label: (IMG.photos.indexOf(p) + 1) + ' · ' + (p.tag ? (p.tag === 'before' ? 'Before · ' : 'After · ') : '') + p.cap })));
+      photoRows('SITE PHOTOS', rows);
     }
 
     // ---- footer on every page ----
@@ -2607,5 +2620,6 @@
   <script src="app-ui.js"></script>
   <script src="app-screens.js"></script>
   <script src="app-daily.js"></script>
+  <script src="app-extras.js"></script>
 </body>
 </html>
