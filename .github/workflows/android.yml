@@ -55,6 +55,13 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      # Every build needs a HIGHER versionCode than the one before, or Android says "App not installed" on update
+      - name: Version code for Android
+        run: |
+          f=android/app/build.gradle
+          sed -i -E "s/versionCode [0-9]+/versionCode ${GITHUB_RUN_NUMBER}/; s/versionName \"[^\"]*\"/versionName \"1.0.${GITHUB_RUN_NUMBER}\"/" $f
+          grep -nE "versionCode|versionName" $f
+
       # Camera for the villa QR scanner (the live camera inside the app)
       - name: Camera permission
         run: |
