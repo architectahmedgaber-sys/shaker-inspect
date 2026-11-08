@@ -1,1 +1,8 @@
-{ "version": "1.0.0", "build": 0, "notes": ["Update notice: the app now tells you when a new version is available."], "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk" }
+{
+ "version": "1.0.12",
+ "build": 12,
+ "notes": [
+  "Update notice: the app now tells you when a new version is available."
+ ],
+ "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
+}
