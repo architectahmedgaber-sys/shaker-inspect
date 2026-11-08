@@ -712,6 +712,8 @@
     arBold:  'https://cdn.jsdelivr.net/npm/@expo-google-fonts/noto-sans-arabic@0.4.3/700Bold/NotoSansArabic_700Bold.ttf'
   };
   const AR_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+  // "architected by Ptah" in Caveat handwriting, as a small picture (5 KB), drawn at the end of the record
+  const PTAH_SIGN_PNG = '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';
 
   // ---------- page and colours (points; A4 = 595.28 × 841.89, 12 mm = 34 pt) ----------
   const W = 595.28, H = 841.89, M = 34, CW = W - 2 * M, FOOT = 26;
@@ -813,6 +815,13 @@
     doc.registerFontkit(L.fontkit);
     const R = await doc.embedFont(L.reg, { subset: true });
     const B = await doc.embedFont(L.bold, { subset: true });
+    // phase 2 extras: "architected by Ptah" (Caveat), the engineer's drawn signature, site photos
+    let SIG = null;
+    const b64 = s => { s = String(s || '').replace(/^data:[^,]*,/, ''); if (typeof atob === 'function') { const t = atob(s), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u; } return Uint8Array.from(Buffer.from(s, 'base64')); };
+    const IMG = { sig: null, photos: [] };
+    if (d.ptahSign) { try { SIG = await doc.embedPng(b64(PTAH_SIGN_PNG)); } catch (e) { console.warn('ptah sign', e); } }
+    if (d.signature) { try { IMG.sig = await doc.embedPng(b64(d.signature)); } catch (e) { console.warn('signature', e); } }
+    for (const ph of (d.photos || [])) { try { IMG.photos.push({ img: await doc.embedJpg(b64(ph.data)), cap: ph.cap || '' }); } catch (e) { console.warn('photo', e); } }
     // Arabic: Noto Sans Arabic for Arabic letters, bidi-js for right-to-left order
     const hasAr = L.arReg ? (t => AR_RE.test(String(t))) : (() => false);
     let AR = null, AB = null, arFk = null;
@@ -891,7 +900,7 @@
       });
       return out;
     }
-    const room = () => H - FOOT - M - y;               // space left above the footer
+    const room = () => H - FOOT - M - (SIG ? 14 : 0) - y;   // space left above the footer
 
     newPage();
 
@@ -914,6 +923,8 @@
       [['Activity', d.activity, 2], ['ACC ID', d.itemId || '—', 1], ['Inspection date', d.date, 1]],
       [['Inspected by', d.inspector, 2], ['Result', d.code + ' · ' + d.result, 2, true]]
     ];
+    if (d.weather || IMG.photos.length || d.prevRev)
+      cells.push([['Weather at inspection', d.weather || '—', 2], ['Photos', IMG.photos.length ? IMG.photos.length + ' · at the end' : '—', 1], ['Previous Rev', d.prevRev || '—', 1]]);
     cells.forEach(row => {
       const lines = row.map(c => wrap(c[1], B, c[3] ? 10.5 : 8.6, cw4 * c[2] - 12));
       const h = 18 + Math.max(...lines.map((l, i) => l.length * (row[i][3] ? 12.5 : 10.5)));
@@ -986,7 +997,7 @@
 
     // ---- summary + notes + signatures (kept together) ----
     const noteLines = wrap(d.notes || '—', R, 8, CW - 16);
-    const tailH = 14 + 12 + 34 + 14 + 12 + Math.max(50, noteLines.length * 11 + 12) + 44;
+    const tailH = 14 + 12 + 34 + 14 + 12 + Math.max(50, noteLines.length * 11 + 12) + 44 + (IMG.sig ? 30 : 0);
     if (room() < tailH) newPage(); else y += 4;
     y += 10; spaced('SUMMARY', M, y, B, 6.5, C.sub, 1.8); y += 12;
     const sw = CW / 4;
@@ -1002,12 +1013,37 @@
     const nh = Math.max(50, noteLines.length * 11 + 12);
     box(M, y, CW, nh, null, C.line);
     noteLines.forEach((l, n) => T(l, isRtl(l) ? M + CW - 8 - width(l, R, 8) : M + 8, y + 6 + n * 11, R, 8, C.ink));
-    y += nh + 30;
+    y += nh + 30 + (IMG.sig ? 30 : 0);
     const sg = 10, sw3 = (CW - 2 * sg) / 3;
     ['Inspector · ' + d.inspector, 'Contractor representative', 'Date'].forEach((s, i) => {
       const x = M + i * (sw3 + sg);
       T(s, x + 4, y - 9, R, 6.6, C.sub); hline(x, x + sw3, y, C.ink, 0.8);
+      if (i === 0 && IMG.sig) {                     // the engineer's own signature, drawn with a finger
+        const sh = 34, sw = Math.min(sw3 - 8, sh * IMG.sig.width / IMG.sig.height), shh = sw * IMG.sig.height / IMG.sig.width;
+        page.drawImage(IMG.sig, { x: x + 4, y: H - (y - 11), width: sw, height: shh });
+      }
+      if (i === 2) T(d.date, x + 4, y - 22, B, 8.6, C.ink);
     });
+
+    // ---- site photos (2 per row, after the record) ----
+    if (IMG.photos.length) {
+      if (room() < 120) newPage(); else y += 24;
+      spaced('SITE PHOTOS', M, y, B, 6.5, C.sub, 1.8); y += 12;
+      const gap = 10, pw = (CW - gap) / 2;
+      for (let i = 0; i < IMG.photos.length; i += 2) {
+        const pair = IMG.photos.slice(i, i + 2);
+        const hs = pair.map(p => Math.min(250, pw * p.img.height / p.img.width));
+        const rowH = Math.max(...hs) + 14;
+        if (room() < rowH) { newPage(); spaced('SITE PHOTOS', M, y, B, 6.5, C.sub, 1.8); y += 12; }
+        pair.forEach((p, j) => {
+          const x = M + j * (pw + gap), w = hs[j] * p.img.width / p.img.height;
+          box(x, y, pw, hs[j], C.card);
+          page.drawImage(p.img, { x: x + (pw - w) / 2, y: H - y - hs[j], width: w, height: hs[j] });
+          T((i + j + 1) + ' · ' + p.cap, x, y + hs[j] + 3, R, 6.6, C.sub);
+        });
+        y += rowH + 6;
+      }
+    }
 
     // ---- footer on every page ----
     const left = 'SOUTHMED · TECHNICAL SPECIFICATIONS IFC REV.00 · INSPECTION RECORD';
@@ -1017,6 +1053,10 @@
       spaced(left, M, H - M - 8, R, 5.8, C.mute, 0.8);
       const r = d.cl.code + ' · ' + d.irNumber + ' · PAGE ' + (i + 1) + ' / ' + pages.length;
       spaced(r, M + CW - spacedW(r, R, 5.8, 0.8), H - M - 8, R, 5.8, C.mute, 0.8);
+      if (SIG && i === pages.length - 1) {              // the mark at the end of the record
+        const sh = 13, sw = sh * SIG.width / SIG.height;
+        p.drawImage(SIG, { x: M + CW - sw, y: M + 15, width: sw, height: sh });
+      }
     });
     return doc.save();
   }
@@ -2566,5 +2606,6 @@
   <div id="shkScreen" class="shk-screen" role="dialog" aria-modal="true"></div>
   <script src="app-ui.js"></script>
   <script src="app-screens.js"></script>
+  <script src="app-daily.js"></script>
 </body>
 </html>
