@@ -174,7 +174,7 @@
   }
   function drawSheet(d) {
     body().innerHTML = `<input id="shQ" class="sc-in" type="search" placeholder="Filter rows...">
-      <small class="hint">Newest rows first · showing ${d.rows.length} of ${d.total} · view only</small>
+      <small class="hint">Newest rows first · showing ${d.rows.length} of ${d.total} · view only · server ${d.v || "OLD Api.gs - redeploy"}</small>
       <div class="tbl-wrap"><table class="tbl"><thead><tr>${d.header.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody id="shBody">${d.rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${SIGN}`;
     $('shQ').addEventListener('input', e => { const q = e.target.value.toLowerCase(); document.querySelectorAll('#shBody tr').forEach(tr => { tr.hidden = q && tr.textContent.toLowerCase().indexOf(q) < 0; }); });
   }
