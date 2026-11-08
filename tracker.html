@@ -12,7 +12,7 @@ window.SHK_STANDALONE = true; window.SHK_PREFIX = 'tracker_';
 try { if (!localStorage.getItem('vht3Theme')) document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}</script>
 <script src="config.js"></script>
 <script src="app-api.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Caveat&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="fonts/fonts.css" rel="stylesheet">
 <style>
 /* Layout: Ptah drill-down — company tiles > type tiles > villa cards > villa BOQ sheet; breadcrumb + big Back; Classic (light) / Command (dark glass) */
 :root{
@@ -732,7 +732,7 @@ function makePdf(btn){
 function reportDoc(id){
  const V=D.V[id];
  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Villa ${V.n} Handover Status Report - ${esc(co(V.co).label)}</title>
- <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+ <link href="fonts/fonts.css" rel="stylesheet">
  <style>${REPORT_CSS}
  html,body{margin:0;background:#e2e8f0}
  .bar{position:sticky;top:0;background:#0f172a;color:#fff;padding:10px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;font:14px Inter,Arial,sans-serif;z-index:5}
