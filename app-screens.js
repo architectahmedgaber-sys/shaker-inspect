@@ -20,7 +20,7 @@
 
   // ================= ADMIN =================
   let adminTab = 'today', logQ = '', mode = 'admin';
-  const ADMIN_TABS = [['today', 'Today'], ['users', 'Users'], ['perf', 'Performance'], ['log', 'Log'], ['settings', 'Settings']];
+  const ADMIN_TABS = [['today', 'Today'], ['users', 'Users'], ['perf', 'Performance'], ['closes', 'Undo'], ['trash', 'Trash'], ['log', 'Log'], ['settings', 'Settings']];
 
   function openAdmin() {
     if (PtahApp.role() !== 'Admin') return;
@@ -32,7 +32,7 @@
     adminTab = k;
     document.querySelectorAll('#scTabs button').forEach(b => { b.classList.toggle('on', b.dataset.tab === k); if (b.dataset.tab === k) b.scrollIntoView({ inline: 'center', block: 'nearest' }); });
     loading();
-    ({ today: tToday, users: tUsers, perf: tPerf, log: tLog, settings: tSettings })[k]();
+    ({ today: tToday, users: tUsers, perf: tPerf, log: tLog, settings: tSettings, closes: () => Shk.admCloses(), trash: () => Shk.admTrash() })[k]();
   }
 
   function tToday() {
@@ -74,6 +74,7 @@
           <label>Role${roleSel('auRole', 'Engineer')}</label><div class="btnrow"><button type="button" class="b-ok" data-act="adduser">Add</button></div>
           <small class="hint">Use this for the current engineers so their old tabs are linked before sign-up opens.</small></div>${SIGN}`;
       body().dataset.users = JSON.stringify(rows);
+      if (Shk.admUsersExtra) Shk.admUsersExtra(rows);
     }).catch(fail);
   }
 
@@ -117,7 +118,8 @@
             <div class="split"><i class="a" style="width:${e.A / t * 100}%"></i><i class="b" style="width:${e.B / t * 100}%"></i><i class="c" style="width:${e.C / t * 100}%"></i><i class="d" style="width:${e.D / t * 100}%"></i></div>
             <small>A ${e.A} · B ${e.B} · C ${e.C} · D ${e.D}</small></div>`;
         }).join('') : '<div class="sc-empty">No closes recorded in this period yet.</div>'}</div>
-        <small class="hint">Counts come from the closes made through the app. Per-contractor results come with the next stage.</small>${SIGN}`;
+        <small class="hint">Engineer counts come from the closes made through the app.</small>${SIGN}`;
+      if (Shk.admPerfExtra) Shk.admPerfExtra(days, o);
     }).catch(fail);
   }
 
@@ -129,6 +131,7 @@
         <div class="card-list">${o.rows.map(l => `<div class="row col"><div class="rowtop"><b>${esc(l.action)}</b><small>${fmtT(l.t)}</small></div><span>${esc(l.engineer || l.email)}</span><span class="small mono">${esc(l.detail)}</span></div>`).join('') || '<div class="sc-empty">Nothing found.</div>'}</div>
         <div class="btnrow"><button type="button" class="b-line" data-act="csv">Download as CSV</button></div>${SIGN}`;
       body().dataset.log = JSON.stringify(o.rows);
+      if (Shk.admLogExtra) Shk.admLogExtra(o.rows);
       const q = $('logQ'); let tm; q.addEventListener('input', () => { clearTimeout(tm); tm = setTimeout(() => { logQ = q.value.trim(); loading(); tLog(); }, 450); });
     }).catch(fail);
   }
@@ -149,6 +152,7 @@
           <a class="lk" href="tracker.html"><span>Handover tracker ${o.trackerLinked ? '<em class="okk">connected</em>' : '<em class="late">not connected yet</em>'}</span><i>›</i></a>
         </div>
         <small class="hint">Roles: <b>Admin</b> does everything. <b>Engineer</b> closes requests under their own name. <b>Viewer</b> only looks. Handover edits are for admins only.</small>${SIGN}`;
+      if (Shk.admSettingsExtra) Shk.admSettingsExtra();
     }).catch(fail);
   }
 
@@ -176,6 +180,7 @@
     body().innerHTML = `<input id="shQ" class="sc-in" type="search" placeholder="Filter rows...">
       <small class="hint">Newest rows first · showing ${d.rows.length} of ${d.total} · view only · server ${d.v || "OLD Api.gs - redeploy"}</small>
       <div class="tbl-wrap"><table class="tbl"><thead><tr>${d.header.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody id="shBody">${d.rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${SIGN}`;
+    if (Shk.sheetExtra) Shk.sheetExtra(sheetName, d);
     $('shQ').addEventListener('input', e => { const q = e.target.value.toLowerCase(); document.querySelectorAll('#shBody tr').forEach(tr => { tr.hidden = q && tr.textContent.toLowerCase().indexOf(q) < 0; }); });
   }
 

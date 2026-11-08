@@ -243,7 +243,7 @@
     paintPhotos();
   }
   function paintPhotos() {
-    $('dxThumbs').innerHTML = photos.map((p, i) => `<span class="dx-th"><img src="${p.data}" alt=""><button type="button" data-rm="${i}" aria-label="Remove">✕</button></span>`).join('');
+    $('dxThumbs').innerHTML = photos.map((p, i) => `<span class="dx-th${p.tag ? ' tg-' + p.tag : ''}"><img src="${p.data}" alt="" data-ph="${i}">${p.tag ? `<em>${p.tag === 'before' ? 'Before' : 'After'}</em>` : ''}<button type="button" data-rm="${i}" aria-label="Remove">✕</button></span>`).join('');
     $('dxPhN').textContent = photos.length ? `${photos.length} · go in the PDF` : '';
   }
 
@@ -383,7 +383,7 @@
     const d = PtahRecord.prepare({ irNumber: it.irNumber, rev: it.rev, itemId: it.itemId, description: it.description, date: p.date,
       inspector: p.inspector, code: p.code, notes: p.rawNotes, contractor: it.contractor }, job.cl, job.marks);
     d.weather = job.weather; d.prevRev = job.prevRev; d.signature = job.signature; d.ptahSign = !!CFG.PDF_PTAH_SIGN;
-    d.photos = job.photos.map(ph => ({ data: ph.data, cap: ph.cap }));
+    d.photos = job.photos.map(ph => ({ data: ph.data, cap: ph.cap, tag: ph.tag || '' }));
     const bytes = await PtahRecord.build(d);
     let bin = '';
     for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
@@ -393,7 +393,7 @@
 
   async function sendJob(job, progress) {
     const p = Object.assign({}, job.payload, { clientId: job.id, weather: job.weather,
-      photos: job.photos.map((ph, i) => ({ base64: ph.data, name: 'photo ' + (i + 1) })) });
+      photos: job.photos.filter(ph => !ph.fromRev).map((ph, i) => ({ base64: ph.data, name: 'photo ' + (i + 1), tag: ph.tag || '' })) });
     if (job.queued) p.madeAt = job.madeAt;
     if (!job.noPdf && job.cl && window.PtahRecord) {
       progress && progress('Making the PDF...');
@@ -883,5 +883,5 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { meEntries(); showLock(); }); else { meEntries(); showLock(); }
   const baseAfter = Shk.afterSignIn;
   Shk.afterSignIn = function () { queueRun(); return baseAfter && baseAfter.apply(this, arguments); };
-  Object.assign(Shk, { openCalendar, openRe, openReport, openPending, openSigPad, queueRun, _dx: { queue: () => queue, boot: () => boot, weatherFor } });
+  Object.assign(Shk, { openCalendar, openRe, openReport, openPending, openSigPad, queueRun, _dx: { queue: () => queue, boot: () => boot, weatherFor, photos: () => photos, paintPhotos: () => paintPhotos(), prevOf: it => prevOf(it), MAX_PHOTOS } });
 })();

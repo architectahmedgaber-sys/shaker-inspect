@@ -34,13 +34,27 @@ jobs:
       - name: Copy the web files into www/
         run: |
           mkdir -p www
-          cp -r index.html tracker.html app-api.js app-screens.js app-daily.js app-ui.js app.css theme.css config.js manifest.webmanifest sw.js icons www/
+          cp -r index.html tracker.html app-api.js app-screens.js app-daily.js app-extras.js app-ui.js app.css theme.css config.js manifest.webmanifest sw.js icons www/
 
       - name: Install Capacitor and create the Android project
         run: |
           npm install --no-audit --no-fund
           npx cap add android
           npx cap sync android
+
+      # Camera for the villa QR scanner (the live camera inside the app)
+      - name: Camera permission
+        run: |
+          m=android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.CAMERA' $m || sed -i 's#</manifest>#    <uses-permission android:name="android.permission.CAMERA" />\n</manifest>#' $m
+          grep -n 'permission' $m
+
+      # Push notifications: the Firebase file, kept as a repository secret (Settings > Secrets > Actions > GOOGLE_SERVICES_JSON)
+      - name: Firebase file (push notifications)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json; echo "push: on"; else echo "push: no Firebase file yet (the app works, push stays off)"; fi
 
       - name: App icon
         run: |
