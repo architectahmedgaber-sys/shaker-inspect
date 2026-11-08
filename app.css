@@ -142,3 +142,9 @@ body.locked .splash { display: flex !important; }
 .splash.wipe { animation: shkWipe .95s cubic-bezier(.6,0,.3,1) forwards; pointer-events: none; }
 @keyframes shkWipe { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 0 100%); } }
 @media (prefers-reduced-motion: reduce) { .splash .shk-hand i { animation-duration: .01s; animation-delay: 0s; } }
+
+/* opening screen v2: plain blue, only the signature */
+.splash { background: radial-gradient(ellipse at 50% 40%, #12418a 0%, #0b2a5b 55%, #08224d 100%) !important; justify-content: center; }
+.splash .shk-hand { margin: 0; font-size: clamp(40px, 11vw, 64px); color: #ffc61a; text-shadow: 0 2px 18px rgba(255,198,26,.25); }
+.splash .shk-hand i { animation: shkWrite 1.7s .4s cubic-bezier(.45,.05,.3,1) forwards; }
+#splash.splash { background: radial-gradient(ellipse at 50% 42%, #1a56b8 0%, #0f3a82 45%, #0a2a63 100%) !important; }

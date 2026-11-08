@@ -88,13 +88,13 @@
   // ---------- splash + skeleton ----------
   function splash() {
     const s = document.createElement('div'); s.id = 'splash'; s.className = 'splash';
-    s.innerHTML = '<img src="icons/icon-192.png" alt="" width="84" height="84"><b>Shaker Inspect</b><span>Site Inspections</span><em class="shk-hand"><i>architected by Ptah</i></em>';
+    s.innerHTML = '<em class="shk-hand"><i>architected by Ptah</i></em>';
     document.body.appendChild(s);
     // 1) the signature writes itself in (about 1.8 s)  2) it stays long enough to be read
     // 3) the whole screen wipes away from left to right, and the sign-in / home page shows underneath
     const quick = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    setTimeout(() => s.classList.add('wipe'), quick ? 1200 : 4400);
-    setTimeout(() => s.remove(), quick ? 1500 : 5400);
+    setTimeout(() => s.classList.add('wipe'), quick ? 1200 : 3700);
+    setTimeout(() => s.remove(), quick ? 1500 : 4700);
   }
   // the intro always plays in full; other code may call this, it does nothing now
   function hideSplash() {}
