@@ -69,6 +69,8 @@ jobs:
         working-directory: android
         run: |
           set +e
+          # the Gradle download sometimes times out on GitHub's side: try again a few times
+          for i in 1 2 3 4 5 6; do ./gradlew --version > /dev/null 2>&1 && break; echo "gradle download failed, retry $i"; sleep 25; done
           ./gradlew assembleDebug --no-daemon > ../build.txt 2>&1
           status=$?
           tail -80 ../build.txt
