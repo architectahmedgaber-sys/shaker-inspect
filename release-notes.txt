@@ -1,1 +1,2 @@
 Update notice: the app now tells you when a new version is available.
+Fonts are now bundled inside the app: the look stays the same and works offline.
