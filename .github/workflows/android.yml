@@ -44,15 +44,20 @@ jobs:
 
       - name: App icon
         run: |
-          RES=android/app/src/main/res
-          rm -rf $RES/mipmap-anydpi-v26
-          for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
-            n=${d%%:*}; s=${d##*:}
-            mkdir -p $RES/mipmap-$n
-            convert icons/icon-512.png -resize ${s}x${s} $RES/mipmap-$n/ic_launcher.png
-            cp $RES/mipmap-$n/ic_launcher.png $RES/mipmap-$n/ic_launcher_round.png
-            cp $RES/mipmap-$n/ic_launcher.png $RES/mipmap-$n/ic_launcher_foreground.png
-          done
+          pip install --quiet pillow
+          python3 - <<'PY'
+          from PIL import Image
+          import os, shutil
+          res = 'android/app/src/main/res'
+          shutil.rmtree(res + '/mipmap-anydpi-v26', ignore_errors=True)
+          im = Image.open('icons/icon-512.png').convert('RGBA')
+          for n, s in (('mdpi', 48), ('hdpi', 72), ('xhdpi', 96), ('xxhdpi', 144), ('xxxhdpi', 192)):
+              d = f'{res}/mipmap-{n}'
+              os.makedirs(d, exist_ok=True)
+              r = im.resize((s, s), Image.LANCZOS)
+              for f in ('ic_launcher', 'ic_launcher_round', 'ic_launcher_foreground'):
+                  r.save(f'{d}/{f}.png')
+          PY
 
       # One fixed signing key, so every new build installs OVER the old one (no uninstall needed).
       - name: Signing key
