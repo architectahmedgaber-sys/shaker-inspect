@@ -59,7 +59,7 @@
   function tabs() {
     const bar = $('tabBar'); if (!bar) return;
     const lvl = typeof view !== 'undefined' ? view.level : 'home';
-    bar.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === (lvl === 'home' ? 'home' : 'list')));
+    bar.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === (document.body.classList.contains('scr-ho') ? 'villa' : document.body.classList.contains('scr-sheet') ? 'sheet' : (lvl === 'home' ? 'home' : 'list'))));
   }
   function buildTabs() {
     const bar = document.createElement('nav'); bar.id = 'tabBar'; bar.className = 'tabbar'; bar.setAttribute('aria-label', 'Main');
@@ -72,9 +72,10 @@
     };
     ic.sheet = '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/>';
     ic.villa = '<path d="M3 20h18M5 20V9l7-5 7 5v11"/><path d="M10 20v-6h4v6"/>';
-    const items = [['home', 'Home', () => goHome()], ['list', 'Requests', openAll], ['sheet', 'Sheets', () => Shk.openSheets()], ['villa', 'Handover', () => { location.href = 'tracker.html'; }], ['me', 'Me', () => PtahApp.openAccount()]];
+    const items = [['home', 'Home', () => goHome()], ['list', 'Requests', openAll], ['sheet', 'Sheets', () => Shk.openSheets()], ['villa', 'Handover', () => Shk.openHandover()], ['me', 'Me', () => PtahApp.openAccount()]];
     bar.innerHTML = items.map(([k, l]) => `<button type="button" data-t="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${ic[k]}</svg><span>${l}</span></button>`).join('');
-    bar.querySelectorAll('button').forEach((b, i) => b.onclick = items[i][2]);
+    bar.querySelectorAll('button').forEach((b, i) => b.onclick = () => { if (items[i][0] !== 'me' && items[i][0] !== 'sheet' && items[i][0] !== 'villa') Shk.closeAll && Shk.closeAll(); items[i][2](); tabs(); });
+    (window.Shk = window.Shk || {}).tabsRefresh = tabs;
     document.body.appendChild(bar);
   }
   // "Requests": the busiest contractor's CIR list (one tap from the field)

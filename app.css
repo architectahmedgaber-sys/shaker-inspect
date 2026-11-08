@@ -148,3 +148,13 @@ body.locked .splash { display: flex !important; }
 .splash .shk-hand { margin: 0; font-size: clamp(40px, 11vw, 64px); color: #ffc61a; text-shadow: 0 2px 18px rgba(255,198,26,.25); }
 .splash .shk-hand i { animation: shkWrite 1.7s .4s cubic-bezier(.45,.05,.3,1) forwards; }
 #splash.splash { background: radial-gradient(ellipse at 50% 42%, #1a56b8 0%, #0f3a82 45%, #0a2a63 100%) !important; }
+
+/* pages that open inside the app keep the tab bar visible on phones */
+body.scr-open { overflow: hidden; }
+.shk-screen { z-index: 800; }
+.ho-wrap { position: fixed; inset: 0; z-index: 800; display: none; background: var(--paper); }
+.ho-wrap.open { display: block; }
+.ho-wrap iframe { width: 100%; height: 100%; border: 0; display: block; background: var(--paper); }
+body.scr-ho { overflow: hidden; }
+@media (max-width: 719px) { .shk-screen, .ho-wrap { bottom: calc(68px + env(safe-area-inset-bottom)); } }
+@media (min-width: 720px) { .ho-wrap { z-index: 700; } }

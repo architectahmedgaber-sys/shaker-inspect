@@ -7,7 +7,8 @@
 <meta name="theme-color" content="#0b2a5b">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
-<script>window.SHK_STANDALONE = true; window.SHK_PREFIX = 'tracker_';
+<script>if (/embed=1/.test(location.search)) document.documentElement.classList.add('embed');
+window.SHK_STANDALONE = true; window.SHK_PREFIX = 'tracker_';
 try { if (!localStorage.getItem('vht3Theme')) document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}</script>
 <script src="config.js"></script>
 <script src="app-api.js"></script>
@@ -206,6 +207,7 @@ footer{background:var(--foot-bg);color:var(--foot-ink);border-radius:16px;paddin
 :root[data-theme="light"], :root:not([data-theme]) { --primary:#0b2a5b; --primary-hover:#1b4a9e; --primary-soft:#e8eefb; --primary-line:#b9c8ea; --bg:#f6f5ef; --on-primary:#ffffff; --foot-bg:#0b2a5b; }
 :root[data-theme="dark"] { --primary:#ffc61a; --primary-hover:#ffd75e; --primary-soft:rgba(255,198,26,.14); --primary-line:rgba(255,198,26,.4);
   --bg:#06142b; --bg-glow:radial-gradient(900px 480px at 100% 0%, rgba(245,184,0,.16), transparent 60%); --card-bg:#0d2247; --inset:#132b57; --text-main:#f4f1e6; --text-muted:#9fb0cf; --border:#1d3769; --on-primary:#0b2a5b; --foot-bg:#0d2247; --lift:0 24px 54px -22px rgba(245,184,0,.45); }
+.embed .shk-back { display: none; }
 .shk-back { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 10px; margin: 0 -16px 12px; padding: 10px 16px; background: #0b2a5b; color: #fff; text-decoration: none; font: 700 15px var(--font); }
 .shk-back b { color: #ffc61a; } .shk-back span { margin-left: auto; font: 600 12px var(--font); opacity: .85; padding: 3px 10px; border: 1px solid rgba(255,255,255,.4); border-radius: 99px; }
 </style>

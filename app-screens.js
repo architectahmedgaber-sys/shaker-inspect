@@ -11,9 +11,9 @@
     const s = $('shkScreen');
     s.innerHTML = `<header class="sc-head"><button type="button" class="sc-back" data-act="close" aria-label="Back">‹</button><h2>${esc(title)}</h2><button type="button" class="sc-back" data-act="reload" aria-label="Refresh">⟳</button></header>` +
       (tabsHtml ? `<nav class="sc-tabs" id="scTabs">${tabsHtml}</nav>` : '') + `<main class="sc-body" id="scBody">${bodyHtml || ''}</main>`;
-    s.classList.add('open'); document.body.classList.add('locked');
+    s.classList.add('open'); document.body.classList.add('scr-open'); document.body.classList.toggle('scr-sheet', mode === 'sheets');
   }
-  function closeScreen() { $('shkScreen').classList.remove('open'); $('shkScreen').innerHTML = ''; document.body.classList.remove('locked'); }
+  function closeScreen() { $('shkScreen').classList.remove('open'); $('shkScreen').innerHTML = ''; document.body.classList.remove('scr-open', 'scr-sheet'); }
   const body = () => $('scBody');
   const loading = () => { body().innerHTML = '<div class="sc-load"><i></i><i></i><i></i></div>'; };
   const fail = e => { body().innerHTML = `<div class="sc-empty">${esc(e.message || e)}</div>`; };
@@ -24,7 +24,7 @@
 
   function openAdmin() {
     if (PtahApp.role() !== 'Admin') return;
-    mode = 'admin';
+    mode = 'admin'; closeHandover();
     frame('Admin', ADMIN_TABS.map(([k, l]) => `<button type="button" data-tab="${k}">${l}</button>`).join(''));
     gotoTab(adminTab);
   }
@@ -155,6 +155,7 @@
   // ================= SHEETS (view only) =================
   let sheetName = '', sheetCache = {};
   function openSheets() {
+    closeHandover();
     mode = 'sheets';
     frame('Sheet (view only)', '', '<div class="sc-load"><i></i><i></i><i></i></div>');
     api('sheet_tabs').then(tabs => {
@@ -177,6 +178,21 @@
       <div class="tbl-wrap"><table class="tbl"><thead><tr>${d.header.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody id="shBody">${d.rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${SIGN}`;
     $('shQ').addEventListener('input', e => { const q = e.target.value.toLowerCase(); document.querySelectorAll('#shBody tr').forEach(tr => { tr.hidden = q && tr.textContent.toLowerCase().indexOf(q) < 0; }); });
   }
+
+  // ================= HANDOVER (inside the app, tab bar stays) =================
+  function openHandover() {
+    closeScreen();
+    let w = $('hoWrap');
+    if (!w) {
+      w = document.createElement('div'); w.id = 'hoWrap'; w.className = 'ho-wrap';
+      w.innerHTML = '<iframe id="hoFrame" title="Handover tracker" src="tracker.html?embed=1"></iframe>';
+      document.body.appendChild(w);
+    }
+    w.classList.add('open'); document.body.classList.add('scr-ho');
+    if (window.Shk && Shk.tabsRefresh) Shk.tabsRefresh();
+  }
+  function closeHandover() { const w = $('hoWrap'); if (w) w.classList.remove('open'); document.body.classList.remove('scr-ho'); }
+  function closeAll() { closeScreen(); closeHandover(); }
 
   // ================= CONTACT =================
   function openContact() {
@@ -242,5 +258,5 @@
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { const sc = $('shkScreen'); if (sc && sc.classList.contains('open')) closeScreen(); } });
 
-  Object.assign(window.Shk = window.Shk || {}, { openAdmin, openSheets, openContact, openTour, afterSignIn, closeScreen });
+  Object.assign(window.Shk = window.Shk || {}, { openAdmin, openSheets, openContact, openTour, afterSignIn, closeScreen, openHandover, closeHandover, closeAll });
 })();
