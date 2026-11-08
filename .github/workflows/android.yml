@@ -30,11 +30,24 @@ jobs:
         with:
           node-version: '20'
 
+      # Version number: the build number goes into version.js (inside the app) and, after the release, into version.json (the update notice reads it)
+      - name: Stamp the version
+        run: |
+          python3 - <<'PY'
+          import json, os
+          b = int(os.environ['GITHUB_RUN_NUMBER'])
+          v = '1.0.%d' % b
+          notes = [l.strip() for l in open('release-notes.txt', encoding='utf-8') if l.strip()]
+          open('version.js', 'w').write("// Written by the build workflow (.github/workflows/android.yml). Do not edit by hand.\nwindow.SHK_VERSION = { version: '%s', build: %d };\n" % (v, b))
+          json.dump({'version': v, 'build': b, 'notes': notes, 'apk': 'https://github.com/${{ github.repository }}/releases/latest/download/shaker-inspect.apk'}, open('version.json', 'w'), ensure_ascii=False, indent=1)
+          PY
+          cat version.js version.json
+
       # The web files go INSIDE the app (a real APK, not a link in a frame).
       - name: Copy the web files into www/
         run: |
           mkdir -p www
-          cp -r index.html tracker.html app-api.js app-screens.js app-daily.js app-extras.js app-ui.js app-nav.js app.css theme.css config.js manifest.webmanifest sw.js icons www/
+          cp -r index.html tracker.html app-api.js app-screens.js app-daily.js app-extras.js app-ui.js app-nav.js app-update.js app.css theme.css config.js version.js manifest.webmanifest sw.js icons www/
 
       - name: Install Capacitor and create the Android project
         run: |
@@ -107,3 +120,14 @@ jobs:
           body: |
             Download shaker-inspect.apk on an Android phone and install it.
             iPhone or laptop: https://architectahmedgaber-sys.github.io/shaker-inspect/
+
+      # Publish the new version number to the web app (GitHub Pages) so open apps can tell an update is ready.
+      # Pushed by the workflow itself, so it does not start another build.
+      - name: Publish version.json to main
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add version.js version.json
+          git commit -m "Version ${GITHUB_RUN_NUMBER} [skip ci]" || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push origin HEAD:main && break; sleep 5; done
