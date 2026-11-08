@@ -34,7 +34,7 @@ jobs:
       - name: Copy the web files into www/
         run: |
           mkdir -p www
-          cp -r index.html tracker.html app-api.js app-screens.js app-daily.js app-extras.js app-ui.js app.css theme.css config.js manifest.webmanifest sw.js icons www/
+          cp -r index.html tracker.html app-api.js app-screens.js app-daily.js app-extras.js app-ui.js app-nav.js app.css theme.css config.js manifest.webmanifest sw.js icons www/
 
       - name: Install Capacitor and create the Android project
         run: |
