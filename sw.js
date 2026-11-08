@@ -1,6 +1,6 @@
 // Shaker Inspect service worker: the app opens fast and installs; data always comes live from the sheet.
-const VERSION = 'shk-v7';
-const SHELL = ['./', 'index.html', 'tracker.html', 'app.css', 'app-api.js', 'app-ui.js', 'app-screens.js', 'config.js', 'manifest.webmanifest', 'theme.css', 'icons/icon-192.png', 'icons/icon-512.png'];
+const VERSION = 'shk-v8';
+const SHELL = ['./', 'index.html', 'tracker.html', 'app.css', 'app-api.js', 'app-ui.js', 'app-screens.js', 'app-daily.js', 'config.js', 'manifest.webmanifest', 'theme.css', 'icons/icon-192.png', 'icons/icon-512.png'];
 const CDN = /^https:\/\/(cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)\//;
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });

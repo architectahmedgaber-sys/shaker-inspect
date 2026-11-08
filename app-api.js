@@ -23,7 +23,9 @@
       r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                              body: JSON.stringify({ fn: fn, args: args || [], token: token || '' }), redirect: 'follow' });
     } catch (e) {
-      throw new Error(navigator.onLine === false ? 'No internet connection.' : 'Could not reach the server. Check the connection and try again.');
+      const err = new Error(navigator.onLine === false ? 'No internet connection.' : 'Could not reach the server. Check the connection and try again.');
+      err.net = true;                 // no signal: the offline queue keeps the close and sends it later
+      throw err;
     }
     let o;
     try { o = await r.json(); } catch (e) { throw new Error('The server answered in a wrong format (' + r.status + '). Check the deployment access is "Anyone".'); }
@@ -38,10 +40,28 @@
       send(job);
     });
   }
+  // ---------- offline: the last answer of each "read" call is kept on the phone ----------
+  const READS = { getDailyActions: 1, getInspectors: 1, getChecklist: 1, getChecklistByCode: 1, getSectionList: 1, daily_bootstrap: 1 };
+  const ckey = job => 'shkC:' + job.fn + ':' + JSON.stringify(job.args || []).slice(0, 400);
+  function cachePut(job, v) {
+    if (!READS[job.fn]) return;
+    try { localStorage.setItem(ckey(job), JSON.stringify({ t: Date.now(), v: v })); }
+    catch (e) {   // phone storage full: drop the old checklists and try once more
+      try { Object.keys(localStorage).filter(k => k.indexOf('shkC:getChecklist') === 0).forEach(k => localStorage.removeItem(k)); localStorage.setItem(ckey(job), JSON.stringify({ t: Date.now(), v: v })); } catch (e2) {}
+    }
+  }
+  function cacheGet(job) { try { return JSON.parse(localStorage.getItem(ckey(job)) || 'null'); } catch (e) { return null; } }
+
   async function send(job) {
     try {
-      const o = await post(job.fn, job.args, session && session.token);
-      if (o.ok) return job.resolve(o.result);
+      let o;
+      try { o = await post(job.fn, job.args, session && session.token); }
+      catch (e) {
+        const hit = e.net && READS[job.fn] && cacheGet(job);
+        if (hit) { window.SHK_OFFLINE_SINCE = hit.t; document.dispatchEvent(new CustomEvent('shk-offline', { detail: { fn: job.fn, t: hit.t } })); return job.resolve(hit.v); }
+        throw e;
+      }
+      if (o.ok) { cachePut(job, o.result); if (job.fn === 'getDailyActions') window.SHK_OFFLINE_SINCE = 0; return job.resolve(o.result); }
       if (o.auth) { session = null; store.set(null); waiting.push(job); STANDALONE ? location.replace('./') : showLogin(o.error); return; }
       if (o.state) { session.status = o.state; store.set(session); waiting.push(job); showStatus(); return; }
       job.reject(new Error(o.error || 'Unknown error'));
@@ -244,7 +264,18 @@
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(e => console.warn('sw', e)));
   }
 
+  // a call that tells "no signal" apart from "the server said no" (used by the offline queue)
+  async function callRaw(fn, args) {
+    if (!session || session.status !== 'approved') { const e = new Error('Please sign in again.'); e.auth = true; throw e; }
+    const o = await post(PREFIX + fn, args, session.token);          // throws with e.net = true when there is no signal
+    if (o.auth) { const e = new Error(o.error || 'Please sign in again.'); e.auth = true; throw e; }
+    if (!o.ok) throw new Error(o.error || 'Unknown error');
+    return o.result;
+  }
+  // put a "read" answer in the phone cache by hand (e.g. checklists fetched in bulk)
+  function cacheSet(fn, args, v) { cachePut({ fn: PREFIX + fn, args: args }, v); }
+
   window.PtahApp = { engineer: () => session ? session.engineer : '', email: () => session ? session.email : '',
-                     role, openAccount, closeAccount, signOut, install, call, refreshRole: applyRole };
+                     role, openAccount, closeAccount, signOut, install, call, callRaw, cacheSet, refreshRole: applyRole };
   window.Shk = window.Shk || {};
 })();
