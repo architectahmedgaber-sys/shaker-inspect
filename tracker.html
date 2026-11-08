@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Handover · Shaker Inspect</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b2a5b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<script>window.SHK_STANDALONE = true; window.SHK_PREFIX = 'tracker_';
+try { if (!localStorage.getItem('vht3Theme')) document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}</script>
+<script src="config.js"></script>
+<script src="app-api.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Caveat&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Layout: Ptah drill-down — company tiles > type tiles > villa cards > villa BOQ sheet; breadcrumb + big Back; Classic (light) / Command (dark glass) */
+:root{
+  --primary:#2563eb; --primary-hover:#1d4ed8; --primary-soft:#eff6ff; --primary-line:#bfdbfe;
+  --success:#059669; --success-bg:#d1fae5; --danger:#dc2626; --danger-bg:#fee2e2; --warning:#b45309; --warning-bg:#fef3c7;
+  --bg:#f8fafc; --bg-glow:none; --card-bg:#ffffff; --inset:#f1f5f9; --text-main:#0f172a; --text-muted:#64748b; --border:#e2e8f0;
+  --foot-bg:#0f172a; --foot-ink:#ffffff; --foot-muted:#94a3b8; --on-primary:#ffffff; --shadow:0 1px 3px rgba(0,0,0,.05); --lift:0 24px 44px -20px rgba(0,0,0,.3);
+  --sh:#2563eb; --sq:#0d9488; --at:#7c3aed; --idle:#64748b; --blur:none;
+  --font:'Inter',system-ui,-apple-system,'Segoe UI',Tahoma,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --primary:#7c9cff; --primary-hover:#9db4ff; --primary-soft:rgba(124,156,255,.12); --primary-line:rgba(124,156,255,.35);
+  --success:#34d399; --success-bg:rgba(52,211,153,.14); --danger:#fb7185; --danger-bg:rgba(251,113,133,.14); --warning:#fbbf24; --warning-bg:rgba(251,191,36,.14);
+  --bg:#070b14; --bg-glow:radial-gradient(1100px 560px at 8% -8%, rgba(99,102,241,.28), transparent 60%),radial-gradient(900px 480px at 100% 0%, rgba(20,184,166,.2), transparent 60%),radial-gradient(800px 500px at 50% 120%, rgba(168,85,247,.16), transparent 60%);
+  --card-bg:rgba(255,255,255,.05); --inset:rgba(255,255,255,.05); --text-main:#e6edf7; --text-muted:#8b97ad; --border:rgba(255,255,255,.11);
+  --foot-bg:rgba(255,255,255,.05); --foot-ink:#ffffff; --foot-muted:#8b97ad; --on-primary:#07101f; --shadow:none; --lift:0 24px 54px -22px rgba(124,156,255,.6);
+  --sh:#60a5fa; --sq:#2dd4bf; --at:#a78bfa; --idle:#8b97ad; --blur:blur(12px); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --primary:#7c9cff; --primary-hover:#9db4ff; --primary-soft:rgba(124,156,255,.12); --primary-line:rgba(124,156,255,.35);
+  --success:#34d399; --success-bg:rgba(52,211,153,.14); --danger:#fb7185; --danger-bg:rgba(251,113,133,.14); --warning:#fbbf24; --warning-bg:rgba(251,191,36,.14);
+  --bg:#070b14; --bg-glow:radial-gradient(1100px 560px at 8% -8%, rgba(99,102,241,.28), transparent 60%),radial-gradient(900px 480px at 100% 0%, rgba(20,184,166,.2), transparent 60%),radial-gradient(800px 500px at 50% 120%, rgba(168,85,247,.16), transparent 60%);
+  --card-bg:rgba(255,255,255,.05); --inset:rgba(255,255,255,.05); --text-main:#e6edf7; --text-muted:#8b97ad; --border:rgba(255,255,255,.11);
+  --foot-bg:rgba(255,255,255,.05); --foot-ink:#ffffff; --foot-muted:#8b97ad; --on-primary:#07101f; --shadow:none; --lift:0 24px 54px -22px rgba(124,156,255,.6);
+  --sh:#60a5fa; --sq:#2dd4bf; --at:#a78bfa; --idle:#8b97ad; --blur:blur(12px); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg-glow),var(--bg);background-attachment:fixed;background-color:var(--bg);color:var(--text-main);font-family:var(--font);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:24px 32px;min-height:100vh}
+button,input,textarea{font:inherit;color:inherit}
+bdi,.ltr{unicode-bidi:isolate;direction:ltr}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono);font-size:.82em}
+.wrap{max-width:1400px;margin-inline:auto;display:flex;flex-direction:column;gap:20px}
+:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+
+.header-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
+.header-title h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+.header-title p{margin:4px 0 0;font-size:14px;color:var(--text-muted);max-width:70ch}
+.header-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.seg{display:inline-flex;gap:4px;padding:4px;border-radius:12px;background:var(--inset);border:1px solid var(--border)}
+.seg button{border:none;background:transparent;padding:6px 12px;border-radius:9px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-muted)}
+.seg button[aria-pressed="true"]{background:var(--primary);color:var(--on-primary)}
+.search-box input{padding:10px 16px;border:1px solid var(--border);border-radius:10px;font-size:14px;outline:none;width:320px;max-width:100%;background:var(--card-bg);backdrop-filter:var(--blur)}
+.search-box input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.badge-counter{background:var(--primary-soft);color:var(--primary);padding:8px 16px;border-radius:20px;font-weight:600;font-size:13px;border:1px solid var(--primary-line);display:inline-flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--idle)} .dot.on{background:var(--success)}
+
+.crumbs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:14px}
+.crumbs button{border:none;background:transparent;cursor:pointer;font-weight:600;color:var(--primary);padding:7px 12px;border-radius:10px}
+.crumbs button:hover{background:var(--primary-soft)}
+.crumbs .back-btn{border:1px solid var(--border);background:var(--card-bg);color:var(--text-main);margin-inline-end:8px;font-size:17px;padding:12px 22px;min-height:48px;border-radius:14px;backdrop-filter:var(--blur)}
+.crumbs .sep{color:var(--text-muted)} .crumbs .here{font-weight:700;padding:7px 12px}
+
+.stage-in{animation:stageIn .28s ease}
+@keyframes stageIn{from{opacity:.4;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.stage-in{animation:none}.nav-tile,.card{transition:none!important}}
+
+.nav-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:22px}
+.nav-tile{--accent:var(--idle);position:relative;text-align:left;cursor:pointer;background:var(--card-bg);backdrop-filter:var(--blur);border:1px solid var(--border);border-top:8px solid var(--accent);border-radius:22px;padding:24px 24px 18px;min-height:220px;display:flex;flex-direction:column;justify-content:space-between;gap:12px;transition:transform .18s ease,box-shadow .18s ease;box-shadow:var(--shadow)}
+.nav-tile:hover{transform:translateY(-6px);box-shadow:var(--lift)}
+.nav-tile.empty{opacity:.55;cursor:default} .nav-tile.empty:hover{transform:none;box-shadow:var(--shadow)}
+.nav-name{font-size:26px;font-weight:800;letter-spacing:-.01em}
+.nav-sub{margin-top:6px;font-size:14px;color:var(--text-muted)}
+.nav-num{font-size:60px;font-weight:800;line-height:1;color:var(--accent)}
+.nav-num small{font-size:.4em;font-weight:700}
+.nav-go{font-weight:700;font-size:14px;color:var(--accent);text-align:right}
+
+.bar{height:8px;border-radius:4px;background:var(--inset);overflow:hidden;display:flex;min-width:60px;border:1px solid var(--border)}
+.bar i{display:block;height:100%;background:var(--success)}
+.bar.thin{height:6px}
+
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));gap:18px}
+.card{background:var(--card-bg);backdrop-filter:var(--blur);border:1px solid var(--border);border-inline-start:6px solid var(--accent,var(--sh));border-radius:16px;padding:18px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow);transition:transform .2s ease,box-shadow .2s ease}
+.card:hover{transform:translateY(-4px);box-shadow:var(--lift)}
+.card-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chip{background:var(--primary-soft);color:var(--primary);border:1px solid var(--primary-line);padding:3px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap}
+.chip.warn{background:var(--warning-bg);color:var(--warning);border-color:transparent}
+.rev-chip{font-size:12px;color:var(--text-muted);font-weight:500}
+.villa-title{font-size:18px;font-weight:700}
+.card-pct{font-size:30px;font-weight:800;line-height:1}
+.card-footer{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:10px;font-size:12px;color:var(--text-muted);gap:8px}
+.open-tag{font-size:13px;color:var(--primary);font-weight:600;white-space:nowrap}
+
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.btn{border:1px solid var(--border);background:var(--card-bg);padding:9px 14px;border-radius:10px;cursor:pointer;font-weight:600;font-size:13px;backdrop-filter:var(--blur)}
+.btn:hover{border-color:var(--primary);color:var(--primary)}
+.an-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin:26px 0 10px} .an-h h3{font-size:17px;font-weight:800;margin:0}
+.an-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
+.an{background:var(--card-bg);backdrop-filter:var(--blur);border:1px solid var(--border);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;min-width:0}
+.an.wide{grid-column:1/-1}
+.an h4{margin:0;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted)}
+.an .big{font-size:34px;font-weight:800;line-height:1.05} .an .big small{font-size:14px;font-weight:600;color:var(--text-muted);margin-inline-start:4px}
+.an .big.bad{color:var(--danger)} .an .big.good{color:var(--success)}
+.an p{margin:0;font-size:12.5px;color:var(--text-muted);line-height:1.5} .an p b{color:var(--text-main)}
+.an table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12.5px;margin-top:2px} .an th{font-size:11px;font-weight:600;color:var(--text-muted);text-align:left;padding:4px 0;border-bottom:1px solid var(--border);vertical-align:bottom}
+.an td,.an th{overflow-wrap:anywhere} .an .w1{width:60px} .an .w2{width:66px} .an .w3{width:78px}
+.an td{padding:5px 0;border-bottom:1px solid var(--border)} .an tr:last-child td{border-bottom:0} .an .r{text-align:right;padding-inline-start:8px} .an td.r{white-space:nowrap}
+.vl{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--primary);cursor:pointer;text-align:left} .vl:hover{text-decoration:underline}
+.vchips{display:flex;flex-wrap:wrap;gap:6px} .vchips .vl{background:var(--inset);border:1px solid var(--border);border-radius:8px;padding:3px 9px;font-size:12.5px;font-weight:600}
+.an .nw{white-space:nowrap} .an details{font-size:12.5px} .an details>summary{cursor:pointer;color:var(--primary);font-weight:600;padding:4px 0}
+.an .w4{width:92px} .an .w5{width:120px} .an .w6{width:170px} .an td .bar{min-width:0}
+.stt{width:100%;border-collapse:collapse;font-size:12.5px} .stt th{font-size:11px;font-weight:600;color:var(--text-muted);text-align:left;padding:4px 10px 4px 0;border-bottom:1px solid var(--border);white-space:nowrap} .stt td{padding:6px 10px 6px 0;border-bottom:1px solid var(--border)} .stt tr:last-child td{border-bottom:0} .stt .r{text-align:right}
+.hl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px;margin-bottom:16px}
+.hl .kpi b{font-size:28px} .hl .kpi b small{font-size:13px;font-weight:600;color:var(--text-muted);margin-inline-start:4px} .hl .kpi b.bad{color:var(--danger)}
+.band{display:grid;grid-template-columns:86px minmax(0,1fr) 34px;gap:8px;align-items:center;font-size:12.5px} .band .bar{min-width:0}
+.agebar{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--inset)} .agebar i{display:block;height:100%}
+.lg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-muted)} .lg i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-inline-end:5px}
+.wk{display:flex;align-items:flex-end;gap:6px;height:120px;margin-top:6px} .wk>div{flex:1;display:flex;align-items:flex-end;justify-content:center;gap:2px;height:100%;min-width:0}
+.wk i{display:block;width:42%;max-width:16px;min-height:2px;border-radius:4px 4px 0 0}
+.wkx{display:flex;gap:6px;font-size:10.5px;color:var(--text-muted)} .wkx span{flex:1;text-align:center;white-space:nowrap;overflow:hidden;min-width:0}
+@media (max-width:640px){.wkx span{overflow:visible;text-align:left}.an table.wt{table-layout:auto}.an table.wt th{width:auto}.wkx span:nth-child(even){visibility:hidden}.an table.wt th:nth-child(-n+4):not(:first-child),.an table.wt td:nth-child(-n+4):not(:first-child){display:none}}
+.note-line{font-size:13px;color:var(--text-muted);max-width:90ch}
+.banner{background:var(--warning-bg);color:var(--warning);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:500}
+
+.sheet{background:var(--card-bg);backdrop-filter:var(--blur);border:1px solid var(--border);border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:20px;box-shadow:var(--shadow)}
+.sh-head{display:flex;flex-wrap:wrap;gap:16px 32px;justify-content:space-between;align-items:flex-end}
+.sh-head h2{margin:0;font-size:28px;font-weight:800;letter-spacing:-.02em}
+.meta{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:8px;font-size:13px;color:var(--text-muted);align-items:center}
+.score{min-width:min(280px,100%);flex:0 1 340px;display:flex;flex-direction:column;gap:6px}
+.score .big{font-size:52px;font-weight:800;line-height:1;color:var(--primary)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.kpi{background:var(--inset);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.kpi b{display:block;font-size:22px;line-height:1.2} .kpi span{color:var(--text-muted);font-size:12px}
+
+details.div{border:1px solid var(--border);border-radius:14px;overflow:hidden}
+details.div>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(70px,140px) 52px;gap:12px;align-items:center;padding:12px 16px;background:var(--inset);font-weight:700}
+details.div>summary::-webkit-details-marker{display:none}
+details.div>summary .dn{min-width:0;display:flex;gap:8px;align-items:baseline}
+details.div>summary .dn::before{content:"▸";color:var(--text-muted);font-size:12px}
+details.div[open]>summary .dn::before{content:"▾"}
+.wt{font-size:12px;color:var(--text-muted);font-weight:500;white-space:nowrap}
+.sec{padding:14px 16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
+.sec h4{margin:0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);font-weight:600;display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between}
+.line{display:grid;grid-template-columns:38px minmax(0,1fr) 90px 62px 150px;gap:6px 12px;align-items:center;padding:6px 0;border-top:1px dashed var(--border);font-size:14px}
+.line:first-of-type{border-top:none}
+.line .no{color:var(--text-muted)} .line .qty,.line .w{text-align:right;white-space:nowrap}
+.line .qty{color:var(--text-muted);font-size:13px} .line .w{font-weight:600}
+.line .st{display:flex;justify-content:flex-end;align-items:center;gap:8px}
+.est{font-size:11px;color:var(--warning);font-weight:600}
+.pill{display:inline-block;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.B{background:var(--success-bg);color:var(--success)} .pill.C{background:var(--warning-bg);color:var(--warning)} .pill.D{background:var(--danger-bg);color:var(--danger)}
+.pill.O{background:var(--primary-soft);color:var(--primary)} .pill.N{background:var(--inset);color:var(--text-muted)}
+.steps{direction:ltr;display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.steps button{border:none;background:transparent;padding:3px 0;width:29px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text-muted);border-inline-start:1px solid var(--border)}
+.steps button:first-child{border-inline-start:none}
+.steps button[aria-pressed="true"]{background:var(--success);color:var(--on-primary)}
+.acts{background:var(--inset);border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.acts h5{margin:0 0 4px;font-size:13px;font-weight:700;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cp{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:6px 0;border-top:1px dashed var(--border);font-size:13px}
+.cp .nm{min-width:0} .cp .nm small{color:var(--text-muted)}
+.cp .res{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.cir{font-family:var(--mono);font-size:12px;color:var(--text-muted)}
+.tg{border:1px solid var(--border);background:var(--card-bg);border-radius:999px;padding:3px 10px 3px 4px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12px;min-width:74px;direction:ltr}
+.tg .knob{width:16px;height:16px;border-radius:50%;background:var(--idle)}
+.tg[aria-checked="true"]{background:var(--success-bg);color:var(--success);border-color:transparent} .tg[aria-checked="true"] .knob{background:var(--success)}
+.chg{font-size:11px;color:var(--warning);font-weight:600}
+.hist{grid-column:2/-1;display:flex;gap:4px 10px;flex-wrap:wrap;color:var(--text-muted);font-size:12px}
+textarea.note{width:100%;min-height:80px;border:1px solid var(--border);border-radius:10px;background:var(--card-bg);padding:12px 14px;resize:vertical;outline:none}
+textarea.note:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.xlist{font-size:13px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px}
+.empty-state{text-align:center;padding:48px 16px;background:var(--card-bg);border-radius:16px;border:1px dashed var(--border)}
+.empty-state h3{margin:0 0 8px;font-size:18px} .empty-state p{margin:0;color:var(--text-muted);font-size:14px}
+
+footer{background:var(--foot-bg);color:var(--foot-ink);border-radius:16px;padding:10px 30px;border:1px solid var(--border);backdrop-filter:var(--blur);margin-top:20px}
+.footer-content{padding:26px 0 18px;text-align:center}
+.footer-content h3{margin:0 0 15px;position:relative;padding-bottom:10px;font-size:1.2rem;display:inline-block}
+.footer-content h3::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:50px;height:3px;background:var(--primary);border-radius:2px}
+.footer-links{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;align-items:center;font-size:14px}
+.footer-links a{color:var(--foot-muted);text-decoration:none;display:inline-flex;align-items:center;gap:8px}.footer-links a:hover{color:var(--primary)}
+.copyright{text-align:center;padding:15px;border-top:1px solid rgba(255,255,255,.1);color:var(--foot-muted);font-size:.9rem}
+.signature{text-align:center;padding-bottom:12px;font-family:'Caveat',cursive;font-size:1.3rem;opacity:.9}
+
+@media (max-width:720px){
+  body{padding-block:14px 24px}
+  .search-box,.search-box input{width:100%}
+  .sheet{padding:16px}
+  .line{grid-template-columns:34px minmax(0,1fr) auto}
+  .line .qty{grid-column:2;text-align:left} .line .w{grid-column:3;grid-row:1} .line .st{grid-column:2/-1;justify-content:flex-start}
+  details.div>summary{grid-template-columns:minmax(0,1fr) 52px} details.div>summary .wt,details.div>summary .bar{display:none}
+  .cp{grid-template-columns:auto minmax(0,1fr)} .cp .res{grid-column:1/-1;justify-content:flex-start}
+  .nav-num{font-size:48px}
+}
+.line.off .dsc{text-decoration:line-through;color:var(--text-muted)} .line.off .w{color:var(--text-muted)}
+#printRoot{display:none}
+.pdflink{background:var(--primary);color:var(--on-primary);border-color:var(--primary);text-decoration:none;display:inline-block}
+@page{size:A4;margin:16mm 14mm 18mm}
+@media print{html,body{background:#fff!important;color:#0f172a!important;padding:0!important;margin:0!important;min-height:0!important}.wrap{display:none!important}#printRoot{display:block;padding:0 4mm}}
+</style>
+
+
+<style id="shk-theme">
+/* Shaker Inspect: Blue + Gold over the tracker's own colours */
+:root[data-theme="light"], :root:not([data-theme]) { --primary:#0b2a5b; --primary-hover:#1b4a9e; --primary-soft:#e8eefb; --primary-line:#b9c8ea; --bg:#f6f5ef; --on-primary:#ffffff; --foot-bg:#0b2a5b; }
+:root[data-theme="dark"] { --primary:#ffc61a; --primary-hover:#ffd75e; --primary-soft:rgba(255,198,26,.14); --primary-line:rgba(255,198,26,.4);
+  --bg:#06142b; --bg-glow:radial-gradient(900px 480px at 100% 0%, rgba(245,184,0,.16), transparent 60%); --card-bg:#0d2247; --inset:#132b57; --text-main:#f4f1e6; --text-muted:#9fb0cf; --border:#1d3769; --on-primary:#0b2a5b; --foot-bg:#0d2247; --lift:0 24px 54px -22px rgba(245,184,0,.45); }
+.shk-back { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 10px; margin: 0 -16px 12px; padding: 10px 16px; background: #0b2a5b; color: #fff; text-decoration: none; font: 700 15px var(--font); }
+.shk-back b { color: #ffc61a; } .shk-back span { margin-left: auto; font: 600 12px var(--font); opacity: .85; padding: 3px 10px; border: 1px solid rgba(255,255,255,.4); border-radius: 99px; }
+</style>
+</head>
+<body>
+<a class="shk-back" href="./"><b>‹</b> Shaker Inspect · Handover <span id="shkRoleTag"></span></a>
+<div class="wrap" id="app" lang="en">
+  <div class="header-bar">
+    <div class="header-title">
+      <h1 id="hTitle"></h1>
+      <p id="hSub"></p>
+    </div>
+    <div class="header-tools">
+      <div class="seg" id="themeSwitch" role="group" aria-label="Theme"><button type="button" data-th="light">Classic</button><button type="button" data-th="dark">Command</button></div>
+      <div class="search-box"><input type="search" id="searchInput" aria-label="Search"></div>
+      <div class="badge-counter"><span class="dot" id="dot"></span><span id="savetxt"></span></div>
+    </div>
+  </div>
+  <nav id="crumbs" class="crumbs" hidden></nav>
+  <main id="stage"></main>
+  <footer>
+    <div class="footer-content"><div>
+      <h3>Tech Support</h3>
+      <ul class="footer-links">
+        <li><a href="mailto:architectahmedgaber@gmail.com"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 8.2L4.5 7.5v1.9l7.5 5.6 7.5-5.6V7.5z"/></svg>Email Us</a></li>
+        <li><a href="https://wa.me/201018484400" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.7 14.9L2 22l5.3-1.4A10 10 0 1 0 12 2zm0 1.8a8.2 8.2 0 1 1-4.3 15.2l-.4-.2-2.8.7.8-2.7-.3-.4A8.2 8.2 0 0 1 12 3.8z"/><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M8.8 8.4c.2 3.6 3.2 6.6 6.8 6.8"/></svg>WhatsApp</a></li>
+      </ul>
+    </div></div>
+    <div class="copyright">© 2026 Shaker Consultancy Group - SouthMed North Coast</div>
+    <div class="signature">architected by Ptah</div>
+  </footer>
+</div>
+<div id="printRoot"></div>
+<script>
+function boot(D){
+const IDS=Object.keys(D.V).sort((a,b)=>D.V[a].co.localeCompare(D.V[b].co)||D.V[a].n-D.V[b].n);
+const STG=D.model.stages, LOC=D.model.locs, ACT=D.model.acts;
+const SEEN={};Object.keys(D.V).forEach(id=>Object.keys(D.V[id].c).forEach(k=>{const p=k.split('|');SEEN[D.V[id].co+'|'+p[0]+'|'+p[2]]=1}));
+const slug=s=>s.replace(/[^A-Za-z0-9]+/g,'_');
+const NOCAT={s:[],est:1};
+const cat=id=>D.T[D.V[id].t]||D.T.GEN||NOCAT;
+const isGen=id=>!D.T[D.V[id].t];
+D.ex=D.ex||{};
+// weight of a line = its amount as a share of the villa's (or type's) total, after cancellations and quantity overrides
+const exOf=(id,sec,l)=>(id&&D.ex[id]&&D.ex[id][sec.c+'|'+l.no])||null;
+function amt(id,sec,l){const e=exOf(id,sec,l);if(l.off||(e&&e.c))return 0;if(e&&e.q!=null&&l.r)return e.q*l.r;return l.v}
+const totCache=new Map();
+function tot(id,C){const k=id||C;if(!totCache.has(k)){let t=0;C.s.forEach(sec=>sec.l.forEach(l=>{t+=amt(id,sec,l)}));totCache.set(k,t||1)}return totCache.get(k)}
+const dead=(id,sec,l)=>{const e=exOf(id,sec,l);return !!(l.off||(e&&e.c))};
+// Item_Weights tab: one weight per tracker item, shared equally among the live BOQ lines of that item. Lines with no tracker item are listed but not counted.
+// Without the tab the old BOQ-amount weights are used.
+const IW=(D.IW||{}).ARC||{},SWT=(D.IW||{}).STR||{},USE_IW=Object.keys(IW).length>0,USE_SW=Object.keys(SWT).length>0;
+const iwCache=new Map();
+function iwOf(id,C){const k=id||C;if(!iwCache.has(k)){const n={};let t=0;C.s.forEach(sec=>sec.l.forEach(l=>{if(l.a&&IW[l.a]>0&&!dead(id,sec,l))n[l.a]=(n[l.a]||0)+1}));Object.keys(n).forEach(a=>{t+=IW[a]});iwCache.set(k,{n,t:t||1})}return iwCache.get(k)}
+const W=(id,C,sec,l)=>{if(!USE_IW)return amt(id,sec,l)/tot(id,C)*100;if(!l.a||!(IW[l.a]>0)||dead(id,sec,l))return 0;const o=iwOf(id,C);return IW[l.a]/o.n[l.a]/o.t*100};
+const GEN_NOTE=USE_IW?'No BOQ was supplied for this type, so its list of lines is provisional (taken from types T01 to T06). The item weights are the same for every type.':'No BOQ was supplied for this type, so its weights are provisional: the average share per section across types T01 to T06. They should be replaced once the BOQ for this type is available.';
+const W_NOTE=USE_IW?'Weight = the weight of the tracker item (1 to 3, Item_Weights tab) as a share of the villa total, split equally among the BOQ lines of that item. Lines with no tracker item are listed for reference and are not counted.':'Weight = BOQ quantity × an estimated unit rate, expressed as a share of the type total. The rates are estimates, so only the ratios between items carry meaning.';
+
+// ---------- state (manual updates + notes), saved to the Site_State tab
+let state=D.state||{}, online=true, pin='';
+function vs(id){return state[id]||(state[id]={o:{},note:''})}
+function setStatus(on,msg){online=on;document.getElementById('dot').className='dot'+(on?' on':'');document.getElementById('savetxt').textContent=(msg||(on?'Changes save to the sheet':'Not saved'))+' · ACC data as of '+(D.asof||'-')}
+function save(id){cache={};
+ if(window.SHK_ROLE!=='Admin'){setStatus(false,'View only: only admins can update');return}
+ if(D.pin&&!pin){pin=window.prompt('Enter the edit PIN to save site updates')||'';if(!pin){setStatus(false,'Not saved: PIN needed');return}}
+ setStatus(true,'Saving…');
+ google.script.run.withSuccessHandler(r=>{if(r&&r.ok)setStatus(true);else{pin='';setStatus(false,'Not saved: wrong PIN')}})
+  .withFailureHandler(()=>setStatus(false,'Could not save to the sheet')).saveVilla(id,vs(id).o,vs(id).note||'',pin)}
+
+// ---------- progress maths
+let cache={};
+function cps(id,a){
+ const A=ACT[a],c=D.V[id].c,order=Object.keys(A.st),has=(st,l)=>c[a+'|'+st+'|'+l];
+ const keys=Object.keys(c).filter(k=>k.startsWith(a+'|'));
+ let locs=A.locs.filter(x=>!x[3]||keys.some(k=>k.endsWith('|'+x[0]))||(x[3]===2&&SEEN[D.V[id].co+'|'+a+'|'+x[0]]));
+ if(!locs.length)locs=A.locs.filter(x=>x[3]===2);
+ const lt=locs.reduce((n,x)=>n+x[1],0),out=[];
+ locs.forEach(([l,w,base])=>{
+  const sts=order.filter(s=>base==='*'||base.split(' ').includes(s)||has(s,l));
+  const tot=sts.reduce((n,s)=>n+A.st[s],0);
+  let later=false;const rows=[];
+  for(let i=sts.length-1;i>=0;i--){const s=sts[i],h=has(s,l)||[],last=h[h.length-1];
+   const ok=!!last&&(last[2]==='B'||last[2]==='A');
+   const def=ok||later;if(ok)later=true;
+   const key=slug(a+'|'+s+'|'+l),ov=vs(id).o[key];
+   rows.unshift({key,a,s,l,share:w/lt*A.st[s]/tot,h,last,def,implied:!ok&&def,done:ov===undefined?def:ov>=100,ov})}
+  out.push(...rows)});
+ return out}
+function lineKey(sec,l){return slug('L|'+sec.c+'|'+(l.a||l.no+'|'+l.d.slice(0,24)))}
+function calc(id){
+ if(cache[id])return cache[id];
+ const C=cat(id),acts={},r={p:0,appr:0,cd:0,rev:0,nost:0,n:0,last:'',cirs:0,divs:{},secs:{},lines:{}};
+ const c=D.V[id].c,seen=new Set();
+ const tally=h=>{if(!seen.has(h[0]+'/'+h[3])){seen.add(h[0]+'/'+h[3]);r.cirs++}if(h[1]>r.last)r.last=h[1]};
+ Object.keys(c).forEach(k=>c[k].forEach(tally));D.V[id].x.forEach(tally);
+ const lastOf={};Object.keys(c).forEach(k=>c[k].forEach(h=>{lastOf[h[0]]=h}));D.V[id].x.forEach(h=>{lastOf[h[0]]=h});
+ r.req={n:0,O:0,C:0,D:0,B:0};Object.keys(lastOf).forEach(k=>{const cd=lastOf[k][2]==='A'?'B':lastOf[k][2];r.req.n++;r.req[cd]=(r.req[cd]||0)+1});
+ C.s.forEach(sec=>{let sw=0,sp=0;
+  sec.l.forEach(l=>{let p;const w=W(id,C,sec,l),e=exOf(id,sec,l);
+   if(l.a){if(!acts[l.a]){const list=cps(id,l.a);acts[l.a]={list,p:list.reduce((n,x)=>n+(x.done?x.share:0),0)};
+     list.forEach(x=>{if(x.done)r.appr++;else if(x.last&&(x.last[2]==='C'||x.last[2]==='D'))r.cd++;else if(x.last&&x.last[2]==='O')r.rev++})}
+    p=acts[l.a].p}
+   else p=(vs(id).o[lineKey(sec,l)]||0)/100;
+   if(e&&e.m!=null)p=e.m/100;
+   r.lines[lineKey(sec,l)+'|'+l.no]=p;if(w>0){r.n++;if(p===0)r.nost++}
+   sw+=w;sp+=w*p});
+  r.secs[sec.c]={w:sw,p:sw?sp/sw:0};
+  const d=r.divs[sec.dv]||(r.divs[sec.dv]={w:0,pw:0});d.w+=sw;d.pw+=sp;r.p+=sp});
+ r.p=r.p/100;r.acts=acts;return cache[id]=r}
+const pct=x=>Math.round(x*100);
+const pct1=x=>(x>0&&x*100<10?(x*100).toFixed(1):String(Math.round(x*100)));
+const avg=list=>list.length?list.reduce((n,id)=>n+calc(id).p,0)/list.length:0;
+
+// ---------- navigation: Company > Type > Villa
+const COLORS={SH:'var(--sh)',SQ:'var(--sq)',AT:'var(--at)'};
+const COMPANIES=(D.companies||[]).map(c=>({key:c.key,label:c.label,color:COLORS[c.key]||'var(--idle)'}));
+const TORDER=['T01','T02','T03','T04','T05','T06','S01A','S01B','S02A','S02B'];
+const tname=ty=>ty==='?'?'Type not stated':ty==='*'?'All villas':ty;
+const byCo=k=>IDS.filter(id=>D.V[id].co===k);
+const byType=(k,ty)=>byCo(k).filter(id=>D.V[id].t===ty);
+const co=k=>COMPANIES.find(c=>c.key===k);
+let view={level:'home'},stack=[],q='',skipPop=false,openDivs={};
+
+// ---------- structure (CIR_STR tab): stages per villa, shown on their own, never mixed into the architectural progress
+const SS=D.S||{},SV=D.SV||{},SNM={},SKEYS=(D.SNAMES||[]).map(s=>{SNM[s[0]]=s[1];return s[0]});
+const sv=id=>D.V[id]||SV[id];
+const SIDS=IDS.concat(Object.keys(SV)).sort((a,b)=>sv(a).co.localeCompare(sv(b).co)||sv(a).n-sv(b).n);
+const sByCo=k=>SIDS.filter(id=>sv(id).co===k);
+const sneed=id=>{const l=(D.SN||{})[sv(id).t];return l&&l.length?l:SKEYS};
+const sCache={},sw=k=>USE_SW?(SWT[k]||0):1;
+function sprog(id){
+ if(sCache[id])return sCache[id];
+ const o=SS[id],need=sneed(id),r={p:0,ok:0,n:need.length,rev:0,cd:0,req:0,last:''};
+ let wt=0,wok=0;need.forEach(k=>{wt+=sw(k)});
+ if(o){need.forEach(k=>{const e=o.st[k];if(!e)return;if(e[5]){r.ok++;wok+=sw(k)}else if(e[3]==='O')r.rev++;else if(e[3]==='C'||e[3]==='D')r.cd++});
+  Object.keys(o.st).forEach(k=>{const e=o.st[k];r.req+=e[0];if(e[2]>r.last)r.last=e[2]});r.req+=o.x;r.p=wt?wok/wt:0}
+ return sCache[id]=r}
+const savg=l=>l.length?l.reduce((n,id)=>n+sprog(id).p,0)/l.length:0;
+let disc='ARC';try{if(localStorage.getItem('vhtDisc')==='STR')disc='STR'}catch(x){}
+const S_NOTE='Structure progress = share of the structural stages of the villa type (PC foundations up to the upper roof slab, and the stairs) that have at least one approved request (code A or B) in ACC. Each stage counts by its weight in the Item_Weights tab (1 to 3). It is shown on its own and does not change the architectural progress.';
+const discBar=()=>`<div class="toolbar noprint" style="margin-bottom:14px"><div class="seg" role="group" aria-label="Discipline"><button type="button" data-disc="ARC" aria-pressed="${disc==='ARC'}">Architecture</button><button type="button" data-disc="STR" aria-pressed="${disc==='STR'}">Structure</button></div></div>`;
+function go(v){stack.push(view);view=v;try{history.pushState({d:stack.length},'')}catch(e){}render();window.scrollTo({top:0})}
+function pop(){if(stack.length){view=stack.pop();render();window.scrollTo({top:0})}}
+function back(){if(!stack.length)return;try{history.back()}catch(e){pop()}}
+function jump(i){const n=stack.length-i;view=stack[i];stack=stack.slice(0,i);try{skipPop=true;history.go(-n)}catch(x){skipPop=false}render();window.scrollTo({top:0})}
+const onPop=()=>{if(skipPop){skipPop=false;return}pop()};
+window.addEventListener('popstate',onPop);
+
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const bar=(p,cls)=>`<div class="bar ${cls||''}"><i style="width:${Math.min(100,p*100).toFixed(1)}%"></i></div>`;
+const RESP={B:'B · Approved',A:'A · Approved',C:'C · Revise and resubmit',D:'D · Rejected',O:'In review',N:'No request'};
+
+function crumbs(){
+ const nav=document.getElementById('crumbs');
+ if(view.level==='home'&&!q){nav.hidden=true;nav.innerHTML='';return}
+ nav.hidden=false;
+ const tr=[['Home','home']];
+ if(q)tr.push(['Search results']);
+ else{tr.push([co(view.co).label,view.level==='co'?null:'co']);
+  if(view.ty)tr.push([tname(view.ty),view.level==='type'?null:'type']);
+  if(view.level==='weights')tr.push(['Weights table']);
+  if(view.level==='villa')tr.push(['Villa '+sv(view.id).n])}
+ let h=q?'':'<button type="button" class="back-btn" data-nav="back">← Back</button>';
+ tr.forEach((c,i)=>{if(i)h+='<span class="sep">›</span>';h+=c[1]?`<button type="button" data-nav="${c[1]}">${esc(c[0])}</button>`:`<span class="here">${esc(c[0])}</span>`});
+ nav.innerHTML=h}
+
+function tile(name,sub,num,color,goTxt,attr,empty){
+ return `<button type="button" class="nav-tile${empty?' empty':''}" style="--accent:${color}" ${empty?'disabled':attr}><div><div class="nav-name">${esc(name)}</div><div class="nav-sub">${sub}</div></div><div class="nav-num num">${num}</div><div class="nav-go">${empty?'':goTxt+' →'}</div></button>`}
+function villaCard(id,showCo){
+ const r=calc(id),V=D.V[id],c=co(V.co);
+ return `<button type="button" class="card" data-villa="${id}" style="--accent:${c.color}">
+  <div class="card-top"><span class="chip${V.t==='?'?' warn':''}">${esc(V.tn)}</span><span class="rev-chip num">${r.cirs} CIRs</span></div>
+  <div class="villa-title">Villa <span class="num">${V.n}</span>${V.s.length?` <span class="rev-chip">with ${V.s.join(', ')}</span>`:''}${showCo?` <span class="rev-chip">· ${c.label}</span>`:''}</div>
+  <div class="card-pct num">${pct1(r.p)}%</div>${bar(r.p)}
+  <div class="card-footer"><span>${r.cd?`<span class="pill C">${r.cd} to resubmit</span> `:''}${r.rev?`<span class="pill O">${r.rev} in review</span>`:''}${!r.cd&&!r.rev?`Last request <span class="num">${r.last||'-'}</span>`:''}</span><span class="open-tag">Open →</span></div></button>`}
+
+// ---------- request analytics, straight from the ACC export
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const dm=d=>d?(+d.slice(8,10))+' '+MON[+d.slice(5,7)-1]:'-';
+const one=x=>(Math.round(x*10)/10).toFixed(1);
+const share=(a,b)=>b?one(a/b*100)+'%':'-';
+function analytics(key,title,src,names){
+ const SRC=src||D.stats||{},S=SRC[key];if(!S||!S.n)return '';
+ const T=S.turn,rej=S.C+S.D,re=S.rev[1]+S.rev[2]+S.rev[3],ref=SRC.ref;
+ const ageT=S.age[0]+S.age[1]+S.age[2],ageC=['var(--success)','var(--warning)','var(--danger)'];
+ const wmax=Math.max(1,...S.weeks.map(w=>Math.max(w[1],w[2])));
+ const actName=a=>names?(names[a]||'Not linked to a stage'):ACT[a]?ACT[a].n:'Not linked to a BOQ activity';
+ const acts=S.acts.slice().sort((a,b)=>(b[2]+b[3])-(a[2]+a[3])).filter(a=>a[2]+a[3]>0).slice(0,6);
+ return `<div class="an-h"><h3>${esc(title)}</h3><span class="note-line">From the ACC export · ${S.n} requests · figures as of <b class="num">${fmtDate(ref)}</b></span></div>
+ <div class="an-grid">
+  <section class="an"><h4>Review turnaround</h4><div class="big num">${T.n?one(T.avg):'-'}<small>days on average</small></div>
+   <p>Sent for review to response, calendar days, on <b class="num">${T.n}</b> answered requests. Median <b class="num">${one(T.med)}</b> · within 3 days <b class="num">${share(T.in3,T.n)}</b> · longest <b class="num">${T.max}</b> days.</p>
+   ${S.months.length?`<table><tr><th>Month of response</th><th class="r w2">Answered</th><th class="r w3">Average days</th></tr>${S.months.map(m=>`<tr><td>${MON[+m[0].slice(5)-1]} ${m[0].slice(0,4)}</td><td class="r num">${m[1]}</td><td class="r num">${one(m[2])}</td></tr>`).join('')}</table>`:''}</section>
+  <section class="an"><h4>Overdue requests</h4><div class="big num ${S.overdue?'bad':'good'}">${S.overdue}<small>of ${S.open} open</small></div>
+   <p>Open requests past their ACC due date ("Ball in court due date") on the export date.${S.open?` Due within 3 days <b class="num">${S.soon}</b> · earliest due date <b class="num">${S.nextDue?fmtDate(S.nextDue):'-'}</b>.`:''}${S.noDue?` <b class="num">${S.noDue}</b> open requests carry no due date.`:''}</p>
+   <h4 style="margin-top:8px">Age of open requests</h4>
+   ${ageT?`<div class="agebar">${S.age.map((n,i)=>`<i style="width:${n/ageT*100}%;background:${ageC[i]}"></i>`).join('')}</div>
+   <div class="lg"><span><i style="background:${ageC[0]}"></i>0–3 days <b class="num">${S.age[0]}</b></span><span><i style="background:${ageC[1]}"></i>4–7 days <b class="num">${S.age[1]}</b></span><span><i style="background:${ageC[2]}"></i>over 7 days <b class="num">${S.age[2]}</b></span></div>
+   <p>Days since the request was sent for review. Oldest open request: <b class="num">${S.oldest}</b> days.</p>`:'<p>No open requests.</p>'}</section>
+  <section class="an"><h4>Rejection rate</h4><div class="big num">${share(rej,S.resp)}<small>code C or D</small></div>
+   <p><b class="num">${rej}</b> of <b class="num">${S.resp}</b> answered requests · code C <b class="num">${S.C}</b> · code D <b class="num">${S.D}</b>.</p>
+   ${acts.length?`<table><tr><th>${names?'Stage':'Activity'}</th><th class="r w2">Answered</th><th class="r w2">C / D</th><th class="r w1">Rate</th></tr>${acts.map(a=>`<tr><td>${esc(actName(a[0]))}</td><td class="r num">${a[1]}</td><td class="r num">${a[2]} / ${a[3]}</td><td class="r num">${share(a[2]+a[3],a[1])}</td></tr>`).join('')}</table>`:''}</section>
+  <section class="an"><h4>Resubmissions</h4><div class="big num">${re}<small>${share(re,S.n)} of all requests</small></div>
+   <p>Requests whose current revision in ACC is 1 or higher.</p>
+   <table><tr><th>Current revision</th><th class="r w2">Requests</th></tr>${['Revision 0 (first submission)','Revision 1','Revision 2','Revision 3 or higher'].map((t,i)=>S.rev[i]||i<2?`<tr><td>${t}</td><td class="r num">${S.rev[i]}</td></tr>`:'').join('')}</table>
+   <h4 style="margin-top:8px">Ball in court</h4>
+   ${S.bic.length?`<table><tr><th>Open requests waiting on</th><th class="r w2">Requests</th></tr>${S.bic.map(b=>`<tr><td>${esc(b[0])}</td><td class="r num">${b[1]}</td></tr>`).join('')}</table>`:'<p>No open requests.</p>'}</section>
+  <section class="an wide"><h4>Weekly trend · last 12 weeks</h4>
+   <div class="lg"><span><i style="background:var(--primary)"></i>New requests created</span><span><i style="background:var(--success)"></i>Requests approved (code A or B)</span></div>
+   <div class="wk">${S.weeks.map(w=>`<div title="Week of ${dm(w[0])}: ${w[1]} created, ${w[2]} approved"><i style="height:${w[1]/wmax*100}%;background:var(--primary)"></i><i style="height:${w[2]/wmax*100}%;background:var(--success)"></i></div>`).join('')}</div>
+   <div class="wkx">${S.weeks.map(w=>`<span>${dm(w[0])}</span>`).join('')}</div>
+   <table class="wt"><tr><th>Week from (Sat)</th>${S.weeks.slice(-6).map(w=>`<th class="r w2">${dm(w[0])}</th>`).join('')}</tr>
+    <tr><td>Created</td>${S.weeks.slice(-6).map(w=>`<td class="r num">${w[1]}</td>`).join('')}</tr><tr><td>Approved</td>${S.weeks.slice(-6).map(w=>`<td class="r num">${w[2]}</td>`).join('')}</tr></table>
+   <p>The last week is partial: it runs to the export date.</p></section>
+ </div>`}
+
+// ---------- project overview, from the villa progress figures on this page
+const dayN=d=>Math.round(Date.UTC(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10))/864e5);
+const REF=()=>(D.stats&&D.stats.ref)||D.asof||'';
+const vlink=(id,showCo)=>`<button type="button" class="vl" data-villa="${id}">Villa <span class="num">${D.V[id].n}</span>${showCo?' · '+esc(co(D.V[id].co).label):''}</button>`;
+const more=(rows,n,head)=>rows.length>n?`<details><summary>Show all ${rows.length}</summary>${head[0]}${rows.slice(n).join('')}${head[1]}</details>`:'';
+function headline(list,key){
+ const S=(D.stats||{})[key]||{},st=list.filter(id=>calc(id).p>0).length;
+ return `<div class="hl"><div class="kpi"><b class="num">${pct1(avg(list))}<small>%</small></b><span>Average villa progress</span></div>
+  <div class="kpi"><b class="num">${st}<small>of ${list.length}</small></b><span>Villas with approved work</span></div>
+  <div class="kpi"><b class="num">${S.n?S.resp-S.C-S.D:0}<small>of ${S.n||0}</small></b><span>Requests approved</span></div>
+  <div class="kpi"><b class="num">${S.open||0}</b><span>Requests in review</span></div>
+  <div class="kpi"><b class="num${S.overdue?' bad':''}">${S.overdue||0}</b><span>Requests overdue</span></div></div>`}
+function overview(list,key,title){
+ if(!list.length)return '';
+ const all=key==='ALL',ref=REF(),R=list.map(id=>({id,r:calc(id)}));
+ const BANDS=[['Not started',x=>x===0],['Up to 10%',x=>x>0&&x<=.1],['10 – 25%',x=>x>.1&&x<=.25],['25 – 50%',x=>x>.25&&x<=.5],['50 – 75%',x=>x>.5&&x<=.75],['Over 75%',x=>x>.75]];
+ const shown=x=>x===0?0:Math.max(1e-9,Math.round(x*1000)/1000),bands=BANDS.map(b=>[b[0],R.filter(v=>b[1](shown(v.r.p))).length]),bmax=Math.max(1,...bands.map(b=>b[1]));
+ const dv={};R.forEach(v=>Object.keys(v.r.divs).forEach(k=>{const d=v.r.divs[k],a=dv[k]||(dv[k]={w:0,pw:0});a.w+=d.w;a.pw+=d.pw}));
+ const divs=Object.keys(dv).sort().filter(k=>dv[k].w>0);
+ const started=R.filter(v=>v.r.p>0),top=started.slice().sort((a,b)=>b.r.p-a.r.p).slice(0,10),low=started.slice().sort((a,b)=>a.r.p-b.r.p).slice(0,10);
+ const rank=l=>`<table><tr><th>Villa</th><th class="w2">Type</th><th class="r w2">Progress</th></tr>${l.map(v=>`<tr><td>${vlink(v.id,all)}</td><td>${esc(D.V[v.id].tn)}</td><td class="r num">${pct1(v.r.p)}%</td></tr>`).join('')}</table>`;
+ const stalled=ref?R.filter(v=>v.r.last&&v.r.p<1&&dayN(ref)-dayN(v.r.last)>30).map(v=>({id:v.id,r:v.r,d:dayN(ref)-dayN(v.r.last)})).sort((a,b)=>b.d-a.d):[];
+ const stRow=v=>`<tr><td>${vlink(v.id,all)}</td><td class="r num">${pct1(v.r.p)}%</td><td class="r num">${fmtDate(v.r.last)}</td><td class="r num">${v.d}</td></tr>`;
+ const stHead=['<table><tr><th>Villa</th><th class="r w2">Progress</th><th class="r w4">Last request</th><th class="r w1">Days</th></tr>','</table>'];
+ const zero=R.filter(v=>v.r.p===0),zNone=zero.filter(v=>!v.r.cirs),zReq=zero.filter(v=>v.r.cirs);
+ const chips=l=>`<div class="vchips">${l.map(v=>`<button type="button" class="vl" data-villa="${v.id}">${all?D.V[v.id].co+' ':''}<span class="num">${D.V[v.id].n}</span></button>`).join('')}</div>`;
+ const rej=[];R.forEach(v=>Object.keys(v.r.acts).forEach(a=>v.r.acts[a].list.forEach(x=>{if(!x.done&&x.last&&(x.last[2]==='C'||x.last[2]==='D'))rej.push({id:v.id,a,x,d:ref&&x.last[1]?dayN(ref)-dayN(x.last[1]):0})})));
+ rej.sort((a,b)=>b.d-a.d);
+ const rejReq=new Set(rej.map(x=>D.V[x.id].co+x.x.last[0])).size;
+ const rjRow=x=>`<tr><td class="nw">${esc(x.x.last[0])}${x.x.last[3]?' R'+x.x.last[3]:''}</td><td>${vlink(x.id,all)}</td><td>${esc(ACT[x.a].n)} · ${esc(STG[x.x.s]||x.x.s)} · ${esc(LOC[x.x.l]||x.x.l)}</td><td class="r w1"><span class="pill ${x.x.last[2]}">${x.x.last[2]}</span></td><td class="r num">${fmtDate(x.x.last[1])}</td><td class="r num">${x.d}</td></tr>`;
+ const rjHead=['<table><tr><th class="w5">Request</th><th class="w6">Villa</th><th>Stage</th><th class="r w1">Code</th><th class="r w4">Sent for review</th><th class="r w1">Days</th></tr>','</table>'];
+ const cmp=all?`<section class="an wide"><h4>Company comparison</h4><div style="overflow-x:auto"><table style="min-width:640px"><tr><th>Company</th><th class="r">Villas</th><th class="r">Average progress</th><th class="r">Requests</th><th class="r">In review</th><th class="r">Overdue</th><th class="r">Average review days</th><th class="r">Rejection rate</th></tr>
+   ${COMPANIES.map(c=>{const l=byCo(c.key),S=(D.stats||{})[c.key];return l.length||S?`<tr><td><button type="button" class="vl" data-co="${c.key}">${esc(c.label)}</button></td><td class="r num">${l.length}</td><td class="r num">${pct1(avg(l))}%</td><td class="r num">${S?S.n:0}</td><td class="r num">${S?S.open:0}</td><td class="r num">${S?S.overdue:0}</td><td class="r num">${S&&S.turn.n?one(S.turn.avg):'-'}</td><td class="r num">${S?share(S.C+S.D,S.resp):'-'}</td></tr>`:''}).join('')}</table></div></section>`:'';
+ return `<div class="an-h"><h3>${esc(title)}</h3><span class="note-line">${list.length} villas · from the progress figures on this page${ref?` · as of <b class="num">${fmtDate(ref)}</b>`:''}</span></div>
+ <div class="an-grid">${cmp}
+  <section class="an"><h4>Villas by progress band</h4>${bands.map(b=>`<div class="band"><span>${b[0]}</span>${bar(b[1]/bmax)}<b class="num r" style="text-align:right">${b[1]}</b></div>`).join('')}
+   <p>Number of villas in each band of weighted progress, using the percentage shown on the villa card. Total <b class="num">${list.length}</b>.</p></section>
+  <section class="an"><h4>Progress by division</h4><table><tr><th>Division</th><th class="w3"></th><th class="r w1">Done</th></tr>${divs.map(k=>`<tr><td><span class="num">${k}</span> · ${esc(D.DIVN[k]||'')}</td><td>${bar(dv[k].pw/dv[k].w)}</td><td class="r num">${pct1(dv[k].pw/dv[k].w)}%</td></tr>`).join('')}</table>
+   <p>Approved share of each division across these villas, each villa counted by the division's weight in it. A division with no inspection requests in ACC stays at 0% until it is updated from site.</p></section>
+  <section class="an"><h4>Top 10 villas</h4>${top.length?rank(top):'<p>No villa has approved work yet.</p>'}</section>
+  <section class="an"><h4>Lowest 10 villas that have started</h4>${low.length?rank(low):'<p>No villa has approved work yet.</p>'}<p>Villas with no approved work are listed separately under "Nothing started".</p></section>
+  <section class="an"><h4>Stalled villas</h4><div class="big num">${stalled.length}<small>of ${list.length} villas</small></div>
+   <p>Villas whose latest inspection request was sent more than 30 days before the export date.</p>
+   ${stalled.length?stHead[0]+stalled.slice(0,8).map(stRow).join('')+stHead[1]+more(stalled.map(stRow),8,stHead):''}</section>
+  <section class="an"><h4>Nothing started</h4><div class="big num">${zero.length}<small>of ${list.length} villas</small></div>
+   <p>Villas with no approved inspection stage. <b class="num">${zNone.length}</b> have no request at all; <b class="num">${zReq.length}</b> have requests but none approved yet.</p>
+   ${zReq.length?`<details><summary>${zReq.length} with requests, none approved</summary>${chips(zReq)}</details>`:''}${zNone.length?`<details><summary>${zNone.length} with no request</summary>${chips(zNone)}</details>`:''}</section>
+  <section class="an wide"><h4>Rejected and not resubmitted</h4><div class="big num">${rej.length}<small>inspection stages · ${rejReq} requests</small></div>
+   <p>Stages whose latest request is at code C or D, with nothing submitted on the same stage since. Oldest first; days are counted from the date the request was sent for review to the export date.</p>
+   ${rej.length?`<div style="overflow-x:auto"><div style="min-width:620px">${rjHead[0]+rej.slice(0,10).map(rjRow).join('')+rjHead[1]+more(rej.map(rjRow),10,rjHead)}</div></div>`:''}</section>
+ </div>`}
+
+function vHome(){
+ return `${headline(IDS,'ALL')}<div class="nav-grid">${COMPANIES.map(c=>{const l=byCo(c.key);
+  return tile(c.label,l.length?`${l.length} villas<br>Average weighted progress`:'No villas or inspection requests in the sheet',l.length?`${pct1(avg(l))}<small>%</small>`:'0',c.color,'Open',`data-co="${c.key}"`,!l.length)}).join('')}</div>
+ <p class="note-line" style="margin-top:18px">${W_NOTE}</p>${overview(IDS,'ALL','Project overview')}${analytics('ALL','Inspection requests · all companies')}`}
+function vCo(){
+ const c=co(view.co),all=byCo(c.key),orph=D.orphans[c.key]||[],rev=(D.review||{})[c.key]||[],cnt=(D.counts||{})[c.key];
+ const present=[...new Set(all.map(id=>D.V[id].t))];
+ const types=TORDER.filter(t=>present.includes(t)).concat(present.filter(t=>!TORDER.includes(t)&&t!=='?').sort()).concat(present.includes('?')?['?']:[]);
+ return `<div class="toolbar"><p class="note-line">${all.length} villas · average weighted progress <b class="num">${pct1(avg(all))}%</b>${cnt?`<br>Requests in the ACC export: <b class="num">${cnt.total}</b> · approved <b class="num">${cnt.A+cnt.B}</b> · in review <b class="num">${cnt.O}</b> · code C <b class="num">${cnt.C}</b> · code D <b class="num">${cnt.D}</b>`:''}</p><span style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" id="reloadBtn">Reload from sheet</button><button type="button" class="btn" id="csv">Export CSV</button></span></div>
+ <div style="margin-top:14px">${headline(all,c.key)}</div><div class="nav-grid">${types.map(ty=>{const l=byType(c.key,ty);
+  return tile(tname(ty),`${D.T[ty]?'Standalone villa · BOQ IFC Rev01':ty==='?'?'Type missing from the request titles · provisional weights':'Twin villa · provisional weights, no BOQ'}<br>${l.length} villas · average progress`,`${pct1(avg(l))}<small>%</small>`,c.color,'View',`data-type="${ty}"`)}).join('')}
+  ${tile('All villas',`${all.length} villas · average progress`,`${pct1(avg(all))}<small>%</small>`,'var(--idle)','View','data-type="*"')}</div>
+ ${overview(all,c.key,'Overview · '+c.label)}${analytics(c.key,'Inspection requests · '+c.label)}
+ ${rev.length?`<details class="div" style="margin-top:18px" open><summary style="grid-template-columns:1fr"><span class="dn"><span>${rev.length} inspection requests name one villa in the title and another in the description. They are counted on the villa in the title; check them in ACC.</span></span></summary><div class="sec"><div class="xlist">${rev.map(o=>`<div>${esc(o)}</div>`).join('')}</div></div></details>`:''}
+ ${orph.length?`<details class="div" style="margin-top:18px"><summary style="grid-template-columns:1fr"><span class="dn"><span>${orph.length} inspection requests could not be assigned to a villa and are not counted</span></span></summary><div class="sec"><div class="xlist">${orph.map(o=>`<div>${esc(o)}</div>`).join('')}</div></div></details>`:''}`}
+function vType(){
+ const l=view.ty==='*'?byCo(view.co):byType(view.co,view.ty),gen=view.ty!=='*'&&!D.T[view.ty];
+ return `<div class="toolbar"><p class="note-line">${l.length} villas · average weighted progress <b class="num">${pct1(avg(l))}%</b></p>${view.ty!=='*'?'<button type="button" class="btn" data-weights="1">Weights table</button>':''}</div>
+ ${gen?`<div class="banner" style="margin-block:14px">${GEN_NOTE}</div>`:'<div style="height:14px"></div>'}<div class="cards-grid">${l.map(id=>villaCard(id)).join('')}</div>`}
+
+function lineRow(id,sec,l,r,C){
+ const e=exOf(id,sec,l),gone=dead(id,sec,l),qv=e&&e.q!=null?e.q:l.q;
+ const k=lineKey(sec,l),qty=l.q==null?'':`<span class="num">${qv} ${esc(l.u)}</span>`;
+ let st='';
+ if(gone)st='<span class="pill D">Cancelled</span>';
+ else if(id!=null&&e&&e.m!=null)st=`<span class="num">${e.m}%</span><span class="chg">set in the sheet</span>`;
+ else if(id!=null){
+  if(l.a)st=`<span class="num">${pct(r.acts[l.a].p)}%</span>${bar(r.acts[l.a].p,'thin')}`;
+  else{const ov=vs(id).o[k]||0;st=`<span class="steps" role="group" aria-label="Progress, percent">${[0,25,50,75,100].map(n=>`<button type="button" data-step="${n}" data-k="${k}" aria-pressed="${n>0&&ov>=n}">${n}</button>`).join('')}</span>`}}
+ return `<div class="line${gone?' off':''}"><span class="no num mono">${esc(l.no)}</span><span><span class="dsc">${esc(l.d)}</span>${l.e?' <span class="est">estimated, not in BOQ</span>':''}${e&&e.why?` <span class="est">${esc(e.why)}</span>`:''}</span><span class="qty">${qty}</span><span class="w num">${W(id,C,sec,l).toFixed(2)}%</span><span class="st">${st}</span></div>`}
+function actBlock(id,a,r){
+ const A=r.acts[a];
+ return `<div class="acts"><h5><span>Inspection stages · ${ACT[a].n}</span><span class="num">${pct(A.p)}%</span></h5>${A.list.map(x=>{
+  const chg=x.ov!==undefined&&(x.ov>=100)!==x.def,code=x.last?x.last[2]:'N';
+  return `<div class="cp"><button type="button" class="tg" role="switch" aria-checked="${x.done}" data-cp="${x.key}" data-def="${x.def?1:0}"><span class="knob"></span>${x.done?'Done':'Pending'}</button>
+  <div class="nm">${STG[x.s]||x.s} · ${LOC[x.l]||x.l} <small class="num">${(x.share*100).toFixed(0)}%</small>${chg?' <span class="chg">manual</span>':''}${x.implied&&x.ov===undefined?' <span class="chg">implied by a later approved stage</span>':''}</div>
+  <div class="res">${x.last?`<span class="cir">${esc(x.last[0])}${x.last[3]?' R'+x.last[3]:''}</span><span class="cir">${x.last[1]}</span>`:''}<span class="pill ${code==='A'?'B':code}">${RESP[code]}</span></div>
+  ${x.h.length>1?`<div class="hist">${x.h.map(h=>`<span class="mono">${esc(h[0])}${h[3]?' R'+h[3]:''} ${h[2]==='O'?'…':h[2]}</span>`).join('')}</div>`:''}</div>`}).join('')}</div>`}
+function catalogue(id,C,r){
+ const divs=[...new Set(C.s.map(s=>s.dv))];
+ return divs.map(dv=>{
+  const secs=C.s.filter(s=>s.dv===dv),w=secs.reduce((n,s)=>n+s.l.reduce((m,l)=>m+W(id,C,s,l),0),0),p=r&&r.divs[dv].w?r.divs[dv].pw/r.divs[dv].w:0;
+  const active=r&&secs.some(s=>s.l.some(l=>l.a&&r.acts[l.a].list.some(x=>x.h.length||x.ov!==undefined)));
+  const ok='d'+dv,isOpen=openDivs[ok]===undefined?(id==null||active):openDivs[ok];
+  return `<details class="div" data-div="${ok}"${isOpen?' open':''}><summary><span class="dn"><span>Division <span class="num">${dv}</span> · ${esc(D.DIVN[dv])}</span></span><span class="wt num">Weight ${w.toFixed(1)}%</span>${r?bar(p):'<span></span>'}<span class="num" style="text-align:right">${r?pct(p)+'%':''}</span></summary>
+  ${secs.map(sec=>{const done=new Set();
+   return `<div class="sec"><h4><span><span class="mono">${sec.c.replace(/(\d\d)(\d\d)(\d\d)/,'$1 $2 $3')}</span> ${esc(sec.n)}</span>${r?`<span class="num">${pct(r.secs[sec.c].p)}%</span>`:''}</h4>
+   <div>${sec.l.map(l=>lineRow(id,sec,l,r,C)).join('')}</div>
+   ${id!=null?sec.l.filter(l=>l.a&&!done.has(l.a)&&done.add(l.a)).map(l=>actBlock(id,l.a,r)).join(''):''}</div>`}).join('')}</details>`}).join('')}
+function vVilla(){
+ const id=view.id,V=D.V[id],r=calc(id),C=cat(id);
+ return `<article class="sheet"><div class="sh-head"><div><h2>Villa <span class="num">${V.n}</span></h2>
+  <div class="meta"><span class="chip">${co(V.co).label}</span><span class="chip${V.t==='?'?' warn':''}">${esc(V.tn)}</span>${V.m?'<span>Mirrored</span>':''}${V.s.length?`<span>Inspected together with villa <b class="num">${V.s.join(', ')}</b></span>`:''}<span>Last request <b class="num">${r.last||'-'}</b></span>${V.alt.length?`<span>Also titled as ${esc(V.alt.join(', '))}</span>`:''}</div></div>
+  <div class="score"><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center" class="noprint"><span id="pdfBox"></span><button type="button" class="btn" id="pdfBtn">PDF report</button></div><div class="big num">${pct1(r.p)}%</div><div class="note-line">Weighted progress across ${r.n} ${isGen(id)?'sections':'BOQ lines'}</div>${bar(r.p)}</div></div>
+  ${isGen(id)?`<div class="banner">${V.t==='?'?'The request titles for this villa do not state its type. ':''}${GEN_NOTE}</div>`:''}
+  <div class="kpis"><div class="kpi"><b class="num">${r.appr}</b><span>Inspection stages approved</span></div><div class="kpi"><b class="num">${r.cd}</b><span>Stages at code C or D</span></div><div class="kpi"><b class="num">${r.rev}</b><span>Stages in review</span></div><div class="kpi"><b class="num">${r.nost}</b><span>Items not started</span></div></div>
+  <p class="note-line">Requests in ACC for this villa: <b class="num">${r.req.n}</b> · approved <b class="num">${r.req.B}</b> · in review <b class="num">${r.req.O}</b> · code C <b class="num">${r.req.C}</b> · code D <b class="num">${r.req.D}</b>. The boxes above count inspection stages, not requests: several requests can cover one stage, and some requests are listed at the bottom as not counted.</p>
+  ${sBlock(id,disc==='STR')}
+  ${catalogue(id,C,r)}
+  ${V.x.length?`<div><div class="note-line" style="margin-bottom:6px">Other inspection requests, not counted in progress</div><div class="xlist">${V.x.map(h=>`<div><span class="pill ${h[2]==='A'?'B':h[2]}">${h[2]==='O'?'In review':h[2]}</span> <span class="mono">${esc(h[0])}</span> · ${h[1]} · ${esc(h[4])}</div>`).join('')}</div></div>`:''}
+  <div><label class="note-line" for="note_${id}" style="display:block;margin-bottom:6px">Engineer notes</label><textarea class="note" id="note_${id}" data-note="${id}" placeholder="Notes for this villa">${esc(vs(id).note||'')}</textarea></div></article>`}
+function vWeights(){
+ const gen=!D.T[view.ty],C=D.T[view.ty]||D.T.GEN;
+ return `<article class="sheet"><div class="sh-head"><div><h2>Weights table · ${esc(tname(view.ty))}</h2><div class="meta"><span>${W_NOTE}</span></div></div></div>${gen?`<div class="banner">${GEN_NOTE}</div>`:''}${catalogue(null,C,null)}</article>`}
+// ---------- structure views
+function sHead(list,key){
+ const S=(D.sstats||{})[key]||{},st=list.filter(id=>sprog(id).ok>0).length;
+ return `<div class="hl"><div class="kpi"><b class="num">${pct1(savg(list))}<small>%</small></b><span>Average structure progress</span></div>
+  <div class="kpi"><b class="num">${st}<small>of ${list.length}</small></b><span>Villas with an approved stage</span></div>
+  <div class="kpi"><b class="num">${S.n?S.resp-S.C-S.D:0}<small>of ${S.n||0}</small></b><span>Requests approved</span></div>
+  <div class="kpi"><b class="num">${S.open||0}</b><span>Requests in review</span></div>
+  <div class="kpi"><b class="num${S.overdue?' bad':''}">${S.overdue||0}</b><span>Requests overdue</span></div></div>`}
+function sOverview(list){
+ if(!list.length)return '';
+ const rows=SKEYS.map(k=>{let need=0,ok=0,rev=0,cd=0;list.forEach(id=>{if(!sneed(id).includes(k))return;need++;const e=SS[id]&&SS[id].st[k];if(!e)return;if(e[5])ok++;else if(e[3]==='O')rev++;else if(e[3]==='C'||e[3]==='D')cd++});return [k,need,ok,rev,cd]}).filter(x=>x[1]);
+ return `<div class="an-h"><h3>Structural stages</h3><span class="note-line">${list.length} villas · a stage is reached when at least one request for it is approved</span></div>
+ <div class="an-grid"><section class="an wide"><div style="overflow-x:auto"><table style="min-width:560px"><tr><th>Stage</th><th class="w3"></th><th class="r w2">Approved</th><th class="r w2">In review</th><th class="r w2">C or D</th><th class="r w2">No request</th></tr>
+ ${rows.map(x=>`<tr><td>${esc(SNM[x[0]])}</td><td>${bar(x[2]/x[1])}</td><td class="r num">${x[2]}</td><td class="r num">${x[3]}</td><td class="r num">${x[4]}</td><td class="r num">${x[1]-x[2]-x[3]-x[4]}</td></tr>`).join('')}</table></div></section></div>`}
+function sCard(id,showCo){
+ const r=sprog(id),V=sv(id),c=co(V.co);
+ return `<button type="button" class="card" data-villa="${id}" style="--accent:${c.color}">
+  <div class="card-top"><span class="chip${V.t==='?'?' warn':''}">${esc(V.tn)}</span><span class="rev-chip num">${r.req} STR requests</span></div>
+  <div class="villa-title">Villa <span class="num">${V.n}</span>${showCo?` <span class="rev-chip">· ${c.label}</span>`:''}</div>
+  <div class="card-pct num">${pct1(r.p)}%</div>${bar(r.p)}
+  <div class="card-footer"><span>${r.ok} of ${r.n} stages${r.cd?` <span class="pill C">${r.cd} to resubmit</span>`:''}${r.rev?` <span class="pill O">${r.rev} in review</span>`:''}</span><span class="open-tag">Open →</span></div></button>`}
+function sBlock(id,open){
+ const o=SS[id];
+ if(!o)return `<details class="div"><summary style="grid-template-columns:1fr"><span class="dn"><span>Structure · no structural inspection requests in ACC for this villa</span></span></summary></details>`;
+ const need=sneed(id),r=sprog(id),keys=SKEYS.filter(k=>need.includes(k)||o.st[k]),isOpen=openDivs.str===undefined?open:openDivs.str;
+ return `<details class="div" data-div="str"${isOpen?' open':''}><summary><span class="dn"><span>Structure · ACC structural requests</span></span><span class="wt num">${r.ok} of ${r.n} stages</span>${bar(r.p)}<span class="num" style="text-align:right">${pct(r.p)}%</span></summary>
+ <div class="sec"><div style="overflow-x:auto"><table class="stt" style="min-width:600px"><tr><th>Stage</th><th class="r">Requests</th><th>Last request</th><th>Sent for review</th><th>Last response</th><th>Status</th></tr>
+ ${keys.map(k=>{const e=o.st[k],code=e?e[3]:'N';return `<tr><td>${esc(SNM[k])}${need.includes(k)?'':' <span class="chg">not counted for this type</span>'}</td><td class="r num">${e?e[0]:0}</td><td class="mono">${e?esc(e[1])+(e[4]?' R'+e[4]:''):'-'}</td><td class="num">${e?fmtDate(e[2]):'-'}</td><td><span class="pill ${code==='A'?'B':code}">${RESP[code]}</span></td><td>${e&&e[5]?'<b>Reached</b>':'Pending'}</td></tr>`}).join('')}</table></div>
+ ${o.x?`<p class="note-line">${o.x} other structural requests for this villa are not linked to a stage.</p>`:''}</div></details>`}
+function noStr(){return `<div class="empty-state"><h3>No structural requests yet</h3><p>Import the ACC export of structural requests into a tab named CIR_STR, then press Reload from sheet.</p></div>`}
+function vHomeS(){
+ if(!D.stotal)return noStr();
+ return `${sHead(SIDS,'ALL')}<div class="nav-grid">${COMPANIES.map(c=>{const l=sByCo(c.key);
+  return tile(c.label,l.length?`${l.length} villas<br>Average structure progress`:'No villas in the sheet',l.length?`${pct1(savg(l))}<small>%</small>`:'0',c.color,'Open',`data-co="${c.key}"`,!l.length)}).join('')}</div>
+ <p class="note-line" style="margin-top:18px">${S_NOTE}</p>${sOverview(SIDS)}${analytics('ALL','Structural requests · all companies',D.sstats,SNM)}`}
+function vCoS(){
+ if(!D.stotal)return noStr();
+ const c=co(view.co),all=sByCo(c.key),cnt=(D.scounts||{})[c.key],orph=(D.sorph||{})[c.key]||0;
+ return `<div class="toolbar"><p class="note-line">${all.length} villas · average structure progress <b class="num">${pct1(savg(all))}%</b>${cnt?`<br>Structural requests in the ACC export: <b class="num">${cnt.total}</b> · approved <b class="num">${cnt.A+cnt.B}</b> · in review <b class="num">${cnt.O}</b> · code C <b class="num">${cnt.C}</b> · code D <b class="num">${cnt.D}</b>${orph?` · <b class="num">${orph}</b> not linked to a villa (retaining walls, infrastructure, or no villa number)`:''}`:''}</p><span style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" id="reloadBtn">Reload from sheet</button></span></div>
+ <div style="margin-top:14px">${sHead(all,c.key)}</div>${sOverview(all)}
+ <div class="an-h"><h3>Villas</h3><span class="note-line">${S_NOTE}</span></div><div class="cards-grid">${all.map(id=>sCard(id)).join('')}</div>
+ ${analytics(c.key,'Structural requests · '+c.label,D.sstats,SNM)}`}
+function vSVilla(){
+ const id=view.id,V=sv(id),r=sprog(id);
+ return `<article class="sheet"><div class="sh-head"><div><h2>Villa <span class="num">${V.n}</span></h2>
+  <div class="meta"><span class="chip">${co(V.co).label}</span><span class="chip${V.t==='?'?' warn':''}">${esc(V.tn)}</span><span>Last structural request <b class="num">${r.last||'-'}</b></span></div></div>
+  <div class="score"><div class="big num">${pct1(r.p)}%</div><div class="note-line">Structure progress · ${r.ok} of ${r.n} stages</div>${bar(r.p)}</div></div>
+  <div class="banner">This villa has structural requests in ACC but no architectural requests yet and is not in the Villas tab, so it has no architectural progress.</div>
+  ${sBlock(id,true)}</article>`}
+function vSearch(){
+ const s=q.toLowerCase(),S=disc==='STR',l=(S?SIDS:IDS).filter(id=>{const V=sv(id);return String(V.n)===s||String(V.n).startsWith(s)||V.tn.toLowerCase().includes(s)||co(V.co).label.toLowerCase().includes(s)});
+ return l.length?`<div class="cards-grid">${l.map(id=>S?sCard(id,true):villaCard(id,true)).join('')}</div>`:'<div class="empty-state"><h3>No matches</h3><p>No villa matches that number, type or company.</p></div>'}
+
+
+// ---------- printed villa report: opens as its own page so paper size, margins and page numbers are under our control
+const fmtDate=d=>{const m=/^(\d{4})-(\d\d)-(\d\d)/.exec(d||'');return m?`${m[3]} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2]-1]} ${m[1]}`:'-'};
+const rbar=p=>`<span class="rbar"><i style="width:${Math.min(100,p*100).toFixed(1)}%"></i></span>`;
+const REPORT_CSS=`
+@page{size:A4;margin:16mm 14mm 18mm}
+@page{@bottom-right{content:"Page " counter(page) " of " counter(pages);font:8pt Inter,Arial,sans-serif;color:#64748b}}
+@page{@bottom-left{content:"Villa Handover Status Report · Shaker Consultancy Group";font:8pt Inter,Arial,sans-serif;color:#64748b}}
+.rep,.rep *{box-sizing:border-box}
+.rep{font:9pt/1.45 Inter,Arial,Helvetica,sans-serif;color:#0f172a;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.rep .rband{background:#0f172a;color:#fff;border-radius:6pt;padding:14pt 16pt;display:flex;justify-content:space-between;align-items:stretch;gap:18pt;border-bottom:4pt solid #2563eb}
+.rep .rproj{font-size:8pt;letter-spacing:.12em;text-transform:uppercase;color:#93c5fd;font-weight:700}
+.rep .rband h1{margin:5pt 0 2pt;font-size:24pt;line-height:1.05;font-weight:800;letter-spacing:-.01em;color:#fff}
+.rep .rsub{font-size:11pt;font-weight:500;color:#cbd5e1}
+.rep .rmeta{text-align:right;font-size:8.5pt;color:#cbd5e1;display:flex;flex-direction:column;justify-content:space-between;white-space:nowrap}
+.rep .rmeta b{display:block;font-size:11pt;color:#fff;font-weight:700}
+.rep .rmeta span{display:block}
+.rep .rinfo{width:100%;border-collapse:collapse;margin-top:10pt;font-size:9pt;border:.75pt solid #cbd5e1}
+.rep .rinfo th{text-align:left;font-weight:600;color:#64748b;padding:6pt 8pt;background:#f1f5f9;font-size:7.5pt;letter-spacing:.06em;text-transform:uppercase;border-right:.75pt solid #cbd5e1;width:25%}
+.rep .rinfo td{font-weight:700;padding:6pt 8pt;border-right:.75pt solid #cbd5e1;border-top:.75pt solid #cbd5e1;font-size:10.5pt}
+.rep .rsum{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr;gap:8pt;margin-top:10pt}
+.rep .rscore,.rep .rk{border:.75pt solid #cbd5e1;border-radius:6pt;padding:9pt 11pt;background:#f8fafc}
+.rep .rscore{background:#eff6ff;border-color:#93c5fd;font-size:8.5pt;color:#334155}
+.rep .rbig{font-size:30pt;line-height:1;font-weight:800;color:#1d4ed8}
+.rep .rscore .rbar{margin-top:6pt;height:7pt}
+.rep .rk b{display:block;font-size:20pt;line-height:1.1;font-weight:800}
+.rep .rk span{font-size:8pt;color:#475569;display:block;margin-top:2pt}
+.rep h2{font-size:12pt;margin:18pt 0 7pt;font-weight:800;color:#0f172a;border-left:4pt solid #2563eb;padding:1pt 0 1pt 8pt;break-after:avoid}
+.rep h2.newpage{break-before:page;margin-top:0}
+.rep .rdiv{margin-top:11pt}
+.rep .rdiv h3{display:flex;justify-content:space-between;gap:10pt;margin:0;font-size:9.5pt;font-weight:700;background:#1e293b;color:#fff;padding:5pt 8pt;break-after:avoid;border-radius:3pt 3pt 0 0}
+.rep .rdiv h3 span:last-child{font-weight:500;white-space:nowrap}
+.rep .rt{width:100%;border-collapse:collapse;font-size:8.5pt;table-layout:fixed}
+.rep .rt thead{display:table-header-group}
+.rep .rt th{text-align:left;font-weight:700;background:#e2e8f0;padding:4.5pt 6pt;border:.5pt solid #cbd5e1;font-size:8pt}
+.rep .rt td{padding:4pt 6pt;border:.5pt solid #dbe2ea;vertical-align:top;overflow-wrap:anywhere}
+.rep .rt tr{break-inside:avoid}
+.rep .rt .r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rep .rt .c{text-align:center}
+.rep .rt .nw{white-space:nowrap}
+.rep .rt tbody tr:nth-child(even) td{background:#fafbfc}
+.rep .rt tr.rsec td{background:#f1f5f9;font-weight:700;font-size:8pt;break-after:avoid}
+.rep .rt tr.rtot td{font-weight:800;background:#eff6ff;border-top:1pt solid #1d4ed8}
+.rep .rt tr.gone td{color:#94a3b8;text-decoration:line-through}
+.rep .rt i{color:#b45309;font-style:normal;font-size:7.5pt}
+.rep .rbar{display:inline-block;width:100%;height:6pt;border-radius:3pt;background:#e2e8f0;overflow:hidden;vertical-align:middle}
+.rep .rbar i{display:block;height:100%;background:#059669}
+.rep .rp{display:inline-block;border-radius:8pt;padding:.5pt 6pt;font-size:7.5pt;font-weight:700;white-space:nowrap}
+.rep .rp.B{background:#d1fae5;color:#047857}.rep .rp.C{background:#fef3c7;color:#b45309}.rep .rp.D{background:#fee2e2;color:#b91c1c}.rep .rp.O{background:#dbeafe;color:#1d4ed8}.rep .rp.N{background:#f1f5f9;color:#64748b}
+.rep .ok{color:#047857}
+.rep .rnote{font-size:8pt;color:#64748b;margin:5pt 0}
+.rep .rtext{font-size:9.5pt;margin:4pt 0;border:.75pt solid #cbd5e1;border-radius:5pt;padding:8pt 10pt}
+.rep .rsign{display:grid;grid-template-columns:1fr 1fr 1fr;gap:28pt;margin-top:40pt;break-inside:avoid}
+.rep .rsign div{border-top:.75pt solid #0f172a;padding-top:5pt;font-size:8.5pt;color:#475569}`;
+function report(id){
+ const V=D.V[id],r=calc(id),C=cat(id),c=co(V.co),now=new Date();
+ const today=fmtDate(now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0'));
+ const divs=[...new Set(C.s.map(s=>s.dv))];
+ const open=[];Object.keys(r.acts).forEach(a=>r.acts[a].list.forEach(x=>{if(!x.done&&x.last&&x.last[2]!=='B'&&x.last[2]!=='A')open.push(x)}));
+ const RR={A:'A · Approved',B:'B · Approved',C:'C · Resubmit',D:'D · Rejected',O:'In review',N:'No request'};
+ const mark=x=>(x.implied&&x.ov===undefined?'*':'')+(x.ov!==undefined&&(x.ov>=100)!==x.def?'†':'');
+ const cpRow=(x,withAct)=>{const code=x.last?x.last[2]:'N';return `<tr>${withAct?`<td>${esc(ACT[x.a].n)}</td>`:''}<td>${STG[x.s]||x.s}</td><td>${LOC[x.l]||x.l}</td><td class="r">${(x.share*100).toFixed(0)}%</td><td class="nw">${x.last?esc(x.last[0])+(x.last[3]?' R'+x.last[3]:''):'-'}</td><td class="nw">${x.last?fmtDate(x.last[1]):'-'}</td><td><span class="rp ${code==='A'?'B':code}">${RR[code]}</span></td><td class="c">${x.done?'<b class="ok">Done</b>':'Pending'}${mark(x)}</td></tr>`};
+ const divRows=divs.map(dv=>{const d=r.divs[dv],p=d.w?d.pw/d.w:0;return `<tr><td class="c">${dv}</td><td>${esc(D.DIVN[dv]||'')}</td><td class="r">${d.w.toFixed(1)}%</td><td class="r"><b>${pct(p)}%</b></td><td>${rbar(p)}</td><td class="r">${d.pw.toFixed(1)}%</td></tr>`}).join('');
+ const detail=divs.map(dv=>{
+  const secs=C.s.filter(s=>s.dv===dv),d=r.divs[dv],p=d.w?d.pw/d.w:0;
+  return `<section class="rdiv"><h3><span>Division ${dv} · ${esc(D.DIVN[dv]||'')}</span><span>Weight ${d.w.toFixed(1)}% · Progress ${pct(p)}%</span></h3>
+  <table class="rt"><thead><tr><th style="width:8%">Item</th><th>Description</th><th class="r" style="width:13%">Quantity</th><th class="r" style="width:11%">Weight</th><th class="r" style="width:12%">Progress</th></tr></thead><tbody>
+  ${secs.map(sec=>`<tr class="rsec"><td colspan="3">${sec.c.replace(/(\d\d)(\d\d)(\d\d)/,'$1 $2 $3')} · ${esc(sec.n)}</td><td class="r">${r.secs[sec.c].w.toFixed(2)}%</td><td class="r">${pct(r.secs[sec.c].p)}%</td></tr>`+
+   sec.l.map(l=>{const e=exOf(id,sec,l),gone=dead(id,sec,l),p=r.lines[lineKey(sec,l)+'|'+l.no]||0,qv=e&&e.q!=null?e.q:l.q;
+    return `<tr${gone?' class="gone"':''}><td>${esc(l.no)}</td><td>${esc(l.d)}${l.e?' <i>(estimated, not in BOQ)</i>':''}${e&&e.why?` <i>(${esc(e.why)})</i>`:''}</td><td class="r">${qv==null?'':qv+' '+esc(l.u)}</td><td class="r">${W(id,C,sec,l).toFixed(2)}%</td><td class="r">${gone?'Cancelled':pct(p)+'%'}</td></tr>`}).join('')).join('')}
+  </tbody></table></section>`}).join('');
+ const acts=Object.keys(ACT).filter(a=>r.acts[a]&&r.acts[a].list.some(x=>x.h.length||x.ov!==undefined));
+ const stages=acts.map(a=>`<tr class="rsec"><td colspan="6">${esc(ACT[a].n)}</td><td class="c">${pct(r.acts[a].p)}%</td></tr>`+r.acts[a].list.map(x=>cpRow(x)).join('')).join('');
+ return `<div class="rband"><div><div class="rproj">SouthMed North Coast · ${esc(c.label)}</div><h1>Villa ${V.n}</h1><div class="rsub">Handover Status Report</div></div>
+   <div class="rmeta"><div><b>Shaker Consultancy Group</b><span>Site supervision consultant</span></div><div><span>Printed ${today}</span><span>ACC data as of ${fmtDate(D.asof)}</span></div></div></div>
+  <table class="rinfo"><tr><th>Company</th><th>Villa</th><th>Type</th><th>Last inspection request</th></tr><tr><td>${esc(c.label)}</td><td>${V.n}${V.s.length?' (with '+V.s.join(', ')+')':''}</td><td>${esc(V.tn)}${V.m&&!/M\)?$/.test(V.tn)?' (mirrored)':''}</td><td>${fmtDate(r.last)}</td></tr></table>
+  <div class="rsum"><div class="rscore"><div class="rbig">${pct1(r.p)}%</div><div>Weighted progress</div>${rbar(r.p)}</div>
+   <div class="rk"><b>${r.appr}</b><span>Inspection stages approved</span></div><div class="rk"><b>${r.cd}</b><span>Stages at code C or D</span></div><div class="rk"><b>${r.rev}</b><span>Stages in review</span></div><div class="rk"><b>${r.nost}</b><span>Items not started, of ${r.n}</span></div></div>
+  ${isGen(id)?`<p class="rnote">${V.t==='?'?'The request titles for this villa do not state its type. ':''}${GEN_NOTE}</p>`:''}
+  <h2>1. Progress by division</h2>
+  <table class="rt"><thead><tr><th class="c" style="width:7%">Div.</th><th>Division</th><th class="r" style="width:11%">Weight</th><th class="r" style="width:11%">Progress</th><th style="width:24%"></th><th class="r" style="width:19%">Share of villa earned</th></tr></thead><tbody>${divRows}
+   <tr class="rtot"><td></td><td>Total</td><td class="r">100.0%</td><td class="r">${pct1(r.p)}%</td><td>${rbar(r.p)}</td><td class="r">${(r.p*100).toFixed(1)}%</td></tr></tbody></table>
+  <h2>2. Stages awaiting action</h2>
+  ${open.length?`<table class="rt"><thead><tr><th style="width:15%">Activity</th><th style="width:17%">Stage</th><th>Location</th><th class="r" style="width:7%">Share</th><th style="width:13%">Request</th><th style="width:13%">Date</th><th style="width:14%">Response</th><th class="c" style="width:9%">Status</th></tr></thead><tbody>${open.map(x=>cpRow(x,true)).join('')}</tbody></table>`:'<p class="rnote">No stage is at code C or D or in review.</p>'}
+  <h2 class="newpage">3. Inspection stages</h2>
+  ${stages?`<table class="rt"><thead><tr><th style="width:21%">Stage</th><th>Location</th><th class="r" style="width:7%">Share</th><th style="width:13%">Request</th><th style="width:13%">Date</th><th style="width:14%">Response</th><th class="c" style="width:10%">Status</th></tr></thead><tbody>${stages}</tbody></table>
+   <p class="rnote">Share is the stage's portion of its activity. * counted as done because a later stage at the same location is approved. † set manually on the tracker page.</p>`:'<p class="rnote">No inspection requests are mapped to this villa yet.</p>'}
+  <h2 class="newpage">4. BOQ items</h2>
+  <p class="rnote">${W_NOTE}</p>
+  ${detail}
+  ${V.x.length?`<h2>5. Other inspection requests, not counted in progress</h2><table class="rt"><thead><tr><th style="width:14%">Request</th><th style="width:13%">Date</th><th style="width:12%">Response</th><th>Subject</th></tr></thead><tbody>${V.x.map(h=>`<tr><td>${esc(h[0])}</td><td>${fmtDate(h[1])}</td><td>${h[2]==='O'?'In review':h[2]}</td><td>${esc(h[4])}</td></tr>`).join('')}</tbody></table>`:''}
+  ${vs(id).note?`<h2>Engineer notes</h2><p class="rtext">${esc(vs(id).note).replace(/\n/g,'<br>')}</p>`:''}
+  <div class="rsign"><div>Prepared by</div><div>Reviewed by</div><div>Date</div></div>`}
+
+// ---------- PDF report made on the server: the same file for everyone, whatever their browser or printer
+// rounded progress bar as a small PNG (drawn at 4x so it stays sharp in the PDF); returns base64 without the data: prefix
+function barPng(p){
+ try{const W=336,H=32,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  const pill=(w,col)=>{const r=H/2;g.fillStyle=col;g.beginPath();g.moveTo(r,0);g.lineTo(w-r,0);g.arc(w-r,r,r,-Math.PI/2,Math.PI/2);g.lineTo(r,H);g.arc(r,r,r,Math.PI/2,Math.PI*1.5);g.closePath();g.fill()};
+  pill(W,'#e2e8f0');p=Math.max(0,Math.min(1,p||0));if(p>0)pill(Math.max(H,Math.round(W*p)),'#059669');
+  return c.toDataURL('image/png').split(',')[1]||''}catch(e){return ''}}
+function reportModel(id){
+ const V=D.V[id],r=calc(id),C=cat(id),c=co(V.co),now=new Date();
+ const today=fmtDate(now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0'));
+ const RR={A:'A · Approved',B:'B · Approved',C:'C · Resubmit',D:'D · Rejected',O:'In review',N:'No request'};
+ const mark=x=>(x.implied&&x.ov===undefined?'*':'')+(x.ov!==undefined&&(x.ov>=100)!==x.def?'†':'');
+ const cp=x=>[STG[x.s]||x.s,LOC[x.l]||x.l,(x.share*100).toFixed(0)+'%',x.last?x.last[0]+(x.last[3]?' R'+x.last[3]:''):'-',x.last?fmtDate(x.last[1]):'-',RR[x.last?x.last[2]:'N'],(x.done?'Done':'Pending')+mark(x)];
+ const divs=[...new Set(C.s.map(s=>s.dv))],open=[];
+ Object.keys(r.acts).forEach(a=>r.acts[a].list.forEach(x=>{if(!x.done&&x.last&&x.last[2]!=='B'&&x.last[2]!=='A'){const row=cp(x);row[0]=ACT[a].n+' · '+row[0];open.push(row)}}));
+ return {file:`Villa ${V.n} - ${c.label} - Handover Status Report`,project:'SOUTHMED NORTH COAST  ·  '+c.label.toUpperCase(),villa:V.n,company:c.label,
+  villaLabel:String(V.n)+(V.s.length?' (with '+V.s.join(', ')+')':''),type:V.tn,last:fmtDate(r.last),printed:today,asof:fmtDate(D.asof),
+  pct:pct1(r.p)+'%',p:r.p,pImg:barPng(r.p),kpi:[String(r.appr),r.cd+' / '+r.rev,r.nost+' of '+r.n],
+  gen:isGen(id)?(V.t==='?'?'The request titles for this villa do not state its type. ':'')+GEN_NOTE:'',wnote:W_NOTE,
+  divs:divs.map(dv=>{const d=r.divs[dv],p=d.w?d.pw/d.w:0;return [dv,D.DIVN[dv]||'',d.w.toFixed(1)+'%',pct(p)+'%',d.pw.toFixed(1)+'%',p,barPng(p)]}),
+  open,
+  stages:Object.keys(ACT).filter(a=>r.acts[a]&&r.acts[a].list.some(x=>x.h.length||x.ov!==undefined)).map(a=>({name:ACT[a].n,p:pct(r.acts[a].p)+'%',rows:r.acts[a].list.map(cp)})),
+  boq:divs.map(dv=>{const d=r.divs[dv],p=d.w?d.pw/d.w:0;return {dv,name:D.DIVN[dv]||'',w:d.w.toFixed(1)+'%',p:pct(p)+'%',
+   secs:C.s.filter(s=>s.dv===dv).map(sec=>({code:sec.c.replace(/(\d\d)(\d\d)(\d\d)/,'$1 $2 $3'),name:sec.n,w:r.secs[sec.c].w.toFixed(2)+'%',p:pct(r.secs[sec.c].p)+'%',
+    lines:sec.l.map(l=>{const e=exOf(id,sec,l),gone=dead(id,sec,l),qv=e&&e.q!=null?e.q:l.q;
+     return [l.no,l.d+(l.e?' (estimated, not in BOQ)':'')+(e&&e.why?' ('+e.why+')':''),qv==null?'':qv+' '+l.u,W(id,C,sec,l).toFixed(2)+'%',gone?'Cancelled':pct(r.lines[lineKey(sec,l)+'|'+l.no]||0)+'%',gone?1:0]})}))}}),
+  other:V.x.map(h=>[h[0],fmtDate(h[1]),h[2]==='O'?'In review':h[2],h[4]]),note:vs(id).note||''}}
+let pdfUrl=null;
+function makePdf(btn){
+ const box=document.getElementById('pdfBox');btn.disabled=true;box.innerHTML='<span class="note-line">Preparing the PDF, up to a minute…</span>';
+ google.script.run.withSuccessHandler(res=>{btn.disabled=false;
+   if(!res||!res.ok||!res.b64){box.innerHTML='<span class="note-line">The PDF could not be made.</span>';return}
+   const bin=atob(res.b64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+   if(pdfUrl)URL.revokeObjectURL(pdfUrl);
+   pdfUrl=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+   box.innerHTML=(res.url?`<a class="btn pdflink" href="${res.url}" target="_blank" rel="noopener">Open PDF</a> `:'')+`<a class="btn" id="pdfLink" href="${pdfUrl}" download="${esc(res.name)}">Download</a>`;
+   if(!res.url){try{document.getElementById('pdfLink').click()}catch(x){}}})
+  .withFailureHandler(e=>{btn.disabled=false;box.innerHTML='<span class="note-line">The PDF could not be made: '+esc((e&&e.message)||e)+'</span>'})
+  .makePdf(reportModel(view.id))}
+function reportDoc(id){
+ const V=D.V[id];
+ return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Villa ${V.n} Handover Status Report - ${esc(co(V.co).label)}</title>
+ <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+ <style>${REPORT_CSS}
+ html,body{margin:0;background:#e2e8f0}
+ .bar{position:sticky;top:0;background:#0f172a;color:#fff;padding:10px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;font:14px Inter,Arial,sans-serif;z-index:5}
+ .bar button{font:600 14px Inter,Arial,sans-serif;background:#2563eb;color:#fff;border:0;border-radius:8px;padding:9px 16px;cursor:pointer}
+ .sheet{background:#fff;width:210mm;max-width:100%;margin:18px auto;padding:16mm 14mm;box-shadow:0 8px 30px rgba(15,23,42,.18)}
+ @media print{html,body{background:#fff}.bar{display:none}.sheet{width:auto;margin:0;padding:0;box-shadow:none}}
+ </style></head><body><div class="bar"><span>In the print window choose A4, and turn on Background graphics so the colours print.</span><button onclick="window.print()">Print / save as PDF</button></div>
+ <div class="sheet rep">${report(id)}</div></body></html>`}
+function printReport(){
+ if(view.level!=='villa')return;
+ let w=null;try{w=window.open('','_blank')}catch(e){}
+ if(w&&w.document){w.document.open();w.document.write(reportDoc(view.id));w.document.close();return}
+ fillReport();window.print();   // pop-up blocked: print inside this page instead
+}
+function fillReport(){const el=document.getElementById('printRoot');
+ el.innerHTML=(view.level==='villa'&&!q)?`<style>${REPORT_CSS}</style><div class="rep">${report(view.id)}</div>`:''}
+const onBeforePrint=()=>fillReport();
+window.addEventListener('beforeprint',onBeforePrint);
+
+function render(anim){
+ setStatus(online);
+ const st=document.getElementById('stage');
+ const a=document.activeElement&&document.activeElement.id,sel=document.activeElement&&document.activeElement.selectionStart;
+ const S=disc==='STR';
+ st.innerHTML=q?discBar()+vSearch():view.level==='home'?discBar()+(S?vHomeS():vHome()):view.level==='co'?discBar()+(S?vCoS():vCo()):view.level==='type'?vType():view.level==='weights'?vWeights():D.V[view.id]?vVilla():vSVilla();
+ if(anim!==false){st.classList.remove('stage-in');void st.offsetWidth;st.classList.add('stage-in')}
+ crumbs();
+ if(a&&a!=='searchInput'&&document.getElementById(a)){const e=document.getElementById(a);e.focus();try{e.setSelectionRange(sel,sel)}catch(x){}}}
+function soft(){const y=window.scrollY;render(false);window.scrollTo({top:y})}
+
+function csv(){
+ const out=['Company,Villa,Type,Villa progress %,Division,Section,Item,Description,Unit,Quantity,Weight %,Item progress %'];
+ byCo(view.co).forEach(id=>{const r=calc(id),C=cat(id),V=D.V[id];C.s.forEach(sec=>sec.l.forEach(l=>{
+  out.push([co(V.co).label,V.n,V.tn,(r.p*100).toFixed(1),sec.dv+' '+D.DIVN[sec.dv],sec.c+' '+sec.n,l.no,l.d,l.u,l.q==null?'':l.q,W(id,C,sec,l).toFixed(3),pct(r.lines[lineKey(sec,l)+'|'+l.no])].map(x=>`"${String(x).replace(/"/g,'""')}"`).join(','))}))});
+ return '﻿'+out.join('\n')}
+function clearSearch(){q='';document.getElementById('searchInput').value=''}
+
+const onClick=async e=>{
+ const el=e.target.closest('[data-nav],[data-disc],[data-co],[data-type],[data-villa],[data-weights],[data-cp],[data-step],[data-th],#csv,#pdfBtn,#reloadBtn');if(!el)return;
+ const d=el.dataset;
+ if(d.th){setTheme(d.th);return}
+ if(d.disc){disc=d.disc;try{localStorage.setItem('vhtDisc',disc)}catch(x){}render();return}
+ if(d.nav==='back'){back();return}
+ if(d.nav==='home'){clearSearch();if(stack.length)jump(0);else{view={level:'home'};render()}return}
+ if(d.nav==='co'||d.nav==='type'){const i=stack.findIndex(s=>s.level===d.nav);if(i>=0)jump(i);return}
+ if(d.co){go({level:'co',co:d.co});return}
+ if(d.type){go({level:'type',co:view.co,ty:d.type});return}
+ if(d.weights){go({level:'weights',co:view.co,ty:view.ty});return}
+ if(d.villa){const id=d.villa,V=sv(id);openDivs={};
+  if(q){clearSearch();if(stack.length){view=stack[0];stack=[]}else view={level:'home'};go({level:'co',co:V.co});if(disc!=='STR')go({level:'type',co:V.co,ty:V.t})}
+  go({level:'villa',co:V.co,ty:view.ty||(disc==='STR'?undefined:V.t),id});return}
+ if(d.cp){const id=view.id,o=vs(id).o,nv=el.getAttribute('aria-checked')!=='true',def=d.def==='1';
+  if(nv===def)delete o[d.cp];else o[d.cp]=nv?100:0;save(id);soft();return}
+ if(d.step!==undefined){const id=view.id,o=vs(id).o,n=+d.step;if(n===0)delete o[d.k];else o[d.k]=n;save(id);soft();return}
+ if(el.id==='csv'){const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv());a.download='villa-handover-'+co(view.co).label+'.csv';document.body.appendChild(a);a.click();a.remove();return}
+ if(el.id==='pdfBtn'){makePdf(el);return}
+ if(el.id==='reloadBtn'){el.disabled=true;el.textContent='Reading the sheet…';google.script.run.withSuccessHandler(j=>{location.hash='';window.__reboot(j)}).withFailureHandler(()=>{el.disabled=false;el.textContent='Reload from sheet'}).getData(true);return}
+};
+document.addEventListener('click',onClick);
+const onToggle=e=>{const d=e.target;if(d.dataset&&d.dataset.div)openDivs[d.dataset.div]=d.open};
+document.addEventListener('toggle',onToggle,true);
+let nt,stt;
+const onInput=e=>{
+ if(e.target.id==='searchInput'){clearTimeout(stt);stt=setTimeout(()=>{q=e.target.value.trim();render()},200);return}
+ if(e.target.dataset&&e.target.dataset.note){const id=e.target.dataset.note;vs(id).note=e.target.value;clearTimeout(nt);nt=setTimeout(()=>save(id),1200)}
+};
+document.addEventListener('input',onInput);
+
+function setTheme(th){document.documentElement.setAttribute('data-theme',th);try{localStorage.setItem('vht3Theme',th)}catch(x){}markTheme()}
+function markTheme(){const a=document.documentElement.getAttribute('data-theme'),cur=a||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+ document.querySelectorAll('#themeSwitch button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.th===cur))}
+
+// ---------- boot
+document.getElementById('hTitle').textContent='Villa Handover Tracker';
+document.getElementById('hSub').textContent='Pick a company, then a villa type, then a villa. Each villa carries every BOQ item of its type with a relative weight, and each item takes its status from the ACC inspection requests.';
+document.getElementById('searchInput').placeholder='Search by villa number, type or company';
+try{const th=localStorage.getItem('vht3Theme');if(th)document.documentElement.setAttribute('data-theme',th)}catch(x){}
+markTheme();render();
+return {destroy(){document.removeEventListener('click',onClick);document.removeEventListener('input',onInput);document.removeEventListener('toggle',onToggle,true);window.removeEventListener('popstate',onPop);window.removeEventListener('beforeprint',onBeforePrint)}};
+}
+let app=null;
+window.__reboot=function(json){if(app)app.destroy();app=boot(JSON.parse(json))};
+function fail(e){document.getElementById('stage').innerHTML='<div class="empty-state"><h3>Could not read the sheet</h3><p>'+String((e&&e.message)||e).replace(/[<&]/g,'')+'</p></div>'}
+document.getElementById('stage').innerHTML='<div class="empty-state"><h3>Reading the sheet…</h3><p>Loading villas, BOQ items and inspection requests.</p></div>';
+google.script.run.withSuccessHandler(window.__reboot).withFailureHandler(fail).getData(false);
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var r = window.SHK_ROLE || '';
+  var tag = document.getElementById('shkRoleTag');
+  if (tag) tag.textContent = r === 'Admin' ? 'Admin · can edit' : 'View only';
+});
+</script>
+</body>
+</html>

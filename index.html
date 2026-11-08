@@ -1,0 +1,2570 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Shaker Inspect</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0b2a5b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Shaker Inspect">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="app.css">
+  <script src="config.js"></script>
+  <script src="app-api.js"></script>
+
+  <!-- Font Awesome (SVG version) for the support icons -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/js/all.min.js"></script>
+  <!-- Fonts: Barlow (text), Barlow Condensed (labels), IBM Plex Mono (numbers), Caveat (signature) -->
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@400;500&family=IBM+Plex+Mono:wght@300;400&family=Caveat&display=swap" rel="stylesheet">
+
+  <style>
+    /* ================================================================
+       DESK: drawing-sheet look. Grid paper ground, thin technical type,
+       a few soft ink colours. sidebar | request list | closing panel.
+       ================================================================ */
+    :root {
+      --paper: #f5f7f9; --grid-minor: rgba(47, 83, 120, .032); --grid-major: rgba(47, 83, 120, .065); --deco: rgba(47, 83, 120, .16);
+      --surface: rgba(255, 255, 255, .94); --surface-solid: #ffffff; --surface-2: #eef2f5;
+      --ink: #1f2d3b; --muted: #6c7b8b; --line: #d6dee6; --line-strong: #9fb0c1;
+      --accent: #33618c; --accent-ink: #ffffff; --accent-soft: rgba(51, 97, 140, .09);
+      --late: #b0573c; --late-soft: rgba(176, 87, 60, .09); --warn: #9a7430; --warn-soft: rgba(154, 116, 48, .1);
+      --ok: #3d7a5c; --ok-soft: rgba(61, 122, 92, .09); --revise: #9a7430; --revise-soft: rgba(154, 116, 48, .1); --rej: #a3463f; --rej-soft: rgba(163, 70, 63, .09);
+      --side: #edf1f4; --side-ink: #2b3a49; --side-mut: #7a8897; --side-hi: rgba(51, 97, 140, .1);
+      --shadow: 0 14px 34px -24px rgba(31, 45, 59, .45);
+      --f-ui: 'Barlow', 'Segoe UI', system-ui, sans-serif;
+      --f-label: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+      --f-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+      --radius: 4px;
+      color-scheme: light;
+    }
+    html[data-theme="dark"] {
+      --paper: #0f1924; --grid-minor: rgba(140, 180, 220, .028); --grid-major: rgba(140, 180, 220, .055); --deco: rgba(150, 190, 230, .14);
+      --surface: rgba(20, 33, 47, .94); --surface-solid: #14212f; --surface-2: #1a2a3b;
+      --ink: #d9e3ec; --muted: #8a9cae; --line: #24364a; --line-strong: #3d5670;
+      --accent: #8fb3d6; --accent-ink: #0f1924; --accent-soft: rgba(143, 179, 214, .12);
+      --late: #d9937a; --late-soft: rgba(217, 147, 122, .12); --warn: #cfb27a; --warn-soft: rgba(207, 178, 122, .12);
+      --ok: #8cc3a5; --ok-soft: rgba(140, 195, 165, .12); --revise: #cfb27a; --revise-soft: rgba(207, 178, 122, .12); --rej: #d99089; --rej-soft: rgba(217, 144, 137, .12);
+      --side: #0c151f; --side-ink: #c9d5e0; --side-mut: #7387a0; --side-hi: rgba(143, 179, 214, .12);
+      --shadow: 0 14px 34px -24px rgba(0, 0, 0, .8);
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { color: var(--ink); font-family: var(--f-ui); font-size: 14.5px; line-height: 1.45; font-weight: 400; }
+    html, body { background-color: var(--paper); }
+    /* grid paper: 8px minor, 40px major */
+    body {
+      background-image:
+        linear-gradient(var(--grid-major) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-major) 1px, transparent 1px),
+        linear-gradient(var(--grid-minor) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-minor) 1px, transparent 1px);
+      background-size: 40px 40px, 40px 40px, 8px 8px, 8px 8px;
+      background-attachment: fixed;
+    }
+    button { font: inherit; color: inherit; cursor: pointer; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible, .r-item:focus-visible, .card:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 2px; }
+    .mono { font-family: var(--f-mono); }
+    .lbl-up, .pills-label, .form-row label { font-family: var(--f-label); font-weight: 500; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+    /* ---------- App frame ---------- */
+    .app { min-height: 100vh; }
+    .main { min-width: 0; display: flex; flex-direction: column; }
+    .side { display: none; }
+
+    /* ---------- Top bar ---------- */
+    .topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px max(20px, env(safe-area-inset-left)) 14px max(20px, env(safe-area-inset-right));
+      background: var(--surface); border-bottom: 1px solid var(--line-strong); position: sticky; top: 0; z-index: 30; backdrop-filter: blur(6px); }
+    .tb-title { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex: 1 1 200px; }
+    .brand-mini { border: 1px solid var(--ink); background: transparent; color: var(--ink); font-family: var(--f-label); font-weight: 500; font-size: 12px; letter-spacing: .16em; padding: 2px 8px; border-radius: 2px; flex: none; }
+    .tb-title h1 { font-family: var(--f-label); font-size: 22px; font-weight: 400; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .search-box { flex: 1 1 220px; max-width: 360px; }
+    .search-box input { width: 100%; border: 1px solid var(--line); border-bottom-color: var(--line-strong); background: var(--surface-solid); color: var(--ink); border-radius: var(--radius); padding: 8px 12px; font: inherit; }
+    .search-box input::placeholder { color: var(--muted); }
+    .badge-counter { font-family: var(--f-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .badge-counter .late-count { color: var(--late); }
+    .tb-tools { display: flex; align-items: center; gap: 6px; }
+    .icon-btn { border: 1px solid var(--line-strong); background: var(--surface-solid); border-radius: var(--radius); padding: 6px 11px; font-family: var(--f-label); font-size: 13px; letter-spacing: .1em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--ink); }
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .refresh-btn .ic { display: inline-block; }
+    .refresh-btn.spin .ic { animation: spin 1s linear infinite; }
+    .refresh-btn:disabled { opacity: .6; cursor: default; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---------- Contractor chips (narrow screens only) ---------- */
+    .co-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 10px max(16px, env(safe-area-inset-left)) 10px max(16px, env(safe-area-inset-right)); background: var(--surface); border-bottom: 1px solid var(--line); }
+    .co-chips::-webkit-scrollbar { display: none; }
+    .co-chips button { flex: none; border: 1px solid var(--line-strong); background: var(--surface-solid); border-radius: var(--radius); padding: 4px 11px; font-size: 13px; white-space: nowrap; }
+    .co-chips button .n { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); margin-left: 5px; }
+    .co-chips button.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+    /* ---------- Breadcrumb ---------- */
+    .crumbs { display: flex; align-items: center; gap: 4px; padding: 14px max(20px, env(safe-area-inset-left)) 0 max(20px, env(safe-area-inset-right)); font-size: 13.5px; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+    .crumbs::-webkit-scrollbar { display: none; }
+    .crumbs button { border: 0; background: transparent; color: var(--accent); padding: 3px 6px; border-radius: var(--radius); }
+    .crumbs button:hover { background: var(--accent-soft); }
+    .crumbs .back-btn { border: 1px solid var(--line-strong); background: var(--surface-solid); color: var(--ink); padding: 4px 10px; margin-right: 6px; }
+    .crumbs .sep { color: var(--line-strong); }
+    .crumbs .here { font-weight: 500; padding: 3px 6px; }
+
+    /* ---------- Stage ---------- */
+    .stage { padding: 14px max(20px, env(safe-area-inset-left)) 32px max(20px, env(safe-area-inset-right)); flex: 1; }
+    .stage-in { animation: fadeIn .22s ease-out; }
+    @keyframes fadeIn { from { opacity: .4; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+    .loading-state { padding: 60px 16px; text-align: center; color: var(--muted); font-family: var(--f-label); letter-spacing: .12em; text-transform: uppercase; }
+    .empty-state { text-align: center; padding: 48px 20px; border: 1px dashed var(--line-strong); border-radius: var(--radius); background: var(--surface); }
+    .empty-state h3 { font-family: var(--f-label); font-weight: 500; font-size: 20px; letter-spacing: .06em; margin-bottom: 6px; }
+    .empty-state p { color: var(--muted); }
+    .load-error { max-width: 560px; margin: 40px auto; text-align: center; padding: 28px; border: 1px solid var(--rej); border-radius: var(--radius); background: var(--surface); }
+    .load-error h3 { color: var(--rej); margin-bottom: 8px; font-size: 18px; font-weight: 600; }
+    .load-error p { color: var(--muted); margin-bottom: 18px; word-break: break-word; }
+    .load-error button { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); padding: 9px 22px; border-radius: var(--radius); }
+
+    /* ---------- Overview tiles (home / contractor) ---------- */
+    .nav-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+    .nav-tile { text-align: left; border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--radius); padding: 0; display: grid; grid-template-columns: 1fr auto; position: relative; overflow: hidden; }
+    .nav-tile > div:first-child { padding: 14px 16px; }
+    .nav-tile:hover { border-color: var(--accent); }
+    .nav-tile.empty { opacity: .55; }
+    .nav-name { font-family: var(--f-label); font-size: 20px; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+    .nav-name::before { content: ""; width: 9px; height: 9px; border: 1.5px solid var(--tile); border-radius: 50%; }
+    .nav-sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
+    .nav-num { font-family: var(--f-mono); font-size: 30px; font-weight: 300; line-height: 1; padding: 14px 16px; border-left: 1px solid var(--line); display: flex; align-items: center; min-width: 80px; justify-content: center; }
+    .nav-go { grid-column: 1 / -1; border-top: 1px solid var(--line); padding: 7px 16px; font-family: var(--f-label); font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+
+    /* ---------- List toolbar ---------- */
+    .list-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .list-bar .spacer { flex: 1; }
+    .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface-solid); overflow: hidden; }
+    .seg button { border: 0; border-right: 1px solid var(--line); background: transparent; padding: 5px 12px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+    .seg button:last-child { border-right: 0; }
+    .seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+    .seg .n { font-family: var(--f-mono); font-size: 11.5px; }
+
+    /* ---------- Age chip ---------- */
+    .age-chip { display: inline-block; font-family: var(--f-mono); font-size: 11.5px; padding: 1px 7px; border-radius: 2px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+    .age-chip.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-soft); }
+    .age-chip.late { border-color: var(--late); color: var(--late); background: var(--late-soft); }
+    .age-chip.none { border-color: transparent; padding-left: 0; }
+    .row-index { color: var(--muted); font-size: 12.5px; font-weight: 400; }
+
+    /* ---------- Register (table) ---------- */
+    .rows { border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+    .r-item { display: grid; grid-template-columns: 10px minmax(0, 1.1fr) minmax(0, 1.7fr) 96px 100px; gap: 14px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); cursor: pointer; transition: opacity .3s, transform .3s; }
+    .r-item:last-child { border-bottom: 0; }
+    .r-item:hover { background: var(--accent-soft); }
+    .r-item.sel { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+    .r-item .st { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--line-strong); }
+    .r-item.is-late .st { border-color: var(--late); background: var(--late); }
+    .r-head { cursor: default; font-family: var(--f-label); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); background: var(--surface-2); padding-top: 7px; padding-bottom: 7px; border-bottom-color: var(--line-strong); }
+    .r-head:hover { background: var(--surface-2); }
+    .r-villa { font-weight: 600; min-width: 0; }
+    .r-num { display: block; font-family: var(--f-mono); font-size: 11px; color: var(--muted); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .r-act { color: var(--ink); opacity: .78; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .r-act-m { display: none; }
+    .r-age { text-align: right; }
+    .r-due { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+    .r-due.over { color: var(--late); }
+
+    /* ---------- Cards ---------- */
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+    .card { background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 14px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 8px; transition: opacity .3s, transform .3s, border-color .15s; }
+    .card:hover { border-color: var(--accent); }
+    .card.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .card.is-late { border-left: 2px solid var(--late); }
+    .card-top { display: flex; justify-content: space-between; gap: 8px; font-family: var(--f-mono); font-size: 11px; color: var(--muted); padding-bottom: 7px; border-bottom: 1px dashed var(--line); }
+    .card-top .cir-chip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .villa-title { font-weight: 600; font-size: 16px; }
+    .activity-title { color: var(--ink); opacity: .78; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .due-line { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); }
+    .due-line.over { color: var(--late); }
+    .card-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: auto; }
+    .open-tag { font-family: var(--f-label); font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); white-space: nowrap; }
+
+    /* ---------- Closing panel / sheet ---------- */
+    .modal-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(15, 25, 36, .45); display: none; align-items: flex-end; justify-content: center; }
+    .modal-overlay.active { display: flex; }
+    .panel-empty { display: none; }
+    .modal-box { background: var(--surface-solid); color: var(--ink); width: 100%; max-width: 560px; max-height: calc(100vh - 30px); overflow-y: auto; border-radius: 8px 8px 0 0; padding: 18px max(18px, env(safe-area-inset-left)) calc(18px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-right)); display: flex; flex-direction: column; gap: 14px; animation: sheetUp .22s ease-out; }
+    @keyframes sheetUp { from { transform: translateY(30px); opacity: .5; } to { transform: none; opacity: 1; } }
+    .modal-header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; padding-bottom: 12px; border-bottom: 1px solid var(--line-strong); }
+    .modal-header .num { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); }
+    .modal-header h3 { font-family: var(--f-label); font-size: 26px; font-weight: 500; letter-spacing: .03em; line-height: 1.15; margin-top: 2px; }
+    #modalSubTitle { color: var(--muted); font-family: var(--f-mono); font-size: 11.5px; margin-top: 4px; }
+    .close-btn { border: 1px solid var(--line-strong); background: transparent; border-radius: var(--radius); width: 30px; height: 30px; flex: none; font-size: 13px; color: var(--muted); }
+    .close-btn:hover { color: var(--ink); border-color: var(--ink); }
+    .modal-desc { border-left: 2px solid var(--line-strong); padding: 2px 0 2px 12px; color: var(--muted); font-size: 13.5px; word-break: break-word; }
+    .form-row, .pills-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-row input, .form-row textarea { font: inherit; color: var(--ink); background: var(--surface-solid); border: 1px solid var(--line); border-bottom-color: var(--line-strong); border-radius: var(--radius); padding: 8px 10px; }
+    .form-row input { font-family: var(--f-mono); font-size: 13px; }
+    .form-row textarea { min-height: 76px; resize: vertical; }
+    .pills-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pill-btn { border: 1px solid var(--line-strong); background: var(--surface-solid); border-radius: var(--radius); padding: 5px 12px; font-size: 13.5px; }
+    .pill-btn:hover { border-color: var(--accent); }
+    .pill-btn.insp-active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+    .code-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .code-row .pill-btn { padding: 9px 4px 7px; display: flex; flex-direction: column; align-items: center; gap: 2px; border-style: dashed; }
+    .code-row .pill-btn b { font-family: var(--f-label); font-size: 22px; font-weight: 500; line-height: 1; }
+    .code-row .pill-btn small { font-family: var(--f-label); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+    .code-row .pill-btn.code-active { border-style: solid; border-width: 1.5px; }
+    .pill-code-a.code-active, .pill-code-b.code-active { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+    .pill-code-c.code-active { background: var(--revise-soft); border-color: var(--revise); color: var(--revise); }
+    .pill-code-d.code-active { background: var(--rej-soft); border-color: var(--rej); color: var(--rej); }
+    .code-active small { color: inherit !important; }
+    .modal-footer { display: flex; flex-direction: column; gap: 8px; position: sticky; bottom: -18px; background: var(--surface-solid); padding: 8px 0 2px; }
+    .modal-status { font-size: 13px; color: var(--muted); min-height: 1em; }
+    .save-modal-btn { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); font-family: var(--f-label); font-size: 15px; letter-spacing: .14em; text-transform: uppercase; padding: 10px; border-radius: var(--radius); display: flex; justify-content: center; align-items: center; gap: 10px; }
+    .save-modal-btn:hover { filter: brightness(1.08); }
+    .save-modal-btn:disabled { opacity: .6; cursor: default; }
+    .save-modal-btn kbd { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: 0; text-transform: none; opacity: .8; border: 1px solid currentColor; border-radius: 2px; padding: 0 5px; }
+
+    /* ---------- Toast ---------- */
+    .toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none; z-index: 2000;
+      background: var(--ink); color: var(--paper); padding: 10px 14px; border-radius: var(--radius); display: flex; gap: 14px; align-items: center; box-shadow: var(--shadow); transition: .2s; max-width: calc(100vw - 32px); }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+    .toast button { border: 0; background: transparent; color: var(--paper); text-decoration: underline; font-family: var(--f-label); letter-spacing: .12em; text-transform: uppercase; }
+
+    /* ---------- Footer ---------- */
+    footer { padding: 14px max(20px, env(safe-area-inset-left)) calc(14px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-right)); color: var(--muted); font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; border-top: 1px solid var(--line-strong); background: var(--surface); }
+    footer h3 { font-family: var(--f-label); font-weight: 500; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); }
+    .footer-content { display: flex; gap: 12px; align-items: center; }
+    .footer-links { list-style: none; display: flex; gap: 12px; }
+    .footer-links a { color: var(--muted); text-decoration: none; }
+    .footer-links a:hover { color: var(--accent); }
+    .signature { font-family: 'Caveat', cursive; font-size: 17px; margin-left: auto; }
+
+
+    /* ---------- One-line header + quiet toolbar ---------- */
+    .topbar { flex-wrap: nowrap; gap: 14px; padding-top: 12px; padding-bottom: 12px; background: var(--surface-solid); backdrop-filter: none; }
+    .back-ic { flex: none; width: 34px; height: 34px; border: 1px solid var(--line-strong); background: var(--surface-solid); border-radius: var(--radius); font-size: 16px; color: var(--ink); }
+    .back-ic:hover { border-color: var(--accent); color: var(--accent); }
+    .tb-title { flex-direction: column; align-items: flex-start; gap: 0; flex: 1 1 auto; }
+    .tb-title .crumbs { padding: 0; font-size: 12px; gap: 2px; }
+    .tb-title .crumbs button { padding: 0 3px; color: var(--muted); }
+    .tb-title .crumbs button:hover { color: var(--accent); background: transparent; text-decoration: underline; }
+    .tb-title .crumbs .sep { padding: 0 2px; }
+    .tb-title h1 { line-height: 1.15; max-width: 100%; }
+    .tb-title { min-width: 0; flex: 1 1 0; }
+    .search-box { flex: 0 1 220px; max-width: 280px; min-width: 130px; }
+    .tb-meta { display: flex; align-items: baseline; gap: 10px; min-width: 0; max-width: 100%; }
+    .tb-meta .badge-counter { font-size: 11.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .tb-meta .crumbs { flex: none; overflow: visible; }
+    [hidden] { display: none !important; }
+    .tb-meta .crumbs:not([hidden]) + .badge-counter::before { content: "·"; margin-right: 8px; color: var(--line-strong); }
+    .search-box { flex: 0 1 300px; }
+    .icon-btn { width: 34px; height: 34px; padding: 0; justify-content: center; font-size: 15px; letter-spacing: 0; }
+    .list-bar { gap: 6px 10px; padding-bottom: 10px; margin-bottom: 14px; border-bottom: 1px solid var(--line-strong); }
+    .bar-lbl { font-family: var(--f-label); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+    .bar-lbl + .seg { margin-right: 14px; }
+    .seg { border: 0; background: transparent; gap: 2px; }
+    .seg button { border: 0; border-bottom: 1.5px solid transparent; border-radius: 0; padding: 4px 6px; background: transparent; }
+    .seg button:hover { color: var(--ink); }
+    .seg button.on { background: transparent; color: var(--accent); border-bottom-color: var(--accent); }
+    .list-bar > .seg:last-child { border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface-solid); gap: 0; }
+    .list-bar > .seg:last-child button { padding: 3px 10px; border-bottom: 0; }
+    .list-bar > .seg:last-child button + button { border-left: 1px solid var(--line); }
+    .list-bar > .seg:last-child button.on { background: var(--accent-soft); }
+    .stage { padding-top: 18px; }
+
+    /* ---------- Sidebar (follows light / dark) ---------- */
+    .side .brand { padding: 2px 8px 14px; margin-bottom: 6px; border-bottom: 1px solid var(--line-strong); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .side .brand b { font-family: var(--f-label); font-weight: 500; font-size: 18px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); }
+    .side .brand small { font-family: var(--f-mono); color: var(--side-mut); font-size: 11px; }
+    .side .grp { font-family: var(--f-label); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--side-mut); padding: 14px 8px 4px; }
+    .side-item { width: 100%; border: 0; background: transparent; color: var(--side-ink); text-align: left; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 8px; border-radius: var(--radius); font-size: 14px; }
+    .side-item:hover { background: var(--side-hi); }
+    .side-item.on { background: var(--side-hi); color: var(--accent); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
+    .side-item.sub { padding-left: 27px; font-size: 13.5px; }
+    .side-item .dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid; display: inline-block; margin-right: 9px; }
+    .side-item .n { font-family: var(--f-mono); font-size: 12px; color: var(--side-mut); }
+    .side-item .lt { font-family: var(--f-mono); color: var(--late); font-size: 11px; margin-right: 8px; }
+
+    /* 720px+: sidebar | list, the request opens as a drawer from the right */
+    @media (min-width: 720px) {
+      .app { display: grid; grid-template-columns: 220px minmax(0, 1fr); height: 100vh; overflow: hidden; }
+      .main { overflow-y: auto; height: 100vh; }
+      .co-chips { display: none; }
+      .side { display: flex; flex-direction: column; background: var(--side); color: var(--side-ink); border-right: 1px solid var(--line-strong); padding: 16px 10px; gap: 1px; overflow-y: auto; height: 100vh; }
+      .modal-overlay { justify-content: flex-end; align-items: stretch; }
+      .modal-box { max-width: 420px; max-height: none; height: 100vh; border-radius: 0; animation: drawerIn .2s ease-out; }
+      .topbar .brand-mini { display: none; }
+    }
+    @keyframes drawerIn { from { transform: translateX(40px); opacity: .5; } to { transform: none; opacity: 1; } }
+    /* 1100px+: sidebar | list | closing panel always on screen */
+    @media (min-width: 1100px) {
+      .app { grid-template-columns: 240px minmax(0, 1fr) 380px; }
+      .modal-overlay { position: static; display: block; background: var(--surface-solid); border-left: 1px solid var(--line-strong); height: 100vh; overflow-y: auto; z-index: auto; }
+      .modal-overlay:not(.active) .modal-box { display: none; }
+      .modal-overlay:not(.active) .panel-empty { display: flex; }
+      .modal-box { max-width: none; height: auto; animation: none; padding: 20px; overflow: visible; }
+      .modal-footer { bottom: 0; }
+      .panel-empty { flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 8px; height: 100%; padding: 30px; color: var(--muted); }
+      .panel-empty b { font-family: var(--f-label); font-weight: 500; font-size: 18px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink); }
+    }
+
+    /* ---------- Narrow windows (phone layout comes later) ---------- */
+    @media (max-width: 640px) {
+      .topbar { gap: 8px; flex-wrap: wrap; }
+      .tb-title { flex: 1 1 0; }
+      .tb-title h1 { font-size: 18px; }
+      .tb-tools { order: 4; }
+      .search-box { order: 5; flex: 1 1 100%; max-width: none; }
+      .icon-btn .lbl { display: none; }
+      .r-item { grid-template-columns: 10px minmax(0, 1fr) auto; }
+      .r-item .r-act, .r-item .r-due { display: none; }
+      .r-head { display: none; }
+      .r-act-m { display: block; font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .list-bar .spacer { display: none; }
+      .modal-box { max-height: 92vh; }
+      .nav-grid { grid-template-columns: 1fr; }
+      .signature { margin-left: 0; }
+    }
+
+    /* ---------- One sheet of grid paper: sidebar, panel and footer sit on it, split by lines only ---------- */
+    footer { background: transparent; border-top: 0; }
+    @media (min-width: 720px) {
+      .side { background: transparent; border-right: 1px solid var(--line-strong); }
+      .side-item.on { background: var(--accent-soft); }
+    }
+    @media (min-width: 1100px) {
+      .modal-overlay { background: transparent; border-left: 1px solid var(--line-strong); }
+      .modal-box, .modal-footer { background: transparent; }
+      .modal-footer { position: static; }
+    }
+
+    /* ---------- Everything transparent on the paper ---------- */
+    .topbar { position: static; background: transparent; border-bottom: 1px solid var(--line-strong); }
+    .card, .rows, .nav-tile, .empty-state, .load-error, .r-head, .r-head:hover, .search-box input, .icon-btn, .back-ic,
+    .list-bar > .seg:last-child, .pill-btn, .form-row input, .form-row textarea, .co-chips, .co-chips button, .close-btn { background: transparent; }
+    .r-head { border-bottom-color: var(--line-strong); }
+    .card-top { border-bottom-color: var(--line-strong); }
+
+    /* ---------- Decorations layer ---------- */
+    #decor { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    #decor svg { position: absolute; fill: none; stroke: var(--deco); stroke-width: 1.2; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+    #decor svg * { vector-effect: non-scaling-stroke; }
+    #decor text { fill: var(--deco); stroke: none; font-family: var(--f-mono); font-size: 9px; }
+    .app { position: relative; z-index: 1; }
+
+    /* ---------- Readability: quieter paper, firmer text and lines ---------- */
+    :root {
+      --grid-minor: rgba(47, 83, 120, .02); --grid-major: rgba(47, 83, 120, .042); --deco: rgba(47, 83, 120, .085);
+      --ink: #121c26; --muted: #4f5f70; --line: #cfd8e1; --line-strong: #8497ab;
+    }
+    html[data-theme="dark"] {
+      --grid-minor: rgba(140, 180, 220, .018); --grid-major: rgba(140, 180, 220, .038); --deco: rgba(150, 190, 230, .075);
+      --ink: #eef3f8; --muted: #a9b8c7; --line: #2b3f54; --line-strong: #4f6a86;
+    }
+    html, body { font-size: 15px; }
+    .r-act, .activity-title { opacity: 1; }
+    .r-villa, .villa-title { font-weight: 600; }
+    .card-top, .due-line, .r-due, .badge-counter, #modalSubTitle { font-size: 12px; }
+    .r-num { font-size: 11px; }
+    .lbl-up, .pills-label, .form-row label, .bar-lbl, .r-head, .side .grp { font-size: 12.5px; font-weight: 500; }
+    .side-item { font-size: 14.5px; }
+    .seg button, .crumbs { font-size: 13.5px; }
+
+    /* ---------- Firmer outlines on request cards, tiles and the register ---------- */
+    .card, .nav-tile, .rows { border-width: 2px; }
+    .card.is-late { border-left-width: 4px; }
+    .card.sel { box-shadow: 0 0 0 1.5px var(--accent); }
+    .r-item { border-bottom-width: 1.5px; }
+    .nav-num { border-left-width: 2px; }
+    .nav-go { border-top-width: 1.5px; }
+
+    /* ---------- Stamp ---------- */
+    .card, .r-item { position: relative; }
+    .stamp { position: absolute; left: 50%; top: 50%; z-index: 3; display: flex; align-items: center; gap: 8px; padding: 4px 12px; border: 3px double currentColor; border-radius: 4px;
+      font-family: var(--f-label); text-transform: uppercase; letter-spacing: .12em; background: var(--paper); pointer-events: none;
+      transform: translate(-50%, -50%) rotate(-8deg); animation: stampIn .32s cubic-bezier(.2, 1.4, .4, 1) both; white-space: nowrap; }
+    .stamp b { font-size: 26px; font-weight: 500; line-height: 1; }
+    .stamp span { font-size: 13px; font-weight: 500; }
+    .stamp-a, .stamp-b { color: var(--ok); } .stamp-c { color: var(--revise); } .stamp-d { color: var(--rej); }
+    @keyframes stampIn { from { opacity: 0; transform: translate(-50%, -50%) rotate(-14deg) scale(2.2); } to { opacity: .95; transform: translate(-50%, -50%) rotate(-8deg) scale(1); } }
+    .r-item .stamp { left: auto; right: 120px; }
+
+    /* ---------- Code buttons: key hints ---------- */
+    .code-row .pill-btn { position: relative; }
+    .code-row .pill-btn::after { content: attr(data-key); position: absolute; top: 3px; right: 5px; font-family: var(--f-mono); font-size: 9.5px; color: var(--muted); opacity: .8; }
+
+    /* ---------- Title block (footer) ---------- */
+    footer { justify-content: flex-end; }
+    .title-block { display: grid; grid-template-columns: 1fr 1fr; width: min(460px, 100%); border: 2px solid var(--ink); font-size: 12.5px; }
+    .tbk { padding: 5px 9px; border-right: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .tbk:nth-child(even) { border-right: 0; }
+    .tbk.wide { grid-column: 1 / -1; border-right: 0; }
+    .tbk > i { font-style: normal; font-family: var(--f-label); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+    .tbk > b { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tbk.wide:first-child > b { font-family: var(--f-label); font-weight: 500; font-size: 17px; letter-spacing: .1em; text-transform: uppercase; }
+    .tbk .footer-links { display: flex; gap: 10px; }
+    .tbk .signature { margin: 0; font-size: 17px; line-height: 1.1; }
+    .tbk.copy { border-bottom: 0; color: var(--muted); font-size: 11.5px; }
+
+    /* ---------- Today summary (empty panel) ---------- */
+    .panel-empty { text-align: left !important; align-items: stretch !important; justify-content: flex-start !important; gap: 10px !important; padding: 22px 20px !important; }
+    .sum-h { font-family: var(--f-label); font-size: 12.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); padding-bottom: 5px; border-bottom: 1px solid var(--line-strong); margin-top: 10px; }
+    .sum-big { display: flex; align-items: center; gap: 14px; }
+    .sum-big b { font-size: 46px; font-weight: 300; color: var(--ink); line-height: 1; }
+    .sum-big span { color: var(--muted); line-height: 1.3; }
+    .sum-list { display: flex; flex-direction: column; }
+    .sum-row, .sum-old { border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; padding: 8px 2px; display: flex; justify-content: space-between; align-items: center; gap: 10px; color: var(--ink); }
+    .sum-row:hover, .sum-old:hover { background: var(--accent-soft); }
+    .sum-row .dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid; display: inline-block; margin-right: 9px; }
+    .sum-row em { font-style: normal; color: var(--late); }
+    .sum-old { flex-direction: column; align-items: flex-start; gap: 1px; }
+    .sum-old span { font-size: 11.5px; color: var(--muted); }
+    .panel-empty .sum-old b { font-family: var(--f-ui); font-size: 14.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink); }
+    .panel-empty .sum-big b { font-family: var(--f-mono); font-size: 46px; font-weight: 300; letter-spacing: 0; text-transform: none; }
+    .sum-none { color: var(--muted); padding: 6px 0; }
+    .sum-keys { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+    .sum-keys kbd, .save-modal-btn kbd { font-family: var(--f-mono); font-size: 10.5px; border: 1px solid var(--line-strong); border-radius: 2px; padding: 0 4px; margin: 0 1px; }
+
+    /* ---------- Sheet & drawer sit on paper too ---------- */
+    @media (max-width: 1099px) {
+      .modal-box, .modal-footer { background-color: var(--paper); }
+      .modal-box { background-image: linear-gradient(var(--grid-major) 1px, transparent 1px), linear-gradient(90deg, var(--grid-major) 1px, transparent 1px); background-size: 40px 40px; }
+      .modal-footer { background: var(--paper); }
+    }
+
+    /* ---------- Phone ---------- */
+    @media (max-width: 719px) {
+      .topbar { padding-top: 10px; padding-bottom: 10px; }
+      .tb-title h1 { font-size: 19px; }
+      .tb-meta { flex-wrap: wrap; row-gap: 0; }
+      .search-box input, .form-row input, .form-row textarea { font-size: 16px; }   /* no zoom-in on iPhone */
+      .co-chips { padding-top: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line-strong); }
+      .co-chips button { border-width: 1.5px; padding: 6px 12px; font-size: 14px; }
+      .list-bar { gap: 6px 8px; }
+      .bar-lbl { display: none; }
+      .bar-lbl + .seg { margin-right: 6px; }
+      .cards-grid { grid-template-columns: 1fr; gap: 10px; }
+      .card { padding: 12px 14px; }
+      .r-item { padding: 12px 14px; }
+      .modal-overlay { align-items: flex-end; }
+      .modal-box { max-height: 94vh; border-radius: 10px 10px 0 0; border-top: 2px solid var(--ink); }
+      .modal-header h3 { font-size: 23px; }
+      .pill-btn { padding: 8px 14px; font-size: 14.5px; }
+      .code-row { grid-template-columns: 1fr 1fr; }
+      .code-row .pill-btn { padding: 12px 6px 10px; }
+      .code-row .pill-btn b { font-size: 28px; }
+      .code-row .pill-btn::after { display: none; }
+      .save-modal-btn { padding: 14px; font-size: 16px; }
+      .title-block { width: 100%; }
+      footer { padding-top: 18px; }
+    }
+    @media (hover: none) { .save-modal-btn kbd, .sum-keys { display: none; } }
+
+    /* ---------- Title block: small and quiet ---------- */
+    footer { flex-direction: column; align-items: flex-end; gap: 4px; padding-top: 10px; padding-bottom: 12px; }
+    .title-block { grid-template-columns: repeat(3, 1fr); width: min(390px, 100%); border: 1px solid var(--line-strong); font-size: 11px; opacity: .85; }
+    .tbk { padding: 3px 7px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .tbk:nth-child(even) { border-right: 1px solid var(--line); }
+    .tbk:nth-child(3n + 1) { border-right: 0; }
+    .tbk.wide { grid-column: 1 / -1; }
+    .tbk > i { font-size: 9px; letter-spacing: .14em; }
+    .tbk > b { font-weight: 500; font-size: 11.5px; }
+    .tbk.wide:first-child > b { font-size: 13px; letter-spacing: .12em; }
+    .tbk .footer-links { gap: 8px; font-size: 11px; }
+    .tbk.copy { font-size: 10px; padding-top: 2px; padding-bottom: 2px; }
+    footer > .signature { margin: 0; font-size: 14px; color: var(--muted); opacity: .8; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+    /* ---- Checklist (from the SouthMED handbook) in the closing panel ---- */
+    .cl-group[hidden] { display: none; }
+    .cl-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .cl-code { font-family: var(--f-mono); font-size: 12px; color: var(--accent); }
+    .cl-prog { font-family: var(--f-mono); font-size: 12px; color: var(--muted); margin-left: auto; }
+    .cl-all { padding: 3px 10px; font-size: 12.5px; }
+    .cl-title { font-size: 13px; color: var(--muted); margin-top: -2px; }
+    .cl-kv summary { cursor: pointer; font-family: var(--f-label); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+    .cl-kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+    .cl-kv-grid div { border-left: 2px solid var(--warn); background: var(--surface-2); padding: 4px 7px; font-size: 12px; }
+    .cl-kv-grid small { display: block; color: var(--muted); font-size: 10.5px; }
+    .cl-list { border: 1px solid var(--line); border-radius: var(--radius); max-height: 46vh; overflow-y: auto; }
+    .cl-st { position: sticky; top: 0; z-index: 1; background: var(--surface-2); padding: 5px 8px; font-family: var(--f-label); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; display: flex; gap: 6px; }
+    .cl-st span { margin-left: auto; color: var(--muted); }
+    .cl-it { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-top: 1px solid var(--line); font-size: 13px; }
+    .cl-tx { flex: 1; min-width: 0; }
+    .cl-tx i { font-style: normal; font-family: var(--f-mono); font-size: 11px; color: var(--accent); margin-left: 4px; white-space: nowrap; }
+    .cl-mk { display: flex; gap: 4px; flex: none; }
+    .cl-mk button { width: 30px; height: 28px; border: 1px solid var(--line-strong); background: transparent; border-radius: var(--radius); color: var(--muted); font-size: 14px; line-height: 1; cursor: pointer; }
+    .cl-it.m-ok .cl-mk [data-m=ok] { background: var(--ok); border-color: var(--ok); color: #fff; }
+    .cl-it.m-fail { background: var(--rej-soft); }
+    .cl-it.m-fail .cl-mk [data-m=fail] { background: var(--rej); border-color: var(--rej); color: #fff; }
+    .cl-it.m-na .cl-mk [data-m=na] { background: var(--muted); border-color: var(--muted); color: #fff; }
+    .cl-msg { font-size: 13px; color: var(--muted); }
+    /* ---------- Edit checklists (cards on the same grid paper) ---------- */
+    .ed-overlay { position: fixed; inset: 0; z-index: 1500; display: none; overflow-y: auto; background-color: var(--paper);
+      background-image: linear-gradient(var(--grid-major) 1px, transparent 1px), linear-gradient(90deg, var(--grid-major) 1px, transparent 1px),
+        linear-gradient(var(--grid-minor) 1px, transparent 1px), linear-gradient(90deg, var(--grid-minor) 1px, transparent 1px);
+      background-size: 40px 40px, 40px 40px, 8px 8px, 8px 8px; }
+    .ed-overlay.open { display: block; }
+    .ed-wrap { max-width: 1120px; margin: 0 auto; padding: 18px 20px 60px; display: flex; flex-direction: column; gap: 18px; }
+    .ed-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; position: sticky; top: 0; z-index: 2; padding: 10px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+    .ed-kicker { font-family: var(--f-mono); font-size: 11px; color: var(--muted); }
+    .ed-h { font-family: var(--f-label); font-weight: 500; letter-spacing: .12em; text-transform: uppercase; font-size: 22px; line-height: 1.15; }
+    .ed-bar .ed-titles { margin-right: auto; min-width: 0; }
+    .ed-bar input[type=search] { font: inherit; font-size: 14px; color: var(--ink); background: var(--surface-solid); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 7px 10px; width: 240px; max-width: 100%; }
+    .ed-saved { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+    .ed-saved.bad { color: var(--rej); }
+    .ed-sec-h { display: flex; align-items: baseline; gap: 10px; font-family: var(--f-label); letter-spacing: .14em; text-transform: uppercase; font-size: 14px; margin: 6px 0 -6px; }
+    .ed-sec-h b { font-family: var(--f-mono); font-weight: 600; color: var(--accent); }
+    .ed-sec-h span { color: var(--muted); font-family: var(--f-mono); font-size: 12px; letter-spacing: 0; }
+    .ed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+    .ed-list { display: flex; flex-direction: column; gap: 8px; }
+    .ed-card { background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+    .ed-card.click { cursor: pointer; }
+    .ed-card.click:hover, .ed-card.editing { border-color: var(--accent); }
+    .ed-card.editing { box-shadow: 0 0 0 1px var(--accent); }
+    .ed-card .top { display: flex; justify-content: space-between; gap: 8px; font-family: var(--f-mono); font-size: 11px; color: var(--muted); padding-bottom: 6px; border-bottom: 1px dashed var(--line); }
+    .ed-card .ttl { font-family: var(--f-label); font-size: 18px; letter-spacing: .04em; line-height: 1.2; }
+    .ed-card .sub { font-size: 12.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .ed-card .txt { font-size: 14px; line-height: 1.45; }
+    .ed-card .ref { font-family: var(--f-mono); font-size: 11.5px; color: var(--accent); }
+    .ed-card .kv-l { font-size: 12px; color: var(--muted); }
+    .ed-card .kv-v { font-family: var(--f-label); font-size: 17px; letter-spacing: .02em; }
+    .ed-row-card { flex-direction: row; align-items: flex-start; gap: 12px; padding: 10px 12px; }
+    .ed-row-card .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+    .ed-acts { display: flex; gap: 6px; margin-top: auto; flex-wrap: wrap; }
+    .ed-row-card .ed-acts { margin-top: 0; flex-wrap: nowrap; }
+    .ed-btn { border: 1px solid var(--line-strong); background: var(--surface-solid); border-radius: var(--radius); padding: 4px 10px; font-family: var(--f-label); font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink); }
+    .ed-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .ed-btn[data-act=edit], .ed-btn[data-act=open] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .ed-btn[data-act=edit]:hover, .ed-btn[data-act=open]:hover { background: var(--accent); color: var(--accent-ink); }
+    .ed-btn.del { border-color: var(--rej); color: var(--rej); background: var(--rej-soft); }
+    .ed-btn.del:hover { background: var(--rej); border-color: var(--rej); color: #fff; }
+    .ed-btn.pri { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+    .ed-btn.pri:hover { color: var(--accent-ink); opacity: .9; }
+    .ed-btn.ic { padding: 4px 8px; letter-spacing: 0; }
+    .ed-plus { border: 1.5px dashed var(--line-strong); background: transparent; border-radius: var(--radius); min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--muted); font-family: var(--f-label); letter-spacing: .12em; text-transform: uppercase; font-size: 12.5px; }
+    .ed-plus b { font-size: 34px; font-weight: 300; line-height: 1; font-family: var(--f-ui); }
+    .ed-plus:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .ed-list .ed-plus { min-height: 44px; flex-direction: row; gap: 8px; }
+    .ed-list .ed-plus b { font-size: 22px; }
+    .ed-f { display: flex; flex-direction: column; gap: 4px; }
+    .ed-f label { font-family: var(--f-label); font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+    .ed-in, .ed-ta { width: 100%; font: inherit; font-size: 14px; color: var(--ink); background: var(--surface-solid); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 7px 9px; }
+    .ed-ta { resize: none; overflow: hidden; line-height: 1.45; }
+    .ed-in:focus, .ed-ta:focus { border-color: var(--accent); outline: none; }
+    .ed-in.mono { font-family: var(--f-mono); font-size: 13px; }
+    .ed-form { display: grid; grid-template-columns: 1fr 160px; gap: 10px; }
+    .ed-form.kv { grid-template-columns: 1fr 1fr 140px; }
+    .ed-form .wide { grid-column: 1 / -1; }
+    .ed-hint { font-size: 12px; color: var(--muted); }
+    .ed-chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .ed-pinbox { max-width: 340px; margin: 12vh auto 0; }
+    .ed-empty { color: var(--muted); font-size: 13px; padding: 4px 2px; }
+    @media (max-width: 640px) {
+      .ed-wrap { padding: 10px 14px 50px; gap: 14px; }
+      .ed-h { font-size: 18px; }
+      .ed-bar input[type=search] { width: 100%; order: 3; }
+      .ed-form, .ed-form.kv { grid-template-columns: 1fr; }
+      .ed-row-card { flex-direction: column; }
+      .ed-grid { grid-template-columns: 1fr; }
+    }
+    .cl-pickrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: -4px; }
+    .cl-by { font-size: 11.5px; color: var(--muted); font-family: var(--f-mono); }
+    .cl-chg { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; font-size: 12.5px; cursor: pointer; }
+    .cl-pickrow select { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface-solid); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 5px 6px; max-width: 100%; }
+    @media (max-width: 640px) { .cl-mk button { width: 36px; height: 34px; } .cl-list { max-height: none; } .cl-kv-grid { grid-template-columns: 1fr; } }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body>
+  <div id="decor" aria-hidden="true"></div>
+  <div class="app">
+    <!-- Sidebar: contractors with CIR / MIR counts -->
+    <aside class="side" id="side" aria-label="Contractors"></aside>
+
+    <div class="main" id="main">
+      <header class="topbar">
+        <button type="button" id="backBtn" class="back-ic" onclick="goBack()" title="Back" hidden>←</button>
+        <div class="tb-title">
+          <div class="tb-meta"><nav id="crumbs" class="crumbs" hidden></nav><div id="counterBadge" class="badge-counter">Loading...</div></div>
+          <h1 id="scopeTitle">Daily Site Inspections</h1>
+        </div>
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Search by Villa or activity..." oninput="filterCards()" autocomplete="off">
+        </div>
+        <div class="tb-tools">
+          <button type="button" id="refreshBtn" class="icon-btn refresh-btn" onclick="fetchItems()" title="Load the latest requests from the sheet"><span class="ic">⟳</span></button>
+          <button type="button" id="clEditBtn" class="icon-btn" onclick="edOpen()" title="Edit checklists"><span class="ic">✎</span></button>
+          <button type="button" id="acctBtn" class="icon-btn acct-btn" onclick="PtahApp.openAccount()" title="Account"><span class="ic" id="acctIc">·</span></button>
+          <button type="button" id="themeBtn" class="icon-btn" title="Light / dark"><span class="ic" id="themeIc">◐</span></button>
+        </div>
+      </header>
+
+      <div id="coChips" class="co-chips"></div>
+
+      <div id="loadingState" class="loading-state">Fetching pending inspections...</div>
+      <div id="gridContainer" class="stage"></div>
+
+      <footer>
+        <div class="title-block" aria-label="Sheet information">
+          <div class="tbk wide"><i>Project</i><b>SouthMed North Coast</b></div>
+          <div class="tbk"><i>Consultant</i><b>Shaker Consultancy</b></div>
+          <div class="tbk"><i>Sheet</i><b id="tbSheet">All contractors</b></div>
+          <div class="tbk"><i>Date</i><b id="tbDate" class="mono">—</b></div>
+          <div class="tbk"><i>Pending · Late</i><b id="tbCount" class="mono">—</b></div>
+          <div class="tbk"><i>Support</i><span class="footer-links"><a href="mailto:architectahmedgaber@gmail.com"><i class="fa-solid fa-envelope"></i> Email</a><a href="https://wa.me/201018484400" target="_blank"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a></span></div>
+          <div class="tbk"><i>App</i><b>Shaker Inspect</b></div>
+          <div class="tbk wide copy">© 2026 Shaker Consultancy Group - SouthMed North Coast</div>
+        </div>
+        <div class="signature">architected by Ptah</div>
+      </footer>
+    </div>
+
+    <!-- Closing panel: a side column on Desk (wide), a sheet everywhere else -->
+    <div id="modalOverlay" class="modal-overlay" onclick="handleOverlayClick(event)">
+      <div class="panel-empty" id="panelEmpty"></div>
+      <div class="modal-box" onclick="event.stopPropagation()" role="dialog" aria-labelledby="modalTitle">
+        <div class="modal-header">
+          <div>
+            <div class="num" id="modalNum"></div>
+            <h3 id="modalTitle">IR Number</h3>
+            <p id="modalSubTitle">Sheet Row Info</p>
+          </div>
+          <button type="button" class="close-btn" onclick="closeModal()" title="Close (Esc)">✕</button>
+        </div>
+
+        <div id="modalDesc" class="modal-desc">Activity Description placeholder...</div>
+
+        <div class="form-row">
+          <label for="modalDate">Inspection date</label>
+          <input type="date" id="modalDate">
+        </div>
+
+        <div class="pills-group">
+          <span class="pills-label">Inspector</span>
+          <div class="pills-row" id="inspectorPills"><span class="modal-status">Loading engineers...</span></div>
+        </div>
+
+        <div class="pills-group">
+          <span class="pills-label">Action code</span>
+          <div class="code-row">
+            <button type="button" class="pill-btn pill-code-a" id="code-A" data-key="1" onclick="selectCode('A')" title="Code A - Approved"><b>A</b><small>Approved</small></button>
+            <button type="button" class="pill-btn pill-code-b code-active" id="code-B" data-key="2" onclick="selectCode('B')" title="Code B - Approved As Noted"><b>B</b><small>As noted</small></button>
+            <button type="button" class="pill-btn pill-code-c" id="code-C" data-key="3" onclick="selectCode('C')" title="Code C - Revise and Resubmit"><b>C</b><small>Revise</small></button>
+            <button type="button" class="pill-btn pill-code-d" id="code-D" data-key="4" onclick="selectCode('D')" title="Code D - Rejected"><b>D</b><small>Rejected</small></button>
+          </div>
+        </div>
+
+        <!-- Checklist from the SouthMED handbook (matched by the request's Spec #) -->
+        <div class="pills-group cl-group" id="clGroup" hidden>
+          <div class="cl-head">
+            <span class="pills-label">Checklist</span><span class="cl-code" id="clCode"></span>
+            <span class="cl-prog" id="clProg"></span>
+            <button type="button" class="pill-btn cl-all" id="clAllBtn" onclick="clMarkAll()" title="Mark every unmarked item ✓">All ✓</button>
+          </div>
+          <div class="cl-pickrow"><span class="cl-by" id="clBy"></span>
+            <button type="button" class="cl-chg" id="clChgBtn" onclick="clShowPicker()">Change section</button>
+            <select id="clPick" hidden onchange="clPickSection(this.value)"></select></div>
+          <div class="cl-title" id="clTitle"></div>
+          <details class="cl-kv" id="clKvBox"><summary>Key values</summary><div class="cl-kv-grid" id="clKv"></div></details>
+          <div class="cl-list" id="clList"></div>
+        </div>
+
+        <div class="form-row">
+          <label for="modalNotes">Field notes</label>
+          <textarea id="modalNotes" dir="auto" placeholder="E.g., Approved with minor comments, fiber mesh missing in joints..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <span id="modalStatus" class="modal-status"></span>
+          <button type="button" id="modalSaveBtn" class="save-modal-btn" onclick="submitModalData()">Close request <kbd>Ctrl ↵</kbd></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit checklists (needs the PIN set with setEditPin in Apps Script) -->
+  <div id="edOverlay" class="ed-overlay" role="dialog" aria-label="Edit checklists"><div class="ed-wrap" id="edWrap"></div></div>
+
+  <!-- Undo toast -->
+  <div id="toast" class="toast" role="status"><span id="toastMsg"></span><button type="button" id="toastBtn">Undo</button></div>
+
+<script>
+/**
+ * RecordPdfJs.html — Ptah Pro · Inspection Record PDF (drawn, not converted)
+ *
+ * The PDF is drawn here with pdf-lib: every line and box at a fixed position, with the
+ * DejaVu Sans Condensed font embedded in the file. The same code makes the samples,
+ * so what you see in a sample is exactly what the portal produces, on any phone or PC.
+ *
+ * In the portal: include this file, then
+ *   const bytes = await PtahRecord.build(data)   // data: see PtahRecord.prepare()
+ * In Node (for samples): module.exports gives the same functions.
+ */
+(function (root) {
+  const LIB = {
+    pdfLib:  'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js',
+    fontkit: 'https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js',
+    reg:     'https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSansCondensed.ttf',
+    bold:    'https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSansCondensed-Bold.ttf',
+    // Arabic (loaded only when the record has Arabic text, e.g. in the notes)
+    bidi:    'https://cdn.jsdelivr.net/npm/bidi-js@1.1.0/dist/bidi.min.js',
+    arReg:   'https://cdn.jsdelivr.net/npm/@expo-google-fonts/noto-sans-arabic@0.4.3/400Regular/NotoSansArabic_400Regular.ttf',
+    arBold:  'https://cdn.jsdelivr.net/npm/@expo-google-fonts/noto-sans-arabic@0.4.3/700Bold/NotoSansArabic_700Bold.ttf'
+  };
+  const AR_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
+  // ---------- page and colours (points; A4 = 595.28 × 841.89, 12 mm = 34 pt) ----------
+  const W = 595.28, H = 841.89, M = 34, CW = W - 2 * M, FOOT = 26;
+  const C = {
+    ink: [0x1d, 0x27, 0x33], sub: [0x55, 0x66, 0x77], mute: [0x88, 0x99, 0x99], line: [0xcf, 0xd6, 0xde],
+    hair: [0xe3, 0xe7, 0xec], orange: [0xc8, 0x64, 0x2d], card: [0xf4, 0xf6, 0xf8], clause: [0x3d, 0x5a, 0x80],
+    ok: [0x2e, 0x7d, 0x4f], fail: [0xc0, 0x39, 0x2b], badBg: [0xfd, 0xec, 0xea], resBg: [0xff, 0xf4, 0xe8],
+    resInk: [0xb8, 0x56, 0x1c], white: [0xff, 0xff, 0xff]
+  };
+  const RESULT_TEXT = { A: 'Approved', B: 'Approved as noted', C: 'Revise and resubmit', D: 'Rejected' };
+
+  // ---------- reading the request description ----------
+  const VILLA_RE = /\bvillas?\s*(?:villa\s*)?\(?\s*(\d+(?:\s*(?:[,\/&-]|and)\s*\d+)*)\)?(?:\s+type\s+([A-Z0-9()]+))?/i;
+  function villaOf(desc) {
+    const m = String(desc || '').match(VILLA_RE);
+    return m ? { villa: m[1].replace(/\s+/g, ' ').trim(), type: m[2] ? m[2].toUpperCase() : '' } : { villa: '', type: '' };
+  }
+  function floorOf(desc) {
+    const m = String(desc || '').match(/\b(ground|first|second|third|roof|upper roof|basement|mezzanine|all)\s+floors?\b/i);
+    return m ? m[0].replace(/\b\w/g, c => c.toUpperCase()) : '';
+  }
+  function activityOf(desc) {
+    let a = String(desc || '').trim();
+    a = a.replace(/^\S*(?:CIR|MIR)\S*\s*(?:\/|-|–|—|:)\s*/i, '');
+    a = a.replace(/^(?:material\s+)?inspection\s+request\s+(?:for\s+)?/i, '');
+    a = a.replace(/\s*(?:[-–—:,]\s*)?(?:for\s+)?\bvillas?\b.*$/i, '');
+    a = a.replace(/\s+(?:at|for|in|of)\s+(?:the\s+)?[\w\s]*floors?\s*$/i, '');
+    return a.replace(/\s{2,}/g, ' ').replace(/[\s\-–—:,]+$/, '').trim() || String(desc || '');
+  }
+  function fmtDate(iso) {
+    const p = String(iso || '').split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : String(iso || '');
+  }
+
+  /**
+   * Turns a request + checklist + marks into what build() draws.
+   * req = { irNumber, rev, itemId, description, date (yyyy-mm-dd), inspector, code, notes, contractor }
+   * cl  = getChecklist() result; marks = { <item order>: 'ok' | 'fail' | 'na' }
+   */
+  function prepare(req, cl, marks) {
+    marks = marks || {};
+    const v = villaOf(req.description);
+    const stages = [], count = { ok: 0, fail: 0, na: 0, blank: 0 };
+    cl.items.forEach(it => {
+      let st = stages[stages.length - 1];
+      if (!st || st.key !== it.stage) { st = { key: it.stage, heading: it.heading, items: [] }; stages.push(st); }
+      const m = marks[it.order] || '';
+      count[m || 'blank']++;
+      st.items.push({ text: it.text, clause: it.clause, mark: m });
+    });
+    return {
+      cl, stages, count, total: cl.items.length,
+      irNumber: req.irNumber || '', rev: String(req.rev || '0'), itemId: req.itemId || '',
+      villa: v.villa, type: v.type, floor: floorOf(req.description), activity: activityOf(req.description),
+      date: fmtDate(req.date), isoDate: req.date || '', inspector: req.inspector || '', code: req.code || '',
+      result: RESULT_TEXT[req.code] || '', notes: req.notes || '',
+      contractor: req.contractor || '—', project: 'SouthMED North Coast'
+    };
+  }
+
+  function fileName(d) {
+    return [d.irNumber || 'NO-CIR', 'Rev' + d.rev, d.cl.code, d.villa ? 'Villa ' + d.villa.replace(/[\/\\]/g, '-') : '', d.isoDate]
+      .filter(String).join(' - ') + '.pdf';
+  }
+
+  // ---------- loading the library and fonts (browser) ----------
+  let libs = null, arLibs = null;
+  function loadScript(src) {
+    return new Promise((ok, bad) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => bad(new Error('Could not load ' + src)); document.head.appendChild(s); });
+  }
+  async function loadLibs() {
+    if (libs) return libs;
+    if (!root.PDFLib) await loadScript(LIB.pdfLib);
+    if (!root.fontkit) await loadScript(LIB.fontkit);
+    const get = u => fetch(u).then(r => { if (!r.ok) throw new Error('Font download failed'); return r.arrayBuffer(); });
+    const [reg, bold] = await Promise.all([get(LIB.reg), get(LIB.bold)]);
+    libs = { PDFLib: root.PDFLib, fontkit: root.fontkit, reg, bold };
+    return libs;
+  }
+  async function loadArabic() {
+    if (arLibs) return arLibs;
+    if (!root.bidi_js) await loadScript(LIB.bidi);
+    const get = u => fetch(u).then(r => { if (!r.ok) throw new Error('Arabic font download failed'); return r.arrayBuffer(); });
+    const [arReg, arBold] = await Promise.all([get(LIB.arReg), get(LIB.arBold)]);
+    arLibs = { bidi: root.bidi_js(), arReg, arBold };
+    return arLibs;
+  }
+  // true when any text in the record is Arabic
+  function needsArabic(d) {
+    const all = [d.notes, d.inspector, d.activity, d.contractor, d.villa, d.floor];
+    d.stages.forEach(st => st.items.forEach(it => all.push(it.text)));
+    return all.some(t => AR_RE.test(String(t || '')));
+  }
+
+  // ---------- drawing ----------
+  async function draw(L, d) {
+    const { PDFDocument, rgb } = L.PDFLib;
+    const doc = await PDFDocument.create();
+    doc.registerFontkit(L.fontkit);
+    const R = await doc.embedFont(L.reg, { subset: true });
+    const B = await doc.embedFont(L.bold, { subset: true });
+    // Arabic: Noto Sans Arabic for Arabic letters, bidi-js for right-to-left order
+    const hasAr = L.arReg ? (t => AR_RE.test(String(t))) : (() => false);
+    let AR = null, AB = null, arFk = null;
+    if (L.arReg) {
+      AR = await doc.embedFont(L.arReg, { subset: true });
+      AB = await doc.embedFont(L.arBold, { subset: true });
+      arFk = L.fontkit.create(new Uint8Array(L.arReg));
+    }
+    // a line -> pieces in left-to-right drawing order: [{ t, f }]
+    function runs(s, f) {
+      const af = f === B ? AB : AR, lv = L.bidi.getEmbeddingLevels(s).levels, out = [];
+      for (let i = 0; i < s.length; i++) {
+        let ch = s[i];
+        if (/[\uD800-\uDBFF]/.test(ch) && i + 1 < s.length) ch += s[++i];
+        const lvl = lv[i];
+        const ar = AR_RE.test(ch) || (lvl % 2 === 1 && !/[A-Za-z0-9]/.test(ch) && arFk.hasGlyphForCodePoint(ch.codePointAt(0)));
+        const last = out[out.length - 1];
+        if (last && last.lvl === lvl && last.ar === ar) last.t += ch; else out.push({ t: ch, lvl, ar });
+      }
+      // Unicode bidi rule L2: reverse runs from the highest level down to the lowest odd level
+      const max = Math.max(...out.map(r => r.lvl)), minOdd = Math.min(...out.map(r => r.lvl).filter(l => l % 2) , 99);
+      for (let k = max; k >= minOdd && k > 0; k--) {
+        for (let i = 0; i < out.length; i++) {
+          if (out[i].lvl < k) continue;
+          let j = i; while (j + 1 < out.length && out[j + 1].lvl >= k) j++;
+          out.splice(i, j - i + 1, ...out.slice(i, j + 1).reverse()); i = j;
+        }
+      }
+      return out.map(r => {
+        let t = r.t;
+        // right-to-left text that the font does not reverse by itself: reverse it here, mirror brackets
+        const mirror = c => L.bidi.getMirroredCharacter(c) || c;
+        if (r.lvl % 2 === 1) {
+          // Arabic runs: the font engine reverses the order itself, so only mirror brackets
+          t = (r.ar && AR_RE.test(t)) ? [...t].map(mirror).join('') : [...t].reverse().map(mirror).join('');
+        }
+        return { t, f: r.ar ? af : f };
+      });
+    }
+    const isRtl = s => { const m = String(s).match(/[A-Za-z]|[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/); return !!m && AR_RE.test(m[0]); };
+    doc.setTitle('Inspection Record ' + d.irNumber + ' · ' + d.cl.code);
+    doc.setAuthor(d.inspector); doc.setCreator('Shaker Inspect'); doc.setProducer('Shaker Inspect');
+    const col = a => rgb(a[0] / 255, a[1] / 255, a[2] / 255);
+
+    let page, y;                         // y = distance from the top edge
+    const pages = [];
+    function newPage() { page = doc.addPage([W, H]); pages.push(page); y = M; }
+    const T = (s, x, yy, f, size, c) => {
+      s = String(s);
+      if (!hasAr(s)) return page.drawText(s, { x, y: H - yy - size * 0.8, font: f, size, color: col(c || C.ink) });
+      runs(s, f).forEach(r => { page.drawText(r.t, { x, y: H - yy - size * 0.8, font: r.f, size, color: col(c || C.ink) }); x += r.f.widthOfTextAtSize(r.t, size); });
+    };
+    const box = (x, yy, w, h, fill, stroke) => page.drawRectangle({ x, y: H - yy - h, width: w, height: h,
+      color: fill ? col(fill) : undefined, borderColor: stroke ? col(stroke) : undefined, borderWidth: stroke ? 0.6 : 0 });
+    const hline = (x1, x2, yy, c, t) => page.drawLine({ start: { x: x1, y: H - yy }, end: { x: x2, y: H - yy }, thickness: t || 0.6, color: col(c) });
+    const width = (s, f, size) => hasAr(s) ? runs(String(s), f).reduce((a, r) => a + r.f.widthOfTextAtSize(r.t, size), 0)
+                                           : f.widthOfTextAtSize(String(s), size);
+    const spaced = (s, x, yy, f, size, c, gap) => { for (const ch of String(s)) { T(ch, x, yy, f, size, c); x += width(ch, f, size) + gap; } return x; };
+    const spacedW = (s, f, size, gap) => [...String(s)].reduce((a, ch) => a + width(ch, f, size) + gap, 0);
+    function wrap(s, f, size, maxW) {
+      const out = [];
+      String(s || '').split(/\n/).forEach(par => {
+        let line = '';
+        par.split(/\s+/).forEach(w => {
+          if (!w) return;
+          const t = line ? line + ' ' + w : w;
+          if (width(t, f, size) <= maxW) { line = t; return; }
+          if (line) out.push(line);
+          line = w;
+          while (width(line, f, size) > maxW) {           // a single word longer than the line
+            let i = line.length; while (i > 1 && width(line.slice(0, i), f, size) > maxW) i--;
+            out.push(line.slice(0, i)); line = line.slice(i);
+          }
+        });
+        out.push(line);
+      });
+      return out;
+    }
+    const room = () => H - FOOT - M - y;               // space left above the footer
+
+    newPage();
+
+    // ---- title block ----
+    spaced(d.cl.division.toUpperCase(), M, y, B, 6.5, C.orange, 1.6); y += 11;
+    spaced(d.cl.code, M, y, R, 8.5, C.sub, 0.8); y += 11;
+    T(d.cl.title, M, y, B, 16, C.ink);
+    const recW = Math.max(spacedW('INSPECTION RECORD', R, 6.5, 1.4), width(d.irNumber + ' · Rev ' + d.rev, B, 12));
+    spaced('INSPECTION RECORD', M + CW - spacedW('INSPECTION RECORD', R, 6.5, 1.4), y - 9, R, 6.5, C.sub, 1.4);
+    const recTxt = d.irNumber + ' · Rev ' + d.rev;
+    T(recTxt, M + CW - width(recTxt, B, 12), y + 1, B, 12, C.ink);
+    y += 20;
+    wrap(d.cl.scope, R, 7.5, CW - recW - 20).forEach(l => { T(l, M, y, R, 7.5, C.sub); y += 9.5; });
+    y += 5;
+
+    // ---- request information ----
+    const cw4 = CW / 4;
+    const cells = [
+      [['Project', d.project, 1], ['Contractor', d.contractor, 1], ['Villa / Type', d.villa ? 'Villa ' + d.villa + (d.type ? ' · ' + d.type : '') : '—', 1], ['Floor', d.floor || '—', 1]],
+      [['Activity', d.activity, 2], ['ACC ID', d.itemId || '—', 1], ['Inspection date', d.date, 1]],
+      [['Inspected by', d.inspector, 2], ['Result', d.code + ' · ' + d.result, 2, true]]
+    ];
+    cells.forEach(row => {
+      const lines = row.map(c => wrap(c[1], B, c[3] ? 10.5 : 8.6, cw4 * c[2] - 12));
+      const h = 18 + Math.max(...lines.map((l, i) => l.length * (row[i][3] ? 12.5 : 10.5)));
+      let x = M;
+      row.forEach((c, i) => {
+        box(x, y, cw4 * c[2], h, c[3] ? C.resBg : null, C.line);
+        spaced(c[0].toUpperCase(), x + 6, y + 4, R, 5.8, C.mute, 0.9);
+        lines[i].forEach((l, j) => T(l, x + 6, y + 13 + j * (c[3] ? 12.5 : 10.5), B, c[3] ? 10.5 : 8.6, c[3] ? C.resInk : C.ink));
+        x += cw4 * c[2];
+      });
+      y += h;
+    });
+
+    // ---- key values ----
+    if (d.cl.keyValues.length) {
+      y += 12; spaced('KEY VALUES', M, y, B, 6.5, C.sub, 1.8); y += 12;
+      const gap = 5, kw = (CW - 2 * gap) / 3;
+      for (let i = 0; i < d.cl.keyValues.length; i += 3) {
+        const row = d.cl.keyValues.slice(i, i + 3);
+        const vals = row.map(k => wrap(k.value, B, 7.6, kw - 14));
+        const h = 16 + Math.max(...vals.map(v => v.length)) * 9.4;
+        row.forEach((k, j) => {
+          const x = M + j * (kw + gap);
+          box(x, y, kw, h, C.card);
+          box(x, y, 2.4, h, C.orange);
+          const cw = width(k.clause, R, 6);
+          T(k.clause, x + kw - 6 - cw, y + 4, R, 6, C.mute);
+          wrap(k.label, R, 6.6, kw - 20 - cw).slice(0, 1).forEach(l => T(l, x + 8, y + 4, R, 6.6, C.sub));
+          vals[j].forEach((l, n) => T(l, x + 8, y + 13.5 + n * 9.4, B, 7.6, C.ink));
+        });
+        y += h + gap;
+      }
+    }
+
+    // ---- checklist ----
+    const X_MK = [M + CW - 54, M + CW - 36, M + CW - 18];       // ✓ ✗ — columns (18 pt each)
+    const X_CL = X_MK[0] - 6;                                   // clause right edge
+    const TXT_W = X_CL - 60 - (M + 4);
+    function tableHead() {
+      T('Item', M, y, R, 6.2, C.mute);
+      T('Clause', X_CL - width('Clause', R, 6.2), y, R, 6.2, C.mute);
+      ['✓', '✗', '—'].forEach((s, i) => T(s, X_MK[i] + 9 - width(s, B, 7) / 2, y - 0.5, B, 7, C.mute));
+      y += 9; hline(M, M + CW, y, C.ink, 0.8); y += 1;
+    }
+    y += 10;
+    let lx = spaced('CHECKLIST', M, y, B, 6.5, C.sub, 1.8);
+    T('·   ✓ conforms    ✗ does not conform    — not applicable', lx + 6, y - 0.3, R, 6.5, C.sub);
+    y += 14; tableHead();
+
+    d.stages.forEach(st => {
+      const rowsH = st.items.map(it => wrap(it.text, R, 7.8, TXT_W).length * 9.6 + 6);
+      if (room() < 22 + rowsH[0]) { newPage(); tableHead(); }
+      y += 7;
+      box(M, y - 1, 11, 11, C.ink);
+      T(st.key, M + 5.5 - width(st.key, B, 7) / 2, y + 0.8, B, 7, C.white);
+      spaced(String(st.heading).toUpperCase(), M + 16, y + 1.2, B, 6.6, C.ink, 1.3);
+      const n = String(st.items.length); T(n, M + CW - width(n, R, 6.6), y + 1.2, R, 6.6, C.mute);
+      y += 13; hline(M, M + CW, y, C.ink, 0.8);
+      st.items.forEach((it, i) => {
+        const lines = wrap(it.text, R, 7.8, TXT_W), h = rowsH[i];
+        if (room() < h) { newPage(); tableHead(); }
+        if (it.mark === 'fail') box(M, y, CW, h, C.badBg);
+        lines.forEach((l, n) => T(l, M + 4, y + 3.5 + n * 9.6, R, 7.8, C.ink));
+        T(it.clause, X_CL - width(it.clause, B, 6.3), y + 4.2, B, 6.3, C.clause);
+        const mk = { ok: ['✓', C.ok, 0], fail: ['✗', C.fail, 1], na: ['—', C.mute, 2] }[it.mark];
+        if (mk) T(mk[0], X_MK[mk[2]] + 9 - width(mk[0], B, 8.5) / 2, y + 2.8, B, 8.5, mk[1]);
+        y += h; hline(M, M + CW, y, C.hair, 0.6);
+      });
+    });
+
+    // ---- summary + notes + signatures (kept together) ----
+    const noteLines = wrap(d.notes || '—', R, 8, CW - 16);
+    const tailH = 14 + 12 + 34 + 14 + 12 + Math.max(50, noteLines.length * 11 + 12) + 44;
+    if (room() < tailH) newPage(); else y += 4;
+    y += 10; spaced('SUMMARY', M, y, B, 6.5, C.sub, 1.8); y += 12;
+    const sw = CW / 4;
+    [[String(d.total), 'items', C.ink], [String(d.count.ok), 'conform', C.ok], [String(d.count.fail), 'do not conform', C.fail],
+     [String(d.count.na + d.count.blank), d.count.blank ? 'not applicable / not marked' : 'not applicable', C.mute]]
+      .forEach((s, i) => {
+        const x = M + i * sw;
+        box(x, y, sw, 34, null, C.line);
+        T(s[0], x + sw / 2 - width(s[0], B, 12.5) / 2, y + 5, B, 12.5, s[2]);
+        T(s[1], x + sw / 2 - width(s[1], R, 7) / 2, y + 22, R, 7, C.ink);
+      });
+    y += 34 + 14; spaced('NOTES', M, y, B, 6.5, C.sub, 1.8); y += 12;
+    const nh = Math.max(50, noteLines.length * 11 + 12);
+    box(M, y, CW, nh, null, C.line);
+    noteLines.forEach((l, n) => T(l, isRtl(l) ? M + CW - 8 - width(l, R, 8) : M + 8, y + 6 + n * 11, R, 8, C.ink));
+    y += nh + 30;
+    const sg = 10, sw3 = (CW - 2 * sg) / 3;
+    ['Inspector · ' + d.inspector, 'Contractor representative', 'Date'].forEach((s, i) => {
+      const x = M + i * (sw3 + sg);
+      T(s, x + 4, y - 9, R, 6.6, C.sub); hline(x, x + sw3, y, C.ink, 0.8);
+    });
+
+    // ---- footer on every page ----
+    const left = 'SOUTHMED · TECHNICAL SPECIFICATIONS IFC REV.00 · INSPECTION RECORD';
+    pages.forEach((p, i) => {
+      page = p;
+      hline(M, M + CW, H - M - 12, C.line, 0.6);
+      spaced(left, M, H - M - 8, R, 5.8, C.mute, 0.8);
+      const r = d.cl.code + ' · ' + d.irNumber + ' · PAGE ' + (i + 1) + ' / ' + pages.length;
+      spaced(r, M + CW - spacedW(r, R, 5.8, 0.8), H - M - 8, R, 5.8, C.mute, 0.8);
+    });
+    return doc.save();
+  }
+
+  async function build(d, nodeLibs) {
+    if (nodeLibs) return draw(nodeLibs, d);
+    const L = Object.assign({}, await loadLibs());
+    if (needsArabic(d)) Object.assign(L, await loadArabic());
+    return draw(L, d);
+  }
+
+  const api = { prepare, build, fileName, needsArabic, preload: () => loadLibs(), villaOf, floorOf, activityOf };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PtahRecord = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+
+  <script>
+    let allItems = [];
+    let currentItem = null;
+    let selectedInspector = "";
+    let selectedCode = "B";
+    let allInspectors = [];
+    const CODES = ['A', 'B', 'C', 'D'];
+
+    // ---- Request age (days since "Sent for review") ----
+    // Change these two numbers to set when a card turns amber / red.
+    const AGE_WARN_DAYS = 2;   // amber from this many days
+    const AGE_LATE_DAYS = 3;   // red from this many days (also red if past the ACC due date)
+
+    function isLate(item) {
+      return !!item.overdue || (item.ageDays !== null && item.ageDays !== undefined && item.ageDays >= AGE_LATE_DAYS);
+    }
+    function ageClass(item) {
+      if (item.ageDays === null || item.ageDays === undefined) return 'none';
+      if (isLate(item)) return 'late';
+      if (item.ageDays >= AGE_WARN_DAYS) return 'warn';
+      return '';
+    }
+    // Days since the ACC due date (0 if not past due)
+    function overdueDays(item) {
+      if (!item.overdue || !item.dueDate) return 0;
+      const p = item.dueDate.split('-').map(Number);
+      const due = new Date(p[0], p[1] - 1, p[2]);
+      const now = new Date(); now.setHours(0, 0, 0, 0);
+      return Math.max(1, Math.round((now - due) / 86400000));
+    }
+    function ageText(item) {
+      if (item.overdue) {
+        const o = overdueDays(item);
+        return o ? `Overdue ${o}d` : 'Overdue';
+      }
+      const d = item.ageDays;
+      if (d === null || d === undefined) return 'No date';
+      if (d === 0) return 'Today';
+      return d === 1 ? '1 day' : `${d} days`;
+    }
+    function fmtShortDate(iso) {
+      if (!iso) return '';
+      const p = iso.split('-');
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return `${Number(p[2])} ${months[Number(p[1]) - 1]}`;
+    }
+    // Oldest first; requests with no date go last
+    function byAge(a, b) {
+      const da = (a.ageDays === null || a.ageDays === undefined) ? -1 : a.ageDays;
+      const db = (b.ageDays === null || b.ageDays === undefined) ? -1 : b.ageDays;
+      if (db !== da) return db - da;
+      return String(a.irNumber).localeCompare(String(b.irNumber));
+    }
+    function lateCount(items) { return items.filter(isLate).length; }
+
+    // ---- Light / Dark theme (old Classic -> Light, Command -> Dark) ----
+    function setTheme(t) {
+      if (t === 'classic') t = 'light';
+      if (t === 'command') t = 'dark';
+      if (t !== 'light' && t !== 'dark') t = 'light';
+      document.documentElement.setAttribute('data-theme', t);
+      document.getElementById('themeIc').textContent = t === 'dark' ? '☀' : '☾';
+      try { localStorage.setItem('ptahTheme', t); } catch (e) { /* storage may be blocked in the web app frame */ }
+    }
+    function initTheme() {
+      let t = '';
+      try { t = localStorage.getItem('ptahTheme') || ''; } catch (e) {}
+      if (!t) t = 'dark';
+      document.getElementById('themeBtn').onclick = () =>
+        setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+      setTheme(t);
+    }
+
+    // ---- Layout: wide screens keep the closing panel on screen, narrower ones open it as a drawer ----
+    const WIDE = window.matchMedia ? matchMedia('(min-width: 1100px)') : { matches: true };
+    function isPanel() { return WIDE.matches; }
+
+    // ---- Drawing-board decorations: thin line drawings of site tools, scattered on the grid paper ----
+    const DECOR = {
+      ruler: () => { let t = ''; for (let x = 6; x <= 194; x += 8) { const h = (x - 6) % 40 === 0 ? 14 : 8; t += `<line x1="${x}" y1="2" x2="${x}" y2="${2 + h}"/>`; } return ['0 0 200 30', `<rect x="1" y="1" width="198" height="28" rx="2"/>${t}`]; },
+      compass: () => ['0 0 60 104', '<circle cx="30" cy="9" r="6"/><line x1="30" y1="15" x2="12" y2="98"/><line x1="30" y1="15" x2="48" y2="98"/><path d="M17 72 Q30 80 43 72"/><line x1="48" y1="98" x2="50" y2="103"/><circle cx="12" cy="98" r="1.5"/>'],
+      square: () => ['0 0 100 100', '<polygon points="4,96 96,96 4,4"/><polygon points="20,82 62,82 20,40"/><line x1="4" y1="86" x2="10" y2="86"/><line x1="4" y1="76" x2="8" y2="76"/><line x1="4" y1="66" x2="10" y2="66"/>'],
+      level: () => ['0 0 180 30', '<rect x="1" y="6" width="178" height="18" rx="3"/><rect x="74" y="10" width="32" height="10" rx="5"/><circle cx="92" cy="15" r="3"/><line x1="84" y1="8" x2="84" y2="22"/><line x1="96" y1="8" x2="96" y2="22"/><circle cx="20" cy="15" r="4"/><circle cx="160" cy="15" r="4"/>'],
+      plumb: () => ['0 0 40 110', '<line x1="20" y1="0" x2="20" y2="58"/><polygon points="20,58 31,78 20,104 9,78"/><line x1="12" y1="70" x2="28" y2="70"/>'],
+      scaffold: () => ['0 0 120 124', '<line x1="10" y1="6" x2="10" y2="122"/><line x1="60" y1="6" x2="60" y2="122"/><line x1="110" y1="6" x2="110" y2="122"/><line x1="4" y1="22" x2="116" y2="22"/><line x1="4" y1="62" x2="116" y2="62"/><line x1="4" y1="102" x2="116" y2="102"/><line x1="10" y1="102" x2="60" y2="62"/><line x1="60" y1="62" x2="110" y2="22"/><line x1="10" y1="62" x2="60" y2="22"/><rect x="4" y="16" width="112" height="6"/><line x1="4" y1="122" x2="116" y2="122"/>'],
+      crane: () => { let z = ''; for (let y = 135; y > 30; y -= 12) z += `<line x1="20" y1="${y}" x2="32" y2="${y - 12}"/>`; return ['0 0 140 140', `<line x1="20" y1="138" x2="20" y2="26"/><line x1="32" y1="138" x2="32" y2="26"/>${z}<line x1="4" y1="26" x2="136" y2="26"/><line x1="26" y1="6" x2="136" y2="26"/><line x1="26" y1="6" x2="4" y2="26"/><line x1="26" y1="6" x2="26" y2="26"/><rect x="4" y="27" width="12" height="9"/><line x1="112" y1="26" x2="112" y2="70"/><path d="M112 70 q6 0 6 6 q0 6 -6 6"/><line x1="10" y1="138" x2="42" y2="138"/>`]; },
+      trowel: () => ['0 0 100 80', '<polygon points="8,76 48,34 88,76"/><path d="M48 34 L48 22 L62 22"/><rect x="62" y="15" width="32" height="13" rx="6"/>'],
+      helmet: () => ['0 0 100 60', '<path d="M16 44 A34 34 0 0 1 84 44"/><rect x="4" y="44" width="92" height="7" rx="3"/><path d="M42 12 L42 44 M58 12 L58 44"/>'],
+      north: () => ['0 0 60 84', '<circle cx="30" cy="50" r="26"/><polygon points="30,20 39,62 30,54 21,62"/><text x="30" y="12" text-anchor="middle">N</text>'],
+      dim: () => ['0 0 200 34', '<line x1="6" y1="20" x2="194" y2="20"/><line x1="6" y1="8" x2="6" y2="32"/><line x1="194" y1="8" x2="194" y2="32"/><line x1="1" y1="25" x2="11" y2="15"/><line x1="189" y1="25" x2="199" y2="15"/><text x="100" y="15" text-anchor="middle">3600</text>'],
+      section: () => ['0 0 80 70', '<circle cx="30" cy="35" r="17"/><line x1="13" y1="35" x2="47" y2="35"/><polygon points="47,22 64,35 47,48"/><text x="30" y="30" text-anchor="middle">A</text><text x="30" y="48" text-anchor="middle">3</text>'],
+      bricks: () => { let r = ''; for (let row = 0; row < 4; row++) for (let i = -1; i < 4; i++) { const x = i * 24 + (row % 2 ? 12 : 0); if (x + 22 < 0 || x > 92) continue; r += `<rect x="${Math.max(1, x)}" y="${2 + row * 12}" width="${Math.min(22, 93 - Math.max(1, x))}" height="10"/>`; } return ['0 0 94 52', r]; },
+      door: () => ['0 0 70 70', '<line x1="4" y1="66" x2="4" y2="6"/><path d="M4 6 A60 60 0 0 1 64 66"/><line x1="0" y1="66" x2="70" y2="66"/>'],
+      windowSym: () => ['0 0 100 24', '<rect x="1" y="4" width="98" height="16"/><line x1="1" y1="10" x2="99" y2="10"/><line x1="1" y1="14" x2="99" y2="14"/>'],
+      stair: () => ['0 0 90 70', '<path d="M2 68 L2 56 L16 56 L16 44 L30 44 L30 32 L44 32 L44 20 L58 20 L58 8 L88 8"/><line x1="10" y1="62" x2="70" y2="14"/><polygon points="70,14 62,15 66,20"/>'],
+      column: () => ['0 0 50 50', '<rect x="10" y="10" width="30" height="30"/><line x1="10" y1="10" x2="40" y2="40"/><line x1="40" y1="10" x2="10" y2="40"/>'],
+      gridBubble: () => ['0 0 40 110', '<circle cx="20" cy="18" r="15"/><text x="20" y="22" text-anchor="middle">B</text><line x1="20" y1="34" x2="20" y2="108" stroke-dasharray="8 4 2 4"/>'],
+      ibeam: () => ['0 0 60 60', '<path d="M6 6 H54 V14 H34 V46 H54 V54 H6 V46 H26 V14 H6 Z"/>'],
+      hammer: () => ['0 0 90 50', '<rect x="4" y="6" width="34" height="14" rx="2"/><path d="M38 9 Q48 4 52 13"/><line x1="20" y1="20" x2="74" y2="46"/><line x1="24" y1="18" x2="78" y2="44"/>'],
+      pencil: () => ['0 0 110 20', '<rect x="16" y="4" width="84" height="12"/><polygon points="16,4 2,10 16,16"/><line x1="92" y1="4" x2="92" y2="16"/>'],
+      cone: () => ['0 0 50 60', '<polygon points="25,4 40,50 10,50"/><line x1="17" y1="28" x2="33" y2="28"/><line x1="14" y1="38" x2="36" y2="38"/><rect x="2" y="50" width="46" height="6"/>'],
+      tape: () => ['0 0 80 50', '<rect x="2" y="4" width="42" height="42" rx="8"/><circle cx="23" cy="25" r="8"/><path d="M44 36 H78 V42 H44"/><line x1="54" y1="36" x2="54" y2="39"/><line x1="64" y1="36" x2="64" y2="39"/><line x1="74" y1="36" x2="74" y2="39"/>'],
+      hatch: () => { let h = ''; for (let i = -40; i < 70; i += 9) h += `<line x1="${i}" y1="40" x2="${i + 40}" y2="0"/>`; return ['0 0 70 40', `<clipPath id="hc"><rect x="0" y="0" width="70" height="40"/></clipPath><rect x="0.5" y="0.5" width="69" height="39"/><g clip-path="url(#hc)">${h}</g>`]; },
+      house: () => ['0 0 80 70', '<polyline points="4,34 40,6 76,34"/><rect x="12" y="30" width="56" height="36"/><rect x="34" y="44" width="12" height="22"/><rect x="18" y="38" width="10" height="10"/>'],
+      wheelbarrow: () => ['0 0 100 60', '<path d="M10 14 H70 L60 38 H22 Z"/><circle cx="72" cy="48" r="9"/><line x1="60" y1="38" x2="72" y2="48"/><line x1="10" y1="14" x2="2" y2="8"/><line x1="26" y1="38" x2="24" y2="54"/>'],
+      bolt: () => ['0 0 30 70', '<polygon points="6,4 24,4 28,14 2,14"/><line x1="10" y1="14" x2="10" y2="66"/><line x1="20" y1="14" x2="20" y2="66"/><path d="M10 24 L20 28 M10 32 L20 36 M10 40 L20 44 M10 48 L20 52 M10 56 L20 60"/>'],
+      saw: () => ['0 0 100 40', '<path d="M20 6 H96 L96 26 L20 34 Z"/><path d="M20 34 l4 4 l4 -4 l4 4 l4 -4 l4 4 l4 -4 l4 4 l4 -4 l4 4 l4 -4 l4 4 l4 -4 l4 4 l4 -4 l4 4 l4 -4 l4 4 l4 -4"/><rect x="2" y="6" width="18" height="24" rx="5"/>'],
+      wrench: () => ['0 0 100 30', '<path d="M14 4 a11 11 0 1 0 10 18 L92 18 a4 4 0 0 0 0 -8 L24 8 a11 11 0 0 0 -10 -4 z"/><path d="M8 10 l6 5 l-6 5"/>'],
+      shovel: () => ['0 0 30 100', '<line x1="15" y1="4" x2="15" y2="62"/><line x1="7" y1="4" x2="23" y2="4"/><path d="M5 62 H25 V84 Q15 98 5 84 Z"/>'],
+      arch: () => ['0 0 80 70', '<path d="M8 68 V34 A32 32 0 0 1 72 34 V68"/><path d="M20 68 V36 A20 20 0 0 1 60 36 V68"/><line x1="40" y1="2" x2="40" y2="16"/>'],
+      dome: () => ['0 0 80 60', '<path d="M8 50 A32 32 0 0 1 72 50"/><line x1="2" y1="50" x2="78" y2="50"/><rect x="6" y="50" width="68" height="8"/><line x1="40" y1="18" x2="40" y2="8"/><circle cx="40" cy="6" r="2"/>'],
+      tower: () => ['0 0 50 100', '<rect x="10" y="10" width="30" height="88"/><path d="M10 26 H40 M10 42 H40 M10 58 H40 M10 74 H40"/><path d="M18 14 v8 M32 14 v8 M18 30 v8 M32 30 v8 M18 46 v8 M32 46 v8 M18 62 v8 M32 62 v8"/><line x1="25" y1="10" x2="25" y2="2"/>'],
+      plan: () => ['0 0 90 70', '<rect x="2" y="2" width="86" height="66"/><line x1="44" y1="2" x2="44" y2="40"/><line x1="2" y1="40" x2="60" y2="40"/><path d="M60 40 A14 14 0 0 1 74 54"/><line x1="74" y1="40" x2="88" y2="40"/>'],
+      bubbleV: () => ['0 0 30 70', '<rect x="4" y="2" width="22" height="66" rx="3"/><rect x="10" y="24" width="10" height="22" rx="5"/><circle cx="15" cy="35" r="3"/>'],
+      bucket: () => ['0 0 60 60', '<path d="M10 18 H50 L45 56 H15 Z"/><path d="M10 18 Q30 -6 50 18"/><line x1="12" y1="28" x2="48" y2="28"/>'],
+      gear: () => { let t = ''; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; t += `<line x1="${30 + 18 * Math.cos(a)}" y1="${30 + 18 * Math.sin(a)}" x2="${30 + 26 * Math.cos(a)}" y2="${30 + 26 * Math.sin(a)}"/>`; } return ['0 0 60 60', `<circle cx="30" cy="30" r="18"/><circle cx="30" cy="30" r="7"/>${t}`]; },
+      tsquare: () => ['0 0 110 40', '<rect x="2" y="2" width="16" height="36"/><rect x="18" y="14" width="90" height="12"/>'],
+      protractor: () => { let t = ''; for (let i = 1; i < 9; i++) { const a = Math.PI - i * Math.PI / 9; t += `<line x1="${40 + 34 * Math.cos(a)}" y1="${42 - 34 * Math.sin(a)}" x2="${40 + 28 * Math.cos(a)}" y2="${42 - 28 * Math.sin(a)}"/>`; } return ['0 0 80 46', `<path d="M4 42 A36 36 0 0 1 76 42 Z"/>${t}<circle cx="40" cy="42" r="2"/>`]; },
+      beamSection: () => ['0 0 70 60', '<rect x="4" y="4" width="62" height="52"/><circle cx="14" cy="14" r="3"/><circle cx="56" cy="14" r="3"/><circle cx="14" cy="46" r="3"/><circle cx="56" cy="46" r="3"/><circle cx="35" cy="46" r="3"/><rect x="9" y="9" width="52" height="42" stroke-dasharray="3 3"/>'],
+      levelMark: () => ['0 0 70 30', '<path d="M4 26 H66"/><polygon points="12,26 20,12 28,26"/><text x="32" y="20">±0.00</text>'],
+      cross: () => ['0 0 30 30', '<line x1="15" y1="2" x2="15" y2="28"/><line x1="2" y1="15" x2="28" y2="15"/><circle cx="15" cy="15" r="6"/>'],
+      elevation: () => ['0 0 90 40', '<polygon points="10,30 20,16 30,30" /><line x1="0" y1="30" x2="88" y2="30"/><text x="36" y="24">+3.60</text>']
+    };
+    function buildDecor() {
+      const box = document.getElementById('decor');
+      if (!box) return;
+      let seed = 20261031;                                   // fixed seed: same picture on every visit
+      const rnd = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+      const kinds = Object.keys(DECOR);
+      const W = window.innerWidth, H = window.innerHeight;
+      const count = Math.round(W * H / 1840);                // about 520 on a 1366 x 700 screen
+      // "best candidate" sampling: looks random (no rows or columns) but never piles up in one spot
+      const pts = [];
+      for (let i = 0; i < count; i++) {
+        let best = null, bestD = -1;
+        for (let t = 0; t < 6; t++) {
+          const x = rnd() * W, y = rnd() * H;
+          let d = Infinity;
+          for (let j = 0; j < pts.length; j++) { const dx = pts[j][0] - x, dy = pts[j][1] - y, q = dx * dx + dy * dy; if (q < d) d = q; }
+          if (d > bestD) { bestD = d; best = [x, y]; }
+        }
+        pts.push(best);
+      }
+      let html = '', last = '';
+      pts.forEach(([x, y]) => {
+        let kind; do { kind = kinds[Math.floor(rnd() * kinds.length)]; } while (kind === last && kinds.length > 1);
+        last = kind;
+        const [vb, body] = DECOR[kind]();
+        const v = vb.split(' ').map(Number);
+        const longest = 24 + rnd() * 30;                     // 24–54px, different every time it repeats
+        const scale = longest / Math.max(v[2], v[3]);
+        const rot = (rnd() * 360 - 180).toFixed(0);          // any angle
+        const flip = rnd() < 0.5 ? -1 : 1;                   // and sometimes mirrored
+        html += `<svg viewBox="${vb}" style="left:${x.toFixed(0)}px;top:${y.toFixed(0)}px;width:${(v[2] * scale).toFixed(0)}px;height:${(v[3] * scale).toFixed(0)}px;transform:translate(-50%,-50%) rotate(${rot}deg) scaleX(${flip})">${body}</svg>`;
+      });
+      box.innerHTML = html;
+    }
+    let decorTimer;
+    window.addEventListener('resize', () => { clearTimeout(decorTimer); decorTimer = setTimeout(buildDecor, 200); });
+
+    window.onload = function() {
+      buildDecor();
+      try { history.replaceState({ ptah: 1, view: { level: 'home', project: null, type: null }, d: 0, q: '', s: false }, ''); } catch (e) {}
+      initTheme();
+      fetchItems();
+    };
+
+    let loading = false;
+    function setRefreshing(on) {
+      loading = on;
+      const b = document.getElementById('refreshBtn');
+      if (b) { b.disabled = on; b.classList.toggle('spin', on); }
+    }
+
+    // Loads (or reloads) the requests. Stays on the same contractor / list while refreshing.
+    function fetchItems() {
+      if (loading) return;
+      setRefreshing(true);
+      const firstLoad = !allItems.length;
+      if (firstLoad) {
+        document.getElementById('loadingState').style.display = 'block';
+        document.getElementById('gridContainer').innerHTML = "";
+      }
+      if(typeof google !== 'undefined' && google.script) {
+          google.script.run
+            .withSuccessHandler(renderInspectors)
+            .withFailureHandler(err => console.warn('getInspectors failed', err))
+            .getInspectors();
+          google.script.run
+            .withSuccessHandler(items => { setRefreshing(false); renderGrid(items); })
+            .withFailureHandler(showLoadError)
+            .getDailyActions();
+      } else {
+          // Fallback for local testing
+          renderInspectors(['Ahmed Gaber', 'Mohamed AbdelAziz', 'Well', 'Karim']);
+          setTimeout(() => { setRefreshing(false); renderGrid([]); }, 1000);
+      }
+    }
+
+    // The sheet couldn't be read: say why and offer a retry (instead of loading forever)
+    function showLoadError(err) {
+      setRefreshing(false);
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('counterBadge').textContent = 'Not loaded';
+      const msg = (err && err.message) ? err.message : String(err || 'Unknown error');
+      const stage = document.getElementById('gridContainer');
+      stage.innerHTML = `<div class="load-error"><h3>Couldn't load the requests</h3><p>${escapeHTML(msg)}</p>
+        <button type="button" onclick="fetchItems()">Try again</button></div>`;
+    }
+
+    function renderGrid(items) {
+      allItems = items || [];
+      document.getElementById('loadingState').style.display = 'none';
+      applyFilter();
+    }
+
+    // Helper to sanitize HTML to prevent XSS
+    function escapeHTML(str) {
+      const div = document.createElement('div');
+      div.innerText = str;
+      return div.innerHTML;
+    }
+
+    // ---- Navigation: Company (SH / SQ / AT) > CIR / MIR > pending requests ----
+    const PROJECTS = [
+      { key: 'SH', label: 'EL-Shorouk', color: '#5b84ad' },
+      { key: 'SQ', label: 'Square',     color: '#5e978b' },
+      { key: 'AT', label: 'Alexandria', color: '#8a7ca8' },
+      { key: 'OTHER', label: 'Other',   color: '#8a96a3' }
+    ];
+    const DOC_TYPES = [
+      { key: 'CIR', label: 'CIRs', full: 'Contractor Inspection Requests' },
+      { key: 'MIR', label: 'MIRs', full: 'Material Inspection Requests' }
+    ];
+    let currentQuery = "";
+    let view = { level: 'home', project: null, type: null };
+
+    function getProject(item) {
+      const num = String(item.irNumber || "").trim().toUpperCase();
+      for (const k of ['SH', 'SQ', 'AT']) if (num.startsWith(k)) return k;
+      const m = String(item.description || "").toUpperCase().match(/(?:^|[^A-Z])(SH|SQ|AT)-(?:CIR|MIR)/);
+      return m ? m[1] : 'OTHER';
+    }
+
+    function getDocType(item) {
+      const num = String(item.irNumber || "").toUpperCase();
+      if (/(^|[^A-Z])MIR([^A-Z]|$)/.test(num)) return 'MIR';
+      if (/(^|[^A-Z])CIR([^A-Z]|$)/.test(num)) return 'CIR';
+      const desc = String(item.description || "").toUpperCase();
+      if (/(^|[^A-Z])MIR([^A-Z]|$)/.test(desc)) return 'MIR';
+      return 'CIR';
+    }
+
+    function projectInfo(key) { return PROJECTS.find(p => p.key === key) || PROJECTS[PROJECTS.length - 1]; }
+    function typeInfo(key) { return DOC_TYPES.find(t => t.key === key) || DOC_TYPES[0]; }
+
+    // "Villa 6" from the description (or the generic request type)
+    // Handles "Villa 105, 106 Type S02B", "Villas 101-102", "Villa Villa 105-106"
+    const VILLA_RE = /\bvillas?\s*(?:villa\s*)?\(?\s*(\d+(?:\s*(?:[,\/&-]|and)\s*\d+)*)\)?(?:\s+type\s+([A-Z0-9()]+))?/i;
+    function villaOf(item) {
+      const m = String(item.description || "").match(VILLA_RE);
+      if (m) return "Villa " + m[1].replace(/\s+/g, ' ').trim() + (m[2] ? " · " + m[2].toUpperCase() : "");
+      return getDocType(item) === 'MIR' ? "Material Inspection Request" : "Inspection Request";
+    }
+    // Just the villa number(s) and type, for the big number on Field cards
+    function villaParts(item) {
+      const m = String(item.description || "").match(VILLA_RE);
+      if (!m) return null;
+      return { num: m[1].replace(/\s+/g, ' ').trim(), type: m[2] ? m[2].toUpperCase() : "" };
+    }
+    // The activity only: drops "Inspection Request for" and the villa that's already in the title
+    function activityOf(item) {
+      const full = String(item.description || "").trim();
+      // drop the ACC reference in front: "CP2C-CN-SH-CIR-ARC-14689 / ..." or "PEG-...-19320 - ..."
+      let a = full.replace(/^\S*(?:CIR|MIR)\S*\s*(?:\/|-|–|—|:)\s*/i, "");
+      a = a.replace(/^(?:material\s+)?inspection\s+request\s+(?:for\s+)?/i, "");
+      // drop the villa (it's already the card title) and any "for"/"-" left hanging
+      a = a.replace(new RegExp('\\s*(?:[-–—:,]\\s*)?(?:for\\s+)?' + VILLA_RE.source, 'i'), " ");
+      a = a.replace(/\s{2,}/g, " ").replace(/^[\s\-–—:,]+|[\s\-–—:,]+$/g, "").replace(/\s+(?:for|of|at|in)$/i, "").trim();
+      return a || full;
+    }
+    // Last block of digits of the request number ("14689")
+    function shortNum(item) {
+      const m = String(item.irNumber || "").match(/(\d+)\D*$/);
+      return m ? m[1] : String(item.irNumber || "");
+    }
+
+    // ---- List options (Late only / sort / Cards-Table) ----
+    let lateOnly = false;
+    let sortMode = 'age';          // 'age' = oldest first, 'due' = due soonest
+    let layoutMode = 'table';      // 'cards' | 'table'
+    try { const s = localStorage.getItem('ptahLayout'); if (s) layoutMode = s === 'table' ? 'table' : 'cards'; } catch (e) {}
+    let shownList = [];            // the requests on screen, in order (for "next request" after closing)
+
+    function byDue(a, b) {
+      const da = a.dueDate || '9999-99-99', db = b.dueDate || '9999-99-99';
+      if (da !== db) return da < db ? -1 : 1;
+      return byAge(a, b);
+    }
+
+    function segGroup(options, current, onPick) {
+      const g = document.createElement('div');
+      g.className = 'seg';
+      options.forEach(o => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = o.key === current ? 'on' : '';
+        b.innerHTML = o.html;
+        b.onclick = () => onPick(o.key);
+        g.appendChild(b);
+      });
+      return g;
+    }
+
+    // Toolbar + cards/table for a list of items
+    function renderItemList(stage, items, showTag) {
+      const late = lateCount(items);
+      const bar = document.createElement('div');
+      bar.className = 'list-bar';
+      const lbl = t => { const x = document.createElement('span'); x.className = 'bar-lbl'; x.textContent = t; bar.appendChild(x); };
+      lbl('Show');
+      bar.appendChild(segGroup([
+        { key: 'all',  html: `All <span class="n">${items.length}</span>` },
+        { key: 'late', html: `⚠ Late <span class="n">${late}</span>` }
+      ], lateOnly ? 'late' : 'all', k => { lateOnly = k === 'late'; render(); }));
+      lbl('Sort');
+      bar.appendChild(segGroup([
+        { key: 'age', html: 'Oldest first' },
+        { key: 'due', html: 'Due soonest' }
+      ], sortMode, k => { sortMode = k; render(); }));
+      const sp = document.createElement('div'); sp.className = 'spacer'; bar.appendChild(sp);
+      bar.appendChild(segGroup([
+        { key: 'table', html: '<span title="List">☰</span>' },
+        { key: 'cards', html: '<span title="Cards">▦</span>' }
+      ], layoutMode, k => { layoutMode = k; try { localStorage.setItem('ptahLayout', k); } catch (e) {} render(); }));
+      stage.appendChild(bar);
+
+      let list = lateOnly ? items.filter(isLate) : items.slice();
+      if (!list.length) {
+        shownList = [];
+        stage.insertAdjacentHTML('beforeend', emptyState('No late requests', 'Nothing here is late. 👍'));
+        return;
+      }
+      list.sort(sortMode === 'due' ? byDue : byAge);
+      shownList = list;
+
+      if (layoutMode === 'table') {
+        const rows = document.createElement('div');
+        rows.className = 'rows';
+        rows.insertAdjacentHTML('beforeend',
+          '<div class="r-item r-head"><span></span><span>Villa / Number</span><span>Activity</span><span>Due</span><span>Waiting</span></div>');
+        list.forEach(item => rows.appendChild(buildRow(item, showTag)));
+        stage.appendChild(rows);
+      } else {
+        const grid = document.createElement('div');
+        grid.className = 'cards-grid';
+        list.forEach(item => grid.appendChild(buildCard(item, showTag)));
+        stage.appendChild(grid);
+      }
+    }
+
+    function buildRow(item, showTag) {
+      const r = document.createElement('div');
+      r.className = 'r-item' + (isLate(item) ? ' is-late' : '') + (currentItem && currentItem.rowIndex === item.rowIndex ? ' sel' : '');
+      r.id = `card-${item.rowIndex}`;
+      r.tabIndex = 0;
+      r.onclick = () => openModal(item);
+      r.onkeydown = e => { if (e.key === 'Enter') openModal(item); };
+      const tag = showTag ? ` <span class="row-index">· ${escapeHTML(projectInfo(getProject(item)).label)} · ${getDocType(item)}</span>` : "";
+      const due = item.dueDate ? `${item.overdue ? 'Over ' : 'Due '}${fmtShortDate(item.dueDate)}` : '—';
+      r.innerHTML = `
+        <span class="st"></span>
+        <span class="r-villa">${escapeHTML(villaOf(item))}${tag}<span class="r-act-m">${escapeHTML(activityOf(item))}</span><span class="r-num">${escapeHTML(item.irNumber || "N/A")} · Rev ${escapeHTML(item.rev || "0")}</span></span>
+        <span class="r-act" title="${escapeHTML(item.description || "")}">${escapeHTML(activityOf(item))}</span>
+        <span class="r-due${item.overdue ? ' over' : ''}">${due}</span>
+        <span class="r-age"><span class="age-chip ${ageClass(item)}">${ageText(item)}</span></span>`;
+      return r;
+    }
+
+    function buildCard(item, showTag) {
+      const card = document.createElement('div');
+      card.className = 'card' + (isLate(item) ? ' is-late' : '') + (currentItem && currentItem.rowIndex === item.rowIndex ? ' sel' : '');
+      card.id = `card-${item.rowIndex}`;
+      card.tabIndex = 0;
+      card.onclick = () => openModal(item);
+      card.onkeydown = e => { if (e.key === 'Enter') openModal(item); };
+
+      const safeDesc = escapeHTML(activityOf(item));
+      const villaName = escapeHTML(villaOf(item));
+      const tag = showTag ? `<span class="row-index"> · ${escapeHTML(projectInfo(getProject(item)).label)} · ${getDocType(item)}</span>` : "";
+      const sentTxt = item.sentDate ? `Received ${fmtShortDate(item.sentDate)}` : "";
+      const dueTxt = item.dueDate ? `${item.overdue ? "Overdue since" : "Due"} ${fmtShortDate(item.dueDate)}` : "";
+      const dueLine = (sentTxt || dueTxt)
+        ? `<div class="due-line${item.overdue ? " over" : ""}">${[sentTxt, dueTxt].filter(Boolean).join(" · ")}</div>`
+        : "";
+
+      card.innerHTML = `
+        <div class="card-top">
+          <span class="cir-chip">${escapeHTML(item.irNumber || "N/A")}</span>
+          <span class="rev-chip">Rev ${escapeHTML(item.rev || "0")}</span>
+        </div>
+        <div class="card-middle">
+          <div class="villa-title">${villaName}</div>
+          <div class="activity-title" title="${escapeHTML(item.description || "")}">${safeDesc}</div>
+          ${dueLine}
+        </div>
+        <div class="card-footer">
+          <span><span class="age-chip ${ageClass(item)}">${ageText(item)}</span>${tag}</span>
+          <span class="open-tag">Close →</span>
+        </div>
+      `;
+      return card;
+    }
+
+    // buckets[project][type] = [items]
+    function bucketize(items) {
+      const b = {};
+      items.forEach(item => {
+        const p = getProject(item), t = getDocType(item);
+        if (!b[p]) b[p] = {};
+        if (!b[p][t]) b[p][t] = [];
+        b[p][t].push(item);
+      });
+      return b;
+    }
+    function countOf(b, p, t) { return ((b[p] || {})[t] || []).length; }
+    function projectItems(b, p) { return [].concat((b[p] || {}).CIR || [], (b[p] || {}).MIR || []); }
+    function visibleProjects(b) { return PROJECTS.filter(p => p.key !== 'OTHER' || projectItems(b, 'OTHER').length); }
+
+    function navTile(name, sub, count, color, go, onClick) {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'nav-tile' + (count === 0 ? ' empty' : '');
+      el.style.setProperty('--tile', color);
+      el.innerHTML = `<div><div class="nav-name">${escapeHTML(name)}</div><div class="nav-sub">${escapeHTML(sub)}</div></div>
+                      <div class="nav-num">${count}</div>
+                      <div class="nav-go">${go} →</div>`;
+      el.onclick = onClick;
+      return el;
+    }
+
+    // ---- Browser history: system Back (Android / Windows / mouse) = one level up ----
+    let depth = 0;            // how many in-app entries sit above the home entry
+    let searchPushed = false; // current entry is a "search" entry
+    let modalPushed = false;  // current entry is the open-request entry
+
+    function snapshot(extra) {
+      return Object.assign({ ptah: 1, view: Object.assign({}, view), d: depth,
+                             q: document.getElementById('searchInput').value, s: searchPushed }, extra || {});
+    }
+    function pushState(extra) {
+      depth++;
+      try { history.pushState(snapshot(extra), ''); } catch (e) {}
+    }
+    function navigate(v) {
+      if (modalPushed) {                 // a request is open: the new screen takes its place in history
+        modalPushed = false;
+        hidePanel();
+        view = v;
+        try { history.replaceState(snapshot(), ''); } catch (e) {}
+        render();
+        return;
+      }
+      view = v;
+      pushState();
+      render();
+    }
+    function goHome()           { if (depth > 0) { history.go(-depth); } else { view = { level: 'home', project: null, type: null }; render(); } }
+    function goProject(p)       { navigate({ level: 'project', project: p, type: null }); }
+    function goList(p, t)       { navigate({ level: 'list', project: p, type: t }); }
+    function goBack() {
+      if (depth > 0) history.back();
+      else { view = { level: 'home', project: null, type: null }; render(); }
+    }
+    function clearSearch() {
+      if (searchPushed) { history.back(); return; }
+      document.getElementById('searchInput').value = "";
+      currentQuery = "";
+      render();
+    }
+
+    window.addEventListener('popstate', function(e) {
+      const s = e.state;
+      if (!s || !s.ptah) {              // base entry (page just loaded)
+        view = { level: 'home', project: null, type: null };
+        depth = 0; searchPushed = false; modalPushed = false;
+        document.getElementById('searchInput').value = "";
+        currentQuery = "";
+      } else {
+        view = s.view; depth = s.d; searchPushed = !!s.s && !s.m; modalPushed = false;
+        document.getElementById('searchInput').value = s.q || "";
+        currentQuery = (s.q || "").toLowerCase().trim();
+      }
+      hidePanel();
+      render();
+    });
+
+    function renderCrumbs() {
+      document.getElementById('backBtn').hidden = !!currentQuery || view.level === 'home';
+      const nav = document.getElementById('crumbs');
+      nav.innerHTML = "";
+      const trail = [];
+      if (currentQuery) {
+        trail.push({ label: 'Home', action: goHome });
+        if (view.level !== 'home' && view.project) {
+          trail.push({ label: projectInfo(view.project).label, action: null });
+          if (view.level === 'list') trail.push({ label: typeInfo(view.type).label, action: null });
+        }
+        trail.push({ label: 'Search results', action: null });
+      } else if (view.level === 'home') {
+        nav.hidden = true;
+        return;
+      } else {
+        trail.push({ label: 'Home', action: goHome });
+        if (view.level === 'project') {
+          trail.push({ label: projectInfo(view.project).label, action: null });
+        } else {
+          trail.push({ label: projectInfo(view.project).label, action: () => history.back() });
+          trail.push({ label: typeInfo(view.type).label, action: null });
+        }
+      }
+      nav.hidden = false;
+      nav.dataset.tail = '1';
+      trail.pop();                       // the screen you're on is already the big title
+      trail.forEach((c, i) => {
+        if (i > 0) {
+          const sep = document.createElement('span');
+          sep.className = 'sep';
+          sep.textContent = '›';
+          nav.appendChild(sep);
+        }
+        if (c.action) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = c.label;
+          b.onclick = c.action;
+          nav.appendChild(b);
+        } else {
+          const s = document.createElement('span');
+          s.className = 'here';
+          s.textContent = c.label;
+          nav.appendChild(s);
+        }
+      });
+    }
+
+    // ---- Desk sidebar: every contractor with its CIR / MIR counts ----
+    function todayLabel() {
+      return new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    }
+    function renderSide(b) {
+      const side = document.getElementById('side');
+      side.innerHTML = "";
+      side.insertAdjacentHTML('beforeend', `<div class="brand"><b>Shaker Inspect</b><small>${escapeHTML(todayLabel())}</small></div>`);
+      const all = document.createElement('button');
+      all.type = 'button';
+      all.className = 'side-item' + (view.level === 'home' && !currentQuery ? ' on' : '');
+      const allLate = lateCount(allItems);
+      all.innerHTML = `<span>All contractors</span><span>${allLate ? `<span class="lt">${allLate} late</span>` : ''}<span class="n">${allItems.length}</span></span>`;
+      all.onclick = goHome;
+      side.appendChild(all);
+      side.insertAdjacentHTML('beforeend', '<div class="grp">Contractors</div>');
+      visibleProjects(b).forEach(p => {
+        const items = projectItems(b, p.key), late = lateCount(items);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'side-item' + (view.project === p.key && view.level === 'project' ? ' on' : '');
+        btn.innerHTML = `<span><i class="dot" style="border-color:${p.color}"></i>${escapeHTML(p.label)}</span><span>${late ? `<span class="lt">${late} late</span>` : ''}<span class="n">${items.length}</span></span>`;
+        btn.onclick = () => goProject(p.key);
+        side.appendChild(btn);
+        if (view.project === p.key || items.length) {
+          DOC_TYPES.forEach(t => {
+            const n = countOf(b, p.key, t.key);
+            const s = document.createElement('button');
+            s.type = 'button';
+            s.className = 'side-item sub' + (view.level === 'list' && view.project === p.key && view.type === t.key ? ' on' : '');
+            s.innerHTML = `<span>${t.label}</span><span class="n">${n}</span>`;
+            s.onclick = () => goList(p.key, t.key);
+            side.appendChild(s);
+          });
+        }
+      });
+    }
+
+    // ---- Contractor chips (narrow Desk + Field) ----
+    function renderChips(b) {
+      const box = document.getElementById('coChips');
+      box.innerHTML = "";
+      const mk = (label, n, on, fn) => {
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = on ? 'on' : '';
+        x.innerHTML = `${escapeHTML(label)}<span class="n">${n}</span>`;
+        x.onclick = fn;
+        box.appendChild(x);
+      };
+      mk('All', allItems.length, view.level === 'home', goHome);
+      visibleProjects(b).forEach(p => {
+        mk(p.label, projectItems(b, p.key).length, view.project === p.key && view.level !== 'home', () => {
+          if (view.project === p.key) return;
+          if (view.level === 'list') goList(p.key, view.type); else goProject(p.key);
+        });
+      });
+    }
+
+
+    // ---- Stamp on the request while it closes ----
+    const STAMP_TEXT = { A: 'Approved', B: 'Approved as noted', C: 'Revise & resubmit', D: 'Rejected' };
+    function stampItem(rowIndex, code) {
+      const el = document.getElementById(`card-${rowIndex}`);
+      if (!el || !STAMP_TEXT[code]) return;
+      const st = document.createElement('div');
+      st.className = 'stamp stamp-' + code.toLowerCase();
+      st.innerHTML = `<b>${code}</b><span>${STAMP_TEXT[code]}</span>`;
+      el.appendChild(st);
+    }
+
+    // ---- Requests closed today on this device (for the summary) ----
+    function todayKey() { const n = new Date(); return `${n.getFullYear()}-${n.getMonth() + 1}-${n.getDate()}`; }
+    function closedToday() {
+      try { const o = JSON.parse(localStorage.getItem('ptahClosed') || '{}'); return o.d === todayKey() ? (o.n || 0) : 0; } catch (e) { return 0; }
+    }
+    function bumpClosed(by) {
+      const n = Math.max(0, closedToday() + by);
+      try { localStorage.setItem('ptahClosed', JSON.stringify({ d: todayKey(), n: n })); } catch (e) {}
+    }
+
+    // ---- Empty panel: today at a glance ----
+    function renderSummary() {
+      const box = document.getElementById('panelEmpty');
+      if (!box) return;
+      const b = bucketize(allItems);
+      const rows = visibleProjects(b).map(p => {
+        const items = projectItems(b, p.key), late = lateCount(items);
+        return `<button type="button" class="sum-row" onclick="goProject('${p.key}')"><span><i class="dot" style="border-color:${p.color}"></i>${escapeHTML(p.label)}</span><span class="mono">${late ? `<em>${late} late</em> / ` : ''}${items.length}</span></button>`;
+      }).join('');
+      const oldest = allItems.slice().sort(byAge).slice(0, 3);
+      const old = oldest.map(it => `<button type="button" class="sum-old" data-row="${it.rowIndex}"><b>${escapeHTML(villaOf(it))}</b><span class="mono">${escapeHTML(it.irNumber || '')} · ${ageText(it)}</span></button>`).join('');
+      box.innerHTML = `
+        <div class="sum-h">Today · ${escapeHTML(todayLabel())}</div>
+        <div class="sum-big"><b class="mono">${closedToday()}</b><span>requests closed today<br>on this device</span></div>
+        <div class="sum-h">Late by contractor</div>
+        <div class="sum-list">${rows || '<span class="sum-none">Nothing pending.</span>'}</div>
+        <div class="sum-h">Waiting longest</div>
+        <div class="sum-list">${old || '<span class="sum-none">Nothing pending.</span>'}</div>
+        <div class="sum-keys"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>1</kbd>–<kbd>4</kbd> code A–D</span><span><kbd>Ctrl</kbd>+<kbd>↵</kbd> close</span><span><kbd>Esc</kbd> back</span></div>`;
+      box.querySelectorAll('.sum-old').forEach(btn => {
+        btn.onclick = () => { const it = allItems.find(x => String(x.rowIndex) === btn.dataset.row); if (it) openModal(it); };
+      });
+    }
+
+    // ---- Title block (footer) ----
+    function renderTitleBlock() {
+      const items = scopeItems();
+      const set = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+      set('tbSheet', currentQuery ? 'Search results' : (scopeLabel() || 'All contractors'));
+      set('tbDate', new Date().toLocaleDateString('en-GB'));
+      set('tbCount', `${items.length} · ${lateCount(items)}`);
+    }
+
+    function updateTitle() {
+      const t = currentQuery ? 'Search results' : (scopeLabel() || 'All contractors');
+      document.getElementById('scopeTitle').textContent = t;
+    }
+
+    function emptyState(title, text) {
+      return `<div class="empty-state"><h3>${title}</h3><p>${text}</p></div>`;
+    }
+
+    function render() {
+      const stage = document.getElementById('gridContainer');
+      stage.innerHTML = "";
+      stage.classList.remove('stage-in');
+      void stage.offsetWidth;            // restart the fade-in animation
+      stage.classList.add('stage-in');
+      renderCrumbs();
+      const loaded = allItems.length || document.getElementById('loadingState').style.display === 'none';
+      if (loaded) updateBadgeCount();
+      const b = bucketize(allItems);
+      renderSide(b);
+      renderChips(b);
+      updateTitle();
+      renderSummary();
+      renderTitleBlock();
+      shownList = [];
+      if (!loaded) return;
+
+      if (currentQuery) {                // search only inside the screen you're on (Home = everything)
+        const q = currentQuery;
+        const found = scopeItems().filter(item =>
+          (item.description && item.description.toLowerCase().includes(q)) ||
+          (item.irNumber && item.irNumber.toLowerCase().includes(q)));
+        if (!found.length) {
+          const where = scopeLabel();
+          stage.innerHTML = emptyState('No matches', 'Nothing pending matches your search' + (where ? ' in ' + escapeHTML(where) : '') + '.');
+          return;
+        }
+        renderItemList(stage, found, view.level !== 'list');
+        return;
+      }
+
+      if (!allItems.length) {
+        stage.innerHTML = emptyState('🎉 All caught up!', 'There are no pending inspection requests at the moment.');
+        return;
+      }
+
+      if (view.level === 'home') {
+        const grid = document.createElement('div');
+        grid.className = 'nav-grid';
+        visibleProjects(b).forEach(p => {
+          const cir = countOf(b, p.key, 'CIR'), mir = countOf(b, p.key, 'MIR');
+          const late = lateCount(projectItems(b, p.key));
+          const sub = `${cir} CIR · ${mir} MIR` + (late ? ` · ⚠ ${late} late` : '');
+          grid.appendChild(navTile(p.label, sub, cir + mir, p.color, 'Open', () => goProject(p.key)));
+        });
+        stage.appendChild(grid);
+      } else if (view.level === 'project') {
+        const p = projectInfo(view.project);
+        const grid = document.createElement('div');
+        grid.className = 'nav-grid';
+        DOC_TYPES.forEach(t => {
+          const late = lateCount(((b[p.key] || {})[t.key]) || []);
+          const sub = t.full + (late ? ` · ⚠ ${late} late` : '');
+          grid.appendChild(navTile(t.label, sub, countOf(b, p.key, t.key), p.color, 'View', () => goList(p.key, t.key)));
+        });
+        stage.appendChild(grid);
+      } else {
+        const list = (b[view.project] || {})[view.type] || [];
+        if (!list.length) {
+          stage.innerHTML = emptyState('Nothing pending here', 'All ' + typeInfo(view.type).label + ' for ' + projectInfo(view.project).label + ' are done.');
+          return;
+        }
+        renderItemList(stage, list, false);
+      }
+    }
+
+    let searchTimeout;
+    function filterCards() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(applyFilter, 250); // Debounce for better performance
+    }
+
+    function applyFilter() {
+      const raw = document.getElementById('searchInput').value;
+      const had = !!currentQuery;
+      currentQuery = raw.toLowerCase().trim();
+      if (currentQuery && !had) {                 // search starts: one history entry
+        searchPushed = true;
+        pushState({ s: true, q: raw });
+      } else if (!currentQuery && had && searchPushed) {
+        searchPushed = false;                     // search cleared: drop its entry
+        history.back();
+        return;
+      } else if (searchPushed) {
+        try { history.replaceState(snapshot({ s: true }), ''); } catch (e) {}
+      }
+      render();
+    }
+
+    // Items of the screen you're on: Home = everything, contractor = its items, list = contractor + CIR/MIR
+    function scopeItems() {
+      if (view.level === 'home' || !view.project) return allItems;
+      return allItems.filter(item => getProject(item) === view.project &&
+        (view.level !== 'list' || getDocType(item) === view.type));
+    }
+    function scopeLabel() {
+      if (view.level === 'home' || !view.project) return '';
+      return projectInfo(view.project).label + (view.level === 'list' ? ' ' + typeInfo(view.type).label : '');
+    }
+
+    // Pending / Late counter for the current screen only (not the whole sheet)
+    function updateBadgeCount() {
+      const items = scopeItems();
+      const late = lateCount(items);
+      document.getElementById('counterBadge').innerHTML =
+        `Pending: ${items.length}` + (late ? ` · <span class="late-count">Late: ${late}</span>` : '');
+      const label = scopeLabel();
+      document.getElementById('searchInput').placeholder =
+        label ? `Search in ${label}...` : 'Search by Villa or activity...';
+    }
+
+    function markSelected() {
+      document.querySelectorAll('.r-item.sel, .card.sel').forEach(el => el.classList.remove('sel'));
+      if (!currentItem) return;
+      const el = document.getElementById(`card-${currentItem.rowIndex}`);
+      if (el) { el.classList.add('sel'); if (isPanel()) el.scrollIntoView({ block: 'nearest' }); }
+    }
+
+    function openModal(item) {
+      currentItem = item;
+      document.getElementById('modalNum').innerText = `${item.irNumber} · Rev ${item.rev}`;
+      document.getElementById('modalTitle').innerText = villaOf(item);
+      const sub = [];
+      if (item.overdue) sub.push(ageText(item));
+      else if (item.ageDays !== null && item.ageDays !== undefined) sub.push(`Waiting: ${ageText(item)}`);
+      if (item.sentDate) sub.push(`Received ${fmtShortDate(item.sentDate)}`);
+      if (item.dueDate) sub.push(`Due ${fmtShortDate(item.dueDate)}`);
+      document.getElementById('modalSubTitle').innerText = sub.join(' · ');
+      document.getElementById('modalDesc').innerText = item.description;
+
+      // Auto-fill today's date if empty
+      const now = new Date();   // local date (not UTC), so after midnight it's already the new day
+      const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      document.getElementById('modalDate').value = item.date || todayDate;
+      document.getElementById('modalNotes').value = item.notes || "";
+      document.getElementById('modalStatus').innerText = "";
+      document.getElementById('modalStatus').style.color = "";
+      document.getElementById('modalSaveBtn').disabled = false;
+
+      // Reset or set specific inspector/code
+      selectInspector(item.inspector || savedInspector());
+      selectCode(CODES.indexOf(item.code) !== -1 ? item.code : "B");
+      loadChecklist(item);
+
+      document.getElementById('modalOverlay').classList.add('active');
+      markSelected();
+      if (!modalPushed) { modalPushed = true; pushState({ m: true }); }
+      if (isPanel()) document.querySelector('.modal-box').scrollTop = 0;
+    }
+
+    function hidePanel() {
+      document.getElementById('modalOverlay').classList.remove('active');
+      currentItem = null;
+      markSelected();
+    }
+
+    function closeModal() {
+      if (modalPushed) { modalPushed = false; history.back(); return; }   // popstate hides it
+      hidePanel();
+    }
+
+    function handleOverlayClick(e) {
+      if (isPanel()) return;
+      if (e.target.id === 'modalOverlay') closeModal();
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && currentItem) closeModal();
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && currentItem) { e.preventDefault(); submitModalData(); return; }
+      const tag = (e.target && e.target.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || e.ctrlKey || e.metaKey || e.altKey) return;
+      // ↑ / ↓ walk through the requests on screen
+      if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && shownList.length) {
+        e.preventDefault();
+        let i = currentItem ? shownList.findIndex(x => x.rowIndex === currentItem.rowIndex) : -1;
+        i = e.key === 'ArrowDown' ? Math.min(shownList.length - 1, i + 1) : Math.max(0, i - 1);
+        openModal(shownList[i]);
+        return;
+      }
+      // 1–4 pick the action code A–D
+      if (currentItem && /^[1-4]$/.test(e.key)) { e.preventDefault(); selectCode(CODES[Number(e.key) - 1]); }
+    });
+
+    // Builds the engineer buttons from the spreadsheet tabs (new tab = new engineer)
+    function renderInspectors(names) {
+      allInspectors = names || [];
+      const row = document.getElementById('inspectorPills');
+      row.innerHTML = "";
+      if (!allInspectors.length) {
+        row.innerHTML = '<span class="modal-status">No engineer tabs found</span>';
+        return;
+      }
+      allInspectors.forEach(name => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pill-btn';
+        btn.dataset.name = name;
+        btn.textContent = name;
+        btn.onclick = () => selectInspector(name);
+        row.appendChild(btn);
+      });
+      selectInspector(selectedInspector);
+    }
+
+    // The portal remembers the last engineer picked on this device
+    function savedInspector() {
+      let n = "";
+      try { n = localStorage.getItem('ptahInspector') || ""; } catch (e) {}
+      if (allInspectors.length && !allInspectors.some(x => x.toLowerCase() === n.toLowerCase())) return "";
+      return n;
+    }
+
+    function selectInspector(name) {
+      selectedInspector = (window.PtahApp && PtahApp.engineer()) || name || "";
+      if (selectedInspector) { try { localStorage.setItem('ptahInspector', selectedInspector); } catch (e) {} }
+      document.querySelectorAll('#inspectorPills .pill-btn').forEach(btn => {
+        btn.classList.toggle('insp-active', !!selectedInspector && btn.dataset.name.toLowerCase() === selectedInspector.toLowerCase());
+      });
+    }
+
+    function selectCode(code) {
+      selectedCode = code;
+      CODES.forEach(c => {
+        const btn = document.getElementById(`code-${c}`);
+        if (btn) btn.classList.toggle('code-active', c === code);
+      });
+    }
+
+    function submitModalData() {
+      if (!currentItem) return;
+      const saveBtn = document.getElementById('modalSaveBtn');
+      const statusSpan = document.getElementById('modalStatus');
+      if (saveBtn.disabled) return;
+      if (!selectedInspector) {
+        statusSpan.style.color = "var(--rej)";
+        statusSpan.innerText = "⚠ Pick the inspector before closing the request.";
+        return;
+      }
+
+      // Checklist not ticked at all: warn once (pressing Close again saves anyway)
+      if (clCurrent && !Object.keys(clMarks).length && !clWarned) {
+        clWarned = true;
+        statusSpan.style.color = "var(--warn)";
+        statusSpan.innerText = "⚠ The checklist is not marked. Tick it (or press All ✓), or press Close again to save without ticks.";
+        return;
+      }
+
+      saveBtn.disabled = true;
+      statusSpan.style.color = "";
+      statusSpan.innerText = "Syncing record...";
+
+      // The request is identified by Number + ID + Rev (not by row number),
+      // so sorting or editing the sheet while the portal is open can't hit the wrong request.
+      const savedItem = currentItem;
+      const payload = {
+        rowIndex: currentItem.rowIndex,
+        rowIndices: currentItem.rowIndices || [currentItem.rowIndex],
+        irNumber: currentItem.irNumber,
+        itemId: currentItem.itemId,
+        rev: currentItem.rev,
+        description: currentItem.description,
+        date: document.getElementById('modalDate').value,
+        inspector: selectedInspector,
+        code: selectedCode,
+        rawNotes: document.getElementById('modalNotes').value.trim()
+      };
+
+      if(typeof google !== 'undefined' && google.script) {
+        const send = function (record) {
+          if (record) payload.record = record;
+          statusSpan.innerText = record ? "Saving record + PDF..." : "Syncing record...";
+          google.script.run
+            .withSuccessHandler(function(res) {
+              if (res && res.success) {
+                handleSuccessSubmission(payload.rowIndex, statusSpan, payload.code);
+                if (res.undoToken) offerUndo(res.undoToken, savedItem, !!res.recordUrl, res.recordError);
+              } else if (res && res.alreadyClosed) {
+                handleAlreadyClosed(res.error, payload.rowIndex, statusSpan);
+              } else {
+                handleFailedSubmission(res ? res.error : "Unknown error", saveBtn, statusSpan);
+              }
+            })
+            .withFailureHandler(function(err) {
+              handleFailedSubmission(err.message, saveBtn, statusSpan);
+            })
+            .processAndSaveAction(payload);
+        };
+        // Inspection Record PDF (drawn here, saved to Drive by the server). If it fails, a second press saves without it.
+        if (clCurrent && window.PtahRecord && !clPdfFailed) {
+          statusSpan.innerText = "Making the PDF...";
+          makeRecord(savedItem, payload).then(send).catch(function (err) {
+            clPdfFailed = true;
+            saveBtn.disabled = false;
+            statusSpan.style.color = "var(--rej)";
+            statusSpan.innerText = "✕ PDF could not be made (" + (err && err.message || err) + "). Press Close again to save without the PDF.";
+          });
+        } else {
+          send(null);
+        }
+      } else {
+          // Simulation for testing outside Apps Script
+          setTimeout(() => handleSuccessSubmission(payload.rowIndex, statusSpan, payload.code), 1000);
+      }
+    }
+
+    // ---- Checklist from the handbook (tabs _CL_* in the spreadsheet) ----
+    let clCurrent = null;     // checklist of the open request (null = none)
+    let clMarks = {};         // { item order: 'ok' | 'fail' | 'na' }
+    const clCache = {};       // per section code, so changing back and forth is instant
+    let clSections = null;    // list for "Change section"
+    let clReq = 0, clWarned = false, clPdfFailed = false;
+    const CL_STAGE = { A: 'Submittals & approvals', M: 'Materials & storage', F: 'Fabrication', B: 'Before work',
+                       D: 'During work', T: 'Treatment', '±': 'Tolerances', '✓': 'Testing & acceptance' };
+
+    function clKey(spec) { const d = String(spec || '').replace(/\D/g, ''); return d ? d.padStart(6, '0') : ''; }
+
+    // The section is picked on the server from the request title (the contractor's Spec # is often wrong),
+    // and the engineer can change it with "Change section"
+    function loadChecklist(item) {
+      clCurrent = null; clMarks = {}; clWarned = false; clPdfFailed = false;
+      const g = document.getElementById('clGroup');
+      document.getElementById('clPick').hidden = true;
+      if (typeof google === 'undefined' || !google.script) { g.hidden = true; return; }
+      g.hidden = false;
+      clMessage('Loading checklist...');
+      const req = ++clReq;
+      google.script.run.withSuccessHandler(cl => {
+          if (req !== clReq) return;            // another request was opened meanwhile
+          clSet(cl, 'No handbook section matches this request' + (item.specNo ? ' (Spec # ' + item.specNo + ')' : '') + '.');
+        })
+        .withFailureHandler(err => { if (req === clReq) clMessage('Checklist could not load: ' + (err && err.message || err)); })
+        .getChecklist(item.specNo || '', item.description || '');
+    }
+
+    // ======== Edit checklists: cards, saved to _CL_Checklists after every change ========
+    const ED = { pin: '', list: null, view: 'pin', code: '', data: null, stamp: '', edit: null, draft: null, q: '', saving: false, again: false, msg: '', bad: false };
+    const edEsc = v => escapeHTML(v == null ? '' : String(v));
+    const edRun = (fn, args, ok, fail) => { const r = google.script.run.withSuccessHandler(ok)
+      .withFailureHandler(e => (fail || edFail)(String(e && e.message || e))); r[fn].apply(r, args); };
+    function edFail(m) { ED.msg = m; ED.bad = true; edDraw(); }
+    function edNote(m, bad) { ED.msg = m; ED.bad = !!bad; const e = document.getElementById('edSaved'); if (e) { e.textContent = m; e.className = 'ed-saved' + (bad ? ' bad' : ''); } }
+
+    function edOpen() {
+      document.getElementById('edOverlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      try { ED.pin = sessionStorage.getItem('ptahEdPin') || ''; } catch (e) {}
+      if (ED.view === 'pin' && ED.pin) edUnlock(ED.pin); else edDraw();
+    }
+    function edClose() {
+      if (ED.edit && !edCancel(true)) return;
+      document.getElementById('edOverlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    function edUnlock(pin) {
+      pin = pin || (document.getElementById('edPinIn') || {}).value || '';
+      if (!pin.trim()) return;
+      ED.msg = 'Opening...'; ED.bad = false; edDraw();
+      edRun('clEditorOpen', [pin.trim()], list => {
+        ED.pin = pin.trim(); try { sessionStorage.setItem('ptahEdPin', ED.pin); } catch (e) {}
+        ED.list = list; ED.msg = ''; if (ED.view === 'pin') ED.view = 'home'; edDraw();
+      }, m => { try { sessionStorage.removeItem('ptahEdPin'); } catch (e) {} ED.view = 'pin'; edFail(m); });
+    }
+    function edHome() {
+      if (ED.edit && !edCancel(true)) return;
+      ED.view = 'home'; ED.code = ''; ED.data = null; ED.msg = ''; edDraw();
+      document.getElementById('edOverlay').scrollTop = 0;
+    }
+    function edOpenSection(code) {
+      ED.view = 'sec'; ED.code = code; ED.data = null; ED.edit = null; ED.msg = 'Loading...'; ED.bad = false; edDraw();
+      document.getElementById('edOverlay').scrollTop = 0;
+      edRun('clEditorLoad', [ED.pin, code], d => { if (ED.code !== code) return; ED.data = d; ED.stamp = d.stamp; ED.msg = ''; edDraw(); });
+    }
+
+    // ---- drawing ----
+    function edBar(kicker, title, right) {
+      return `<div class="ed-bar"><div class="ed-titles"><div class="ed-kicker">${kicker}</div><div class="ed-h">${title}</div></div>${right}` +
+        `<span class="ed-saved${ED.bad ? ' bad' : ''}" id="edSaved">${edEsc(ED.msg)}</span>` +
+        `<button type="button" class="icon-btn" data-act="close" title="Close">✕</button></div>`;
+    }
+    function edBtns(a) { return `<div class="ed-acts">${a}</div>`; }
+    function edB(act, label, extra, cls) { return `<button type="button" class="ed-btn ${cls || ''}" data-act="${act}" ${extra || ''}>${label}</button>`; }
+    function edDraw() {
+      const w = document.getElementById('edWrap'); let h = '';
+      if (ED.view === 'pin') {
+        h = edBar('Shaker Inspect', 'Edit checklists', '') +
+          `<div class="ed-card ed-pinbox"><div class="ed-f"><label>PIN</label><input type="password" class="ed-in" id="edPinIn" inputmode="numeric" autocomplete="off"></div>` +
+          `<div class="ed-hint">Only the person with the PIN can edit the checklists.</div>${edBtns(edB('unlock', 'Open', '', 'pri'))}</div>`;
+      } else if (ED.view === 'home') {
+        const q = ED.q.toLowerCase(), list = (ED.list || []).filter(s => !q || (s.title + ' ' + s.code + ' ' + s.scope).toLowerCase().includes(q));
+        h = edBar('Shaker Inspect · ' + (ED.list || []).length + ' sections', 'Checklists',
+              `<input type="search" id="edSearch" placeholder="Search sections..." value="${edEsc(ED.q)}">`) +
+          `<div class="ed-grid">` + list.map(s =>
+            `<div class="ed-card click" data-act="open" data-code="${edEsc(s.code)}"><div class="top"><span>${edEsc(s.code)}</span><span>${s.items} items · ${s.kv} values</span></div>` +
+            `<div class="ttl">${edEsc(s.title)}</div><div class="sub">${edEsc(s.scope)}</div>` +
+            edBtns(edB('open', 'Edit', `data-code="${edEsc(s.code)}"`) + edB('delsec', 'Delete', `data-code="${edEsc(s.code)}"`, 'del')) + `</div>`).join('') +
+          `<button type="button" class="ed-plus" data-act="newsec"><b>+</b>New section</button></div>`;
+      } else if (ED.view === 'new') {
+        h = edBar('New section', 'Add a section', '<button type="button" class="ed-btn" data-act="home">← All sections</button>') +
+          `<div class="ed-card editing"><div class="ed-form">` +
+          `<div class="ed-f"><label>Section name</label><input class="ed-in" id="edNTitle" placeholder="Painting"></div>` +
+          `<div class="ed-f"><label>Code (SPECS)</label><input class="ed-in mono" id="edNCode" placeholder="09 91 00"></div>` +
+          `<div class="ed-f wide"><label>Division (optional)</label><input class="ed-in" id="edNDiv" placeholder="Division 09 · Finishes"></div>` +
+          `<div class="ed-f wide"><label>Scope (optional)</label><textarea class="ed-ta" id="edNScope" rows="2"></textarea></div>` +
+          `<div class="ed-f wide"><label>Words in the request title</label><input class="ed-in" id="edNKw" placeholder="paint, painting">` +
+          `<div class="ed-hint">Separate with commas. When a request title has one of these words, the portal opens this section.</div></div></div>` +
+          edBtns(edB('create', 'Create section', '', 'pri') + edB('home', 'Cancel')) + `</div>`;
+      } else if (ED.view === 'sec') {
+        const d = ED.data;
+        h = edBar(edEsc(ED.code), d ? edEsc(d.title) : 'Loading...', '<button type="button" class="ed-btn" data-act="home">← All sections</button>');
+        if (d) h += edInfoCard(d) + edKvBlock(d) + d.stages.map((st, s) => st.items.length || (ED.edit && ED.edit.g === s) ? edStageBlock(st, s) : '').join('') + edEmptyStages(d);
+      }
+      w.innerHTML = h;
+      w.querySelectorAll('.ed-ta').forEach(edGrow);
+      const f = w.querySelector('.editing .ed-ta, .editing .ed-in, #edPinIn, #edNTitle');
+      if (f && document.activeElement !== document.getElementById('edSearch')) f.focus();
+    }
+    function edInfoCard(d) {
+      if (ED.edit && ED.edit.g === 'info') {
+        const x = ED.draft;
+        return `<div class="ed-card editing"><div class="ed-form">` +
+          `<div class="ed-f wide"><label>Section name</label><input class="ed-in" data-d="title" value="${edEsc(x.title)}"></div>` +
+          `<div class="ed-f wide"><label>Scope</label><textarea class="ed-ta" data-d="scope" rows="2">${edEsc(x.scope)}</textarea></div>` +
+          `<div class="ed-f wide"><label>Words in the request title</label><input class="ed-in" data-d="keywords" value="${edEsc(x.keywords)}">` +
+          `<div class="ed-hint">Separate with commas. When a request title has one of these words, the portal opens this section.</div></div></div>` +
+          edBtns(edB('ok', 'Save', '', 'pri') + edB('cancel', 'Cancel')) + `</div>`;
+      }
+      return `<div class="ed-card"><div class="top"><span>Section</span><span>${edEsc(ED.code)}</span></div><div class="ttl">${edEsc(d.title)}</div>` +
+        `<div class="txt">${edEsc(d.scope) || '<span class="ed-empty">No scope</span>'}</div>` +
+        `<div class="kv-l">Words in the request title: <b>${edEsc(d.keywords) || '—'}</b></div>` +
+        edBtns(edB('edit', 'Edit', 'data-g="info"')) + `</div>`;
+    }
+    function edKvBlock(d) {
+      const ed = ED.edit && ED.edit.g === 'kv' ? ED.edit.i : -1;
+      return `<div class="ed-sec-h">Key values<span>${d.keyValues.length}</span></div><div class="ed-grid">` +
+        d.keyValues.map((k, i) => i === ed ? edKvForm(i) :
+          `<div class="ed-card"><div class="kv-l">${edEsc(k.label)}</div><div class="kv-v">${edEsc(k.value)}</div><div class="ref">${edEsc(k.clause)}</div>` +
+          edBtns(edB('edit', 'Edit', `data-g="kv" data-i="${i}"`) + edB('del', 'Delete', `data-g="kv" data-i="${i}"`, 'del')) + `</div>`).join('') +
+        (ed === d.keyValues.length ? edKvForm(ed) : '') +
+        `<button type="button" class="ed-plus" data-act="add" data-g="kv" style="min-height:90px"><b>+</b>Add value</button></div>`;
+    }
+    function edKvForm(i) {
+      const x = ED.draft;
+      return `<div class="ed-card editing" style="grid-column:1/-1"><div class="ed-form kv">` +
+        `<div class="ed-f"><label>What</label><input class="ed-in" data-d="label" value="${edEsc(x.label)}" placeholder="Total thickness"></div>` +
+        `<div class="ed-f"><label>Value</label><input class="ed-in" data-d="value" value="${edEsc(x.value)}" placeholder="20 mm"></div>` +
+        `<div class="ed-f"><label>SPECS ref</label><input class="ed-in mono" data-d="clause" value="${edEsc(x.clause)}" placeholder="3.6.C"></div></div>` +
+        edBtns(edB('ok', 'Save', '', 'pri') + edB('cancel', 'Cancel') + edMove('kv', i)) + `</div>`;
+    }
+    function edMove(g, i) {
+      const n = edArr(g).length;
+      return (i > 0 && i < n ? edB('up', '↑', `data-g="${g}" data-i="${i}" title="Move up"`, 'ic') : '') +
+             (i < n - 1 ? edB('down', '↓', `data-g="${g}" data-i="${i}" title="Move down"`, 'ic') : '');
+    }
+    function edStageBlock(st, s) {
+      const ed = ED.edit && ED.edit.g === s ? ED.edit.i : -1;
+      return `<div class="ed-sec-h"><b>${edEsc(st.stage)}</b>${edEsc(st.heading)}<span>${st.items.length}</span></div><div class="ed-list">` +
+        st.items.map((it, i) => i === ed ? edItemForm(s, i) :
+          `<div class="ed-card ed-row-card"><div class="body"><div class="txt">${edEsc(it.text)}</div><div class="ref">${edEsc(it.clause)}</div></div>` +
+          edBtns(edB('edit', 'Edit', `data-g="${s}" data-i="${i}"`) + edB('del', 'Delete', `data-g="${s}" data-i="${i}"`, 'del')) + `</div>`).join('') +
+        (ed === st.items.length ? edItemForm(s, ed) : '') +
+        `<button type="button" class="ed-plus" data-act="add" data-g="${s}"><b>+</b>Add item</button></div>`;
+    }
+    function edItemForm(s, i) {
+      const x = ED.draft;
+      return `<div class="ed-card editing"><div class="ed-form">` +
+        `<div class="ed-f"><label>Item</label><textarea class="ed-ta" data-d="text" rows="2">${edEsc(x.text)}</textarea></div>` +
+        `<div class="ed-f"><label>SPECS ref</label><input class="ed-in mono" data-d="clause" value="${edEsc(x.clause)}" placeholder="3.6.C"></div></div>` +
+        edBtns(edB('ok', 'Save', '', 'pri') + edB('cancel', 'Cancel') + edMove(s, i)) + `</div>`;
+    }
+    function edEmptyStages(d) {
+      const empty = d.stages.map((st, s) => ({ st, s })).filter(x => !x.st.items.length && !(ED.edit && ED.edit.g === x.s));
+      if (!empty.length) return '';
+      return `<div class="ed-sec-h">Other stages<span>empty</span></div><div class="ed-chips">` +
+        empty.map(x => edB('add', '+ ' + edEsc(x.st.stage + ' ' + x.st.heading), `data-g="${x.s}"`)).join('') + `</div>`;
+    }
+    function edGrow(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; }
+    function edArr(g) { return g === 'kv' ? ED.data.keyValues : ED.data.stages[Number(g)].items; }
+
+    // ---- editing one card at a time ----
+    function edStart(g, i) {
+      if (ED.edit && !edCancel(true)) return;
+      const d = ED.data;
+      if (g === 'info') ED.draft = { title: d.title, scope: d.scope, keywords: d.keywords };
+      else { const a = edArr(g); ED.draft = Object.assign({}, i < a.length ? a[i] : (g === 'kv' ? { label: '', value: '', clause: '' } : { text: '', clause: '' })); }
+      ED.edit = { g: g, i: i }; edDraw();
+    }
+    function edCancel(ask) {
+      if (!ED.edit) return true;
+      const x = ED.draft, g = ED.edit.g, i = ED.edit.i;
+      const orig = g === 'info' ? { title: ED.data.title, scope: ED.data.scope, keywords: ED.data.keywords } : (edArr(g)[i] || {});
+      const changed = Object.keys(x).some(k => String(x[k] || '') !== String(orig[k] || ''));
+      if (ask && changed && !confirm('Discard the changes on this card?')) return false;
+      ED.edit = null; ED.draft = null; edDraw(); return true;
+    }
+    function edOk() {
+      const x = ED.draft, g = ED.edit.g, i = ED.edit.i;
+      if (g === 'info') { if (!String(x.title).trim()) return edNote('Write the section name.', true); Object.assign(ED.data, x); }
+      else {
+        const a = edArr(g), empty = g === 'kv' ? !(String(x.label).trim() || String(x.value).trim()) : !String(x.text).trim();
+        if (empty) { if (i < a.length) a.splice(i, 1); }
+        else if (i < a.length) a[i] = x; else a.push(x);
+      }
+      ED.edit = null; ED.draft = null; edDraw(); edPersist();
+    }
+    function edPersist() {
+      if (ED.saving) { ED.again = true; return; }
+      ED.saving = true; edNote('Saving...');
+      const d = ED.data, code = ED.code;
+      const payload = { title: d.title, scope: d.scope, keywords: d.keywords, keyValues: d.keyValues, stages: d.stages.map(s => ({ stage: s.stage, items: s.items })) };
+      edRun('clEditorSave', [ED.pin, code, payload, ED.stamp], r => {
+        ED.saving = false; ED.stamp = r.stamp;
+        const e = (ED.list || []).find(s => s.code === code);
+        if (e) { e.title = d.title; e.scope = d.scope; e.items = r.items; e.kv = d.keyValues.length; }
+        for (const k in clCache) delete clCache[k];   // the closing screen reads the new version
+        clSections = null;
+        if (ED.again) { ED.again = false; edPersist(); } else edNote('✓ Saved');
+      }, m => { ED.saving = false; ED.again = false; edNote(m, true); if (/changed in the sheet/.test(m)) setTimeout(() => edOpenSection(code), 1500); });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const ov = document.getElementById('edOverlay');
+      ov.addEventListener('click', e => {
+        const b = e.target.closest('[data-act]'); if (!b) return;
+        const act = b.dataset.act, g = b.dataset.g, i = Number(b.dataset.i);
+        if (act !== 'open' || b.tagName === 'BUTTON') e.stopPropagation();
+        if (act === 'close') return edClose();
+        if (act === 'unlock') return edUnlock();
+        if (act === 'home') return edHome();
+        if (act === 'open') return edOpenSection(b.dataset.code);
+        if (act === 'newsec') { ED.view = 'new'; ED.msg = ''; return edDraw(); }
+        if (act === 'create') {
+          const v = id => document.getElementById(id).value;
+          edNote('Creating...');
+          return edRun('clEditorAddSection', [ED.pin, { code: v('edNCode'), title: v('edNTitle'), division: v('edNDiv'), scope: v('edNScope'), keywords: v('edNKw') }],
+            r => edRun('clEditorOpen', [ED.pin], list => { ED.list = list; edOpenSection(r.code); }), m => edNote(m, true));
+        }
+        if (act === 'delsec') {
+          const s = (ED.list || []).find(x => x.code === b.dataset.code);
+          if (!s || !confirm(`Delete the section "${s.title}" (${s.code}) with its ${s.items} items?\nYou can still get it back from the sheet's version history.`)) return;
+          edNote('Deleting...');
+          return edRun('clEditorDeleteSection', [ED.pin, s.code], () => {
+            ED.list = ED.list.filter(x => x.code !== s.code); for (const k in clCache) delete clCache[k]; clSections = null;
+            ED.msg = '✓ Deleted ' + s.title; ED.bad = false; edDraw(); });
+        }
+        if (act === 'edit') return edStart(g === 'info' ? 'info' : (g === 'kv' ? 'kv' : Number(g)), i);
+        if (act === 'add') { const gg = g === 'kv' ? 'kv' : Number(g); return edStart(gg, edArr(gg).length); }
+        if (act === 'cancel') return edCancel(false);
+        if (act === 'ok') return edOk();
+        if (act === 'del') {
+          const gg = g === 'kv' ? 'kv' : Number(g), x = edArr(gg)[i];
+          if (!confirm('Delete this ' + (gg === 'kv' ? 'key value' : 'item') + '?\n\n' + (x.text || (x.label + ': ' + x.value)))) return;
+          edArr(gg).splice(i, 1); edDraw(); return edPersist();
+        }
+        if (act === 'up' || act === 'down') {
+          const gg = g === 'kv' ? 'kv' : Number(g), a = edArr(gg), j = act === 'up' ? i - 1 : i + 1;
+          if (i >= a.length || j < 0 || j >= a.length) return;
+          a[i] = Object.assign({}, ED.draft);           // keep what is typed, and move it
+          a.splice(j, 0, a.splice(i, 1)[0]);
+          ED.edit.i = j; edDraw(); return edPersist();
+        }
+      });
+      ov.addEventListener('input', e => {
+        const t = e.target;
+        if (t.id === 'edSearch') { ED.q = t.value; const pos = t.selectionStart; edDraw(); const n = document.getElementById('edSearch'); n.focus(); n.setSelectionRange(pos, pos); return; }
+        if (t.tagName === 'TEXTAREA') { if (/\n/.test(t.value) && t.dataset.d === 'text') t.value = t.value.replace(/\s*\n+\s*/g, ' '); edGrow(t); }
+        if (t.dataset.d && ED.draft) ED.draft[t.dataset.d] = t.value;
+      });
+      ov.addEventListener('keydown', e => {
+        if (e.target.id === 'edPinIn' && e.key === 'Enter') return edUnlock();
+        if (!ED.edit) { if (e.key === 'Escape') edClose(); return; }
+        if (e.key === 'Escape') { e.preventDefault(); edCancel(true); }
+        else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) { e.preventDefault(); edOk(); }
+      });
+    });
+
+    function clSet(cl, emptyMsg) {
+      clCurrent = cl || null; clMarks = {}; clWarned = false;
+      if (!clCurrent) { clMessage(emptyMsg); return; }
+      clCache[clCurrent.code] = clCurrent;
+      renderChecklist();
+      if (window.PtahRecord) PtahRecord.preload().catch(() => {});   // libraries ready before Close
+    }
+
+    function clShowPicker() {
+      const sel = document.getElementById('clPick');
+      const fill = list => {
+        clSections = list || [];
+        sel.innerHTML = '<option value="">— No checklist —</option>' + clSections.map(s =>
+          `<option value="${escapeHTML(s.code)}">${escapeHTML(s.code + ' · ' + s.title)}</option>`).join('');
+        sel.value = clCurrent ? clCurrent.code : '';
+        sel.hidden = false; sel.focus();
+      };
+      if (clSections) return fill(clSections);
+      google.script.run.withSuccessHandler(fill).getSectionList();
+    }
+
+    function clPickSection(code) {
+      document.getElementById('clPick').hidden = true;
+      if (!code) { clSet(null, 'Closing without a checklist.'); return; }
+      const req = ++clReq;
+      const done = cl => { if (req !== clReq) return; if (cl) cl.matchedBy = 'hand'; clSet(cl, 'Section not found.'); };
+      if (clCache[code]) return done(Object.assign({}, clCache[code]));
+      clMessage('Loading ' + code + '...');
+      google.script.run.withSuccessHandler(done).getChecklistByCode(code);
+    }
+
+    function clMessage(t) {
+      document.getElementById('clCode').textContent = '';
+      document.getElementById('clTitle').textContent = '';
+      document.getElementById('clProg').textContent = '';
+      document.getElementById('clAllBtn').style.display = 'none';
+      document.getElementById('clBy').textContent = '';
+      document.getElementById('clKvBox').style.display = 'none';
+      document.getElementById('clList').innerHTML = `<div class="cl-it cl-msg">${escapeHTML(t)}</div>`;
+    }
+
+    function renderChecklist() {
+      const cl = clCurrent;
+      document.getElementById('clCode').textContent = cl.code;
+      document.getElementById('clTitle').textContent = cl.title;
+      document.getElementById('clAllBtn').style.display = '';
+      document.getElementById('clBy').textContent = !cl.matchedBy ? '' : cl.matchedBy === 'hand' ? 'Section chosen by hand' : 'Matched by ' + cl.matchedBy;
+      const kvBox = document.getElementById('clKvBox');
+      kvBox.style.display = cl.keyValues.length ? '' : 'none';
+      kvBox.open = false;
+      document.getElementById('clKv').innerHTML = cl.keyValues.map(k =>
+        `<div><small>${escapeHTML(k.label)} · ${escapeHTML(k.clause)}</small>${escapeHTML(k.value)}</div>`).join('');
+      let html = '', stage = null;
+      cl.items.forEach(it => {
+        if (it.stage !== stage) {
+          stage = it.stage;
+          const n = cl.items.filter(x => x.stage === stage).length;
+          html += `<div class="cl-st"><b>${escapeHTML(stage)}</b> ${escapeHTML(it.heading || CL_STAGE[stage] || '')}<span>${n}</span></div>`;
+        }
+        html += `<div class="cl-it" data-o="${it.order}"><span class="cl-tx">${escapeHTML(it.text)}<i>${escapeHTML(it.clause)}</i></span>` +
+                `<span class="cl-mk"><button type="button" data-m="ok" title="Conforms">✓</button>` +
+                `<button type="button" data-m="fail" title="Does not conform">✗</button>` +
+                `<button type="button" data-m="na" title="Not applicable">—</button></span></div>`;
+      });
+      const list = document.getElementById('clList');
+      list.innerHTML = html;
+      list.scrollTop = 0;
+      clProgress();
+    }
+
+    // tap a mark: set it; tap it again: clear it (listener on the list: the panel stops clicks from bubbling up)
+    document.getElementById('clList').addEventListener('click', function (e) {
+      const b = e.target.closest && e.target.closest('.cl-mk button');
+      if (!b) return;
+      const row = b.closest('.cl-it'), o = row.dataset.o, m = b.dataset.m;
+      if (clMarks[o] === m) delete clMarks[o]; else clMarks[o] = m;
+      clPaint(row, clMarks[o]);
+      clProgress();
+    });
+
+    function clPaint(row, m) { row.classList.remove('m-ok', 'm-fail', 'm-na'); if (m) row.classList.add('m-' + m); }
+
+    function clMarkAll() {
+      if (!clCurrent) return;
+      document.querySelectorAll('#clList .cl-it[data-o]').forEach(row => {
+        if (!clMarks[row.dataset.o]) { clMarks[row.dataset.o] = 'ok'; clPaint(row, 'ok'); }
+      });
+      clProgress();
+    }
+
+    function clProgress() {
+      if (!clCurrent) return;
+      const v = Object.values(clMarks);
+      const fails = v.filter(m => m === 'fail').length;
+      document.getElementById('clProg').textContent = `${v.length} / ${clCurrent.items.length}` + (fails ? ` · ✗ ${fails}` : '');
+    }
+
+    // Draws the Inspection Record PDF in the browser and returns it for the server to save
+    async function makeRecord(item, p) {
+      const d = PtahRecord.prepare({
+        irNumber: item.irNumber, rev: item.rev, itemId: item.itemId, description: item.description,
+        date: p.date, inspector: p.inspector, code: p.code, notes: p.rawNotes, contractor: item.contractor
+      }, clCurrent, clMarks);
+      const bytes = await PtahRecord.build(d);
+      let bin = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      return { base64: btoa(bin), name: PtahRecord.fileName(d), villa: d.villa };
+    }
+
+    // The request that comes after this one on screen (Desk opens it right away)
+    function nextAfter(rowIndex) {
+      const i = shownList.findIndex(x => x.rowIndex === rowIndex);
+      if (i === -1) return null;
+      const n = shownList[i + 1] || shownList[i - 1] || null;
+      return n && n.rowIndex !== rowIndex ? n : null;
+    }
+
+    // Removes a request from the screen and refreshes the counters
+    function removeItem(rowIndex) {
+      const target = document.getElementById(`card-${rowIndex}`);
+      const done = () => {
+        allItems = allItems.filter(i => i.rowIndex !== rowIndex);
+        applyFilter();   // re-render: counters + group counts update
+        markSelected();
+      };
+      if (target) {
+        target.style.transform = "scale(0.97)";
+        target.style.opacity = "0";
+        setTimeout(done, 300);
+      } else {
+        done();
+      }
+    }
+
+    function handleSuccessSubmission(rowIndex, statusSpan, code) {
+        statusSpan.style.color = "var(--ok)";
+        statusSpan.innerText = "✓ Saved to the sheet";
+        bumpClosed(1);
+        const next = isPanel() ? nextAfter(rowIndex) : null;
+        if (isPanel()) stampItem(rowIndex, code);
+        else {                                      // sheet / drawer: close it first, then stamp the redrawn list
+          closeModal();
+          setTimeout(() => stampItem(rowIndex, code), 150);
+        }
+        setTimeout(() => removeItem(rowIndex), 950);
+        if (next) setTimeout(() => { if (currentItem && currentItem.rowIndex === rowIndex) openModal(next); }, 1150);
+        else setTimeout(() => { if (currentItem && currentItem.rowIndex === rowIndex) closeModal(); }, 1100);
+    }
+
+    // Someone else closed this request while the portal was open: don't overwrite, just remove it
+    function handleAlreadyClosed(msg, rowIndex, statusSpan) {
+        statusSpan.style.color = "var(--warn)";
+        statusSpan.innerText = "⚠ " + msg;
+        setTimeout(() => { removeItem(rowIndex); closeModal(); }, 2500);
+    }
+
+    // ---- Undo: a toast for 20 seconds after each save ----
+    let toastTimer = null;
+    function showToast(msg, btnText, onBtn, ms) {
+      const t = document.getElementById('toast');
+      const b = document.getElementById('toastBtn');
+      document.getElementById('toastMsg').textContent = msg;
+      b.style.display = btnText ? '' : 'none';
+      b.textContent = btnText || '';
+      b.disabled = false;
+      b.onclick = onBtn || null;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), ms || 4000);
+    }
+    function offerUndo(token, item, pdf, pdfErr) {
+      showToast(`Saved ${item.irNumber}${pdf ? ' + PDF' : ''}.` + (pdfErr ? ` ⚠ PDF not saved: ${pdfErr}` : ''), 'Undo', () => {
+        const b = document.getElementById('toastBtn');
+        b.disabled = true;
+        b.textContent = 'Undoing...';
+        clearTimeout(toastTimer);
+        google.script.run
+          .withSuccessHandler(res => {
+            if (res && res.success) {
+              if (!allItems.some(i => i.rowIndex === item.rowIndex)) allItems.push(item);
+              bumpClosed(-1);
+              render();
+              showToast(`${item.irNumber} is open again. ${res.message && res.message !== 'Undone.' ? res.message.replace(/^Undone\.\s*/, '') : ''}`, null, null, 6000);
+            } else {
+              showToast('Undo failed: ' + (res ? res.error : 'Unknown error'), null, null, 7000);
+            }
+          })
+          .withFailureHandler(err => showToast('Undo failed: ' + err.message, null, null, 7000))
+          .undoAction(token);
+      }, 20000);
+    }
+
+    function handleFailedSubmission(errorMsg, saveBtn, statusSpan) {
+        saveBtn.disabled = false;
+        statusSpan.style.color = "var(--rej)";
+        statusSpan.innerText = "✕ Error: " + errorMsg;
+    }
+
+    // Window resized across the Desk breakpoint: panel <-> sheet
+    if (WIDE.addEventListener) WIDE.addEventListener('change', () => render());
+  </script>
+  <!-- ===== Shaker Inspect: sign-in / sign-up screen ===== -->
+  <div id="loginOverlay" class="login-overlay" role="dialog" aria-labelledby="loginTitle">
+    <div class="login-box">
+      <div id="loginHead">
+        <img src="icons/icon-192.png" alt="" class="login-logo" width="64" height="64">
+        <h2 id="loginTitle">Shaker Inspect</h2>
+        <p class="login-sub">Site Inspections · SouthMed North Coast</p>
+      </div>
+      <form id="loginEmailStep" autocomplete="on">
+        <label for="loginEmail">Your email</label>
+        <input type="email" id="loginEmail" inputmode="email" autocomplete="email" placeholder="name@gmail.com" required>
+        <button type="submit" id="loginSendBtn" class="login-btn">Send code</button>
+        <p class="login-hint">New here? Just enter your email. After the code you can ask to join.</p>
+      </form>
+      <form id="loginCodeStep" hidden>
+        <label for="loginCode">Code sent to <b id="loginSentTo"></b></label>
+        <input type="text" id="loginCode" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="••••••" class="login-code">
+        <button type="submit" id="loginVerifyBtn" class="login-btn">Sign in</button>
+        <div class="login-links"><button type="button" id="loginBack">Change email</button><button type="button" id="loginResend">Send a new code</button></div>
+      </form>
+      <form id="loginSignupStep" hidden>
+        <div class="login-pill">Request to join</div>
+        <p class="login-hint" style="margin:0">Email: <b id="signupEmail"></b></p>
+        <label for="signupName">Your full name</label>
+        <input type="text" id="signupName" autocomplete="name" placeholder="e.g. Mostafa Samir" maxlength="60">
+        <label for="signupMsg">Who are you?</label>
+        <textarea id="signupMsg" rows="3" maxlength="300" placeholder="e.g. Site engineer at Square, working on the villas"></textarea>
+        <button type="submit" id="signupBtn" class="login-btn">Send request</button>
+        <p class="login-hint">This name is the one your closed requests are saved under. An admin approves your request first.</p>
+        <div class="login-links"><button type="button" id="signupOut">Use another email</button></div>
+      </form>
+      <div id="loginPendingStep" hidden>
+        <div class="pend-ic" aria-hidden="true">⏳</div>
+        <h3>Waiting for approval</h3>
+        <p class="login-hint"><b id="pendingName"></b>, your request was sent to the admins. You will get an email when you are approved. Nothing is open before that.</p>
+        <button type="button" id="pendingBtn" class="login-btn">Check again</button>
+        <div class="login-links" style="justify-content:center"><button type="button" id="pendingOut">Sign out</button></div>
+      </div>
+      <p id="loginNote" class="login-note" aria-live="polite"></p>
+      <p class="login-foot">Requests you close are saved under your own name.</p>
+      <p class="shk-sign">architected by Ptah</p>
+    </div>
+  </div>
+
+  <!-- ===== account sheet ===== -->
+  <div id="acctOverlay" class="acct-overlay">
+    <div class="acct-box" role="dialog" aria-labelledby="acctName">
+      <div class="acct-head"><span class="acct-av" aria-hidden="true">✓</span><div><b id="acctName"></b><small id="acctEmail"></small><span id="acctRole" class="role-badge"></span></div></div>
+      <p class="acct-txt">You are signed in on this device for 30 days. Everything you close is saved under this name.</p>
+      <button type="button" id="acctInstall" class="login-btn" onclick="PtahApp.install()" hidden>Install the app</button>
+      <p id="acctIosHint" class="acct-txt" hidden>To install on iPhone: tap Share, then "Add to Home Screen".</p>
+      <div class="acct-list">
+        <button type="button" class="admin-only gold" onclick="PtahApp.closeAccount();Shk.openAdmin()"><span>Admin screen</span><i>›</i></button>
+        <button type="button" onclick="PtahApp.closeAccount();Shk.openSheets()"><span>Browse the sheet (view only)</span><i>›</i></button>
+        <button type="button" onclick="location.href='tracker.html'"><span>Handover tracker</span><i>›</i></button>
+        <button type="button" class="admin-only" onclick="PtahApp.closeAccount();edOpen()"><span>Edit checklists</span><i>›</i></button>
+        <button type="button" onclick="document.getElementById('themeBtn').click()"><span>Light / dark</span><i>◐</i></button>
+        <button type="button" onclick="PtahApp.closeAccount();Shk.openTour()"><span>How to use the app</span><i>›</i></button>
+        <button type="button" onclick="PtahApp.closeAccount();Shk.openContact()"><span>Contact the developer</span><i>›</i></button>
+      </div>
+      <div class="acct-actions">
+        <button type="button" class="acct-out" onclick="PtahApp.signOut()">Sign out</button>
+        <button type="button" class="acct-close" onclick="PtahApp.closeAccount()">Close</button>
+      </div>
+      <p class="shk-sign">architected by Ptah</p>
+    </div>
+  </div>
+
+  <!-- ===== contact the developer ===== -->
+  <div id="contactOverlay" class="acct-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="acct-box" role="dialog" aria-labelledby="contactTitle">
+      <h3 id="contactTitle" style="margin:0 0 4px">Contact the developer</h3>
+      <p class="acct-txt" style="margin-top:4px">Found a problem or have an idea? Write to Ahmed directly.</p>
+      <a class="contact-btn wa" id="contactWa" target="_blank" rel="noopener"><b>WhatsApp</b><small>+20 101 848 4400</small></a>
+      <a class="contact-btn mail" id="contactMail"><b>Email</b><small>architectahmedgaber@gmail.com</small></a>
+      <button type="button" class="acct-close" style="width:100%;margin-top:10px" onclick="document.getElementById('contactOverlay').classList.remove('open')">Close</button>
+      <p class="shk-sign">architected by Ptah</p>
+    </div>
+  </div>
+
+  <!-- ===== first-run guide ===== -->
+  <div id="tourOverlay" class="tour-overlay" role="dialog" aria-label="How to use Shaker Inspect"><div class="tour-box" id="tourBox"></div></div>
+
+  <!-- ===== full-screen pages: Admin, Sheets ===== -->
+  <div id="shkScreen" class="shk-screen" role="dialog" aria-modal="true"></div>
+  <script src="app-ui.js"></script>
+  <script src="app-screens.js"></script>
+</body>
+</html>
