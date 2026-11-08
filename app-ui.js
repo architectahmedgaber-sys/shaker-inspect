@@ -88,18 +88,16 @@
   // ---------- splash + skeleton ----------
   function splash() {
     const s = document.createElement('div'); s.id = 'splash'; s.className = 'splash';
-    s.innerHTML = '<img src="icons/icon-192.png" alt="" width="84" height="84"><b>Shaker Inspect</b><span>Site Inspections</span><em class="shk-hand">architected by Ptah</em>';
+    s.innerHTML = '<img src="icons/icon-192.png" alt="" width="84" height="84"><b>Shaker Inspect</b><span>Site Inspections</span><em class="shk-hand"><i>architected by Ptah</i></em>';
     document.body.appendChild(s);
-    splashAt = Date.now();
-    setTimeout(hideSplash, 4000);
+    // 1) the signature writes itself in (about 1.8 s)  2) it stays long enough to be read
+    // 3) the whole screen wipes away from left to right, and the sign-in / home page shows underneath
+    const quick = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setTimeout(() => s.classList.add('wipe'), quick ? 1200 : 4400);
+    setTimeout(() => s.remove(), quick ? 1500 : 5400);
   }
-  // the signature stays at least 1.6 s, then the splash gives way to sign-in or the home page
-  let splashAt = Date.now();
-  function hideSplash() {
-    const s = $('splash'); if (!s || s.classList.contains('out')) return;
-    const wait = Math.max(0, 1600 - (Date.now() - splashAt));
-    setTimeout(() => { s.classList.add('out'); setTimeout(() => s.remove(), 450); }, wait);
-  }
+  // the intro always plays in full; other code may call this, it does nothing now
+  function hideSplash() {}
   (window.Shk = window.Shk || {}).hideSplash = hideSplash;
   function skeleton() {
     const l = $('loadingState'); if (!l) return;
