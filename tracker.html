@@ -207,13 +207,13 @@ footer{background:var(--foot-bg);color:var(--foot-ink);border-radius:16px;paddin
 :root[data-theme="light"], :root:not([data-theme]) { --primary:#0b2a5b; --primary-hover:#1b4a9e; --primary-soft:#e8eefb; --primary-line:#b9c8ea; --bg:#f6f5ef; --on-primary:#ffffff; --foot-bg:#0b2a5b; }
 :root[data-theme="dark"] { --primary:#ffc61a; --primary-hover:#ffd75e; --primary-soft:rgba(255,198,26,.14); --primary-line:rgba(255,198,26,.4);
   --bg:#06142b; --bg-glow:radial-gradient(900px 480px at 100% 0%, rgba(245,184,0,.16), transparent 60%); --card-bg:#0d2247; --inset:#132b57; --text-main:#f4f1e6; --text-muted:#9fb0cf; --border:#1d3769; --on-primary:#0b2a5b; --foot-bg:#0d2247; --lift:0 24px 54px -22px rgba(245,184,0,.45); }
-.embed .shk-back { display: none; }
+.embed .shk-back { margin-top: 0; }
 .shk-back { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 10px; margin: 0 -16px 12px; padding: 10px 16px; background: #0b2a5b; color: #fff; text-decoration: none; font: 700 15px var(--font); }
 .shk-back b { color: #ffc61a; } .shk-back span { margin-left: auto; font: 600 12px var(--font); opacity: .85; padding: 3px 10px; border: 1px solid rgba(255,255,255,.4); border-radius: 99px; }
 </style>
 </head>
 <body>
-<a class="shk-back" href="./"><b>‹</b> Shaker Inspect · Handover <span id="shkRoleTag"></span></a>
+<a class="shk-back" href="./" id="shkBack"><b>‹</b> Shaker Inspect · Handover <span id="shkRoleTag"></span></a>
 <div class="wrap" id="app" lang="en">
   <div class="header-bar">
     <div class="header-title">
@@ -349,10 +349,13 @@ const savg=l=>l.length?l.reduce((n,id)=>n+sprog(id).p,0)/l.length:0;
 let disc='ARC';try{if(localStorage.getItem('vhtDisc')==='STR')disc='STR'}catch(x){}
 const S_NOTE='Structure progress = share of the structural stages of the villa type (PC foundations up to the upper roof slab, and the stairs) that have at least one approved request (code A or B) in ACC. Each stage counts by its weight in the Item_Weights tab (1 to 3). It is shown on its own and does not change the architectural progress.';
 const discBar=()=>`<div class="toolbar noprint" style="margin-bottom:14px"><div class="seg" role="group" aria-label="Discipline"><button type="button" data-disc="ARC" aria-pressed="${disc==='ARC'}">Architecture</button><button type="button" data-disc="STR" aria-pressed="${disc==='STR'}">Structure</button></div></div>`;
-function go(v){stack.push(view);view=v;try{history.pushState({d:stack.length},'')}catch(e){}render();window.scrollTo({top:0})}
-function pop(){if(stack.length){view=stack.pop();render();window.scrollTo({top:0})}}
-function back(){if(!stack.length)return;try{history.back()}catch(e){pop()}}
-function jump(i){const n=stack.length-i;view=stack[i];stack=stack.slice(0,i);try{skipPop=true;history.go(-n)}catch(x){skipPop=false}render();window.scrollTo({top:0})}
+const EMB=document.documentElement.classList.contains('embed');
+const rep=()=>{if(EMB)try{parent.postMessage({shk:'depth',n:stack.length},'*')}catch(e){}};
+function go(v){stack.push(view);view=v;if(!EMB)try{history.pushState({d:stack.length},'')}catch(e){}render();window.scrollTo({top:0});rep()}
+function pop(){if(stack.length){view=stack.pop();render();window.scrollTo({top:0});rep()}}
+function back(){if(!stack.length)return;if(EMB){pop();return}try{history.back()}catch(e){pop()}}
+function jump(i){const n=stack.length-i;view=stack[i];stack=stack.slice(0,i);if(EMB){render();window.scrollTo({top:0});rep();return}try{skipPop=true;history.go(-n)}catch(x){skipPop=false}render();window.scrollTo({top:0})}
+window.addEventListener('message',e=>{if(EMB&&e.source===parent&&e.data&&e.data.shk==='back')pop()});
 const onPop=()=>{if(skipPop){skipPop=false;return}pop()};
 window.addEventListener('popstate',onPop);
 
@@ -768,6 +771,7 @@ function csv(){
 function clearSearch(){q='';document.getElementById('searchInput').value=''}
 
 const onClick=async e=>{
+ if(EMB&&e.target.closest('#shkBack')){e.preventDefault();if(stack.length)pop();else parent.postMessage({shk:'exit'},'*');return}
  const el=e.target.closest('[data-nav],[data-disc],[data-co],[data-type],[data-villa],[data-weights],[data-cp],[data-step],[data-th],#csv,#pdfBtn,#reloadBtn');if(!el)return;
  const d=el.dataset;
  if(d.th){setTheme(d.th);return}
