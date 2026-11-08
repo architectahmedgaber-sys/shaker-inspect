@@ -1,0 +1,8 @@
+{
+  "appId": "com.shaker.inspect",
+  "appName": "Shaker Inspect",
+  "webDir": "www",
+  "backgroundColor": "#06142b",
+  "server": { "androidScheme": "https" },
+  "android": { "allowMixedContent": false }
+}

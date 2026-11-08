@@ -1,0 +1,11 @@
+{
+  "name": "shaker-inspect",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shaker Inspect: Android wrapper built by GitHub Actions",
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0"
+  }
+}

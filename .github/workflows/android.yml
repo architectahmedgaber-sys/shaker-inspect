@@ -1,0 +1,88 @@
+name: Build Android app (APK)
+
+# Runs on every change to main, or from the Actions tab with "Run workflow".
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['README.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-build
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      # The web files go INSIDE the app (a real APK, not a link in a frame).
+      - name: Copy the web files into www/
+        run: |
+          mkdir -p www
+          cp -r index.html tracker.html app-api.js app-screens.js app-ui.js app.css theme.css config.js manifest.webmanifest sw.js icons www/
+
+      - name: Install Capacitor and create the Android project
+        run: |
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+
+      - name: App icon
+        run: |
+          RES=android/app/src/main/res
+          rm -rf $RES/mipmap-anydpi-v26
+          for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            n=${d%%:*}; s=${d##*:}
+            mkdir -p $RES/mipmap-$n
+            convert icons/icon-512.png -resize ${s}x${s} $RES/mipmap-$n/ic_launcher.png
+            cp $RES/mipmap-$n/ic_launcher.png $RES/mipmap-$n/ic_launcher_round.png
+            cp $RES/mipmap-$n/ic_launcher.png $RES/mipmap-$n/ic_launcher_foreground.png
+          done
+
+      # One fixed signing key, so every new build installs OVER the old one (no uninstall needed).
+      - name: Signing key
+        run: |
+          mkdir -p ~/.android
+          cp android-signing/shaker-debug.keystore ~/.android/debug.keystore
+
+      - name: Build the APK
+        working-directory: android
+        run: |
+          set +e
+          ./gradlew assembleDebug --no-daemon > ../build.txt 2>&1
+          status=$?
+          tail -80 ../build.txt
+          if [ $status -ne 0 ]; then
+            body=$(grep -E -A6 "error:|Error|What went wrong" ../build.txt | head -120)
+            body="${body//'%'/'%25'}"; body="${body//$'\r'/'%0D'}"; body="${body//$'\n'/'%0A'}"
+            echo "::error title=Build details::${body}"
+            exit $status
+          fi
+          cp app/build/outputs/apk/debug/app-debug.apk ../shaker-inspect.apk
+
+      - name: Publish for download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Shaker Inspect - build ${{ github.run_number }}
+          prerelease: false
+          make_latest: true
+          files: shaker-inspect.apk
+          body: |
+            Download shaker-inspect.apk on an Android phone and install it.
+            iPhone or laptop: https://architectahmedgaber-sys.github.io/shaker-inspect/
