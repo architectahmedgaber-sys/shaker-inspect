@@ -255,8 +255,9 @@
         const vm = ql.match(/^(?:villa\s*)?(\d{1,4})$/);
         if (vm) html += `<h3 class="sx-sec">Villa</h3><div class="sx-list"><button type="button" class="sx-row" data-v="${esc(vm[1])}"><span class="sx-ic">🏘</span><span class="sx-rt"><b>Villa ${esc(vm[1])}</b><small>All requests and notes</small></span><i class="sx-chev">›</i></button></div>`;
       }
-      html += `<h3 class="sx-sec">${list.length} request${list.length === 1 ? '' : 's'}</h3>`;
-      html += list.length ? `<div class="sx-list">${list.slice(0, 150).map(i => `<button type="button" class="sx-row" data-r="${i.rowIndex}"><span class="sx-st ${ageClass(i)}"></span><span class="sx-rt"><b>${esc(villaOf(i))}</b><small>${esc(activityOf(i))}</small><em>${esc(shortIr(i.irNumber))} · Rev ${esc(i.rev || '0')} · ${esc(projectInfo(getProject(i)).label)}</em></span><span class="age-chip ${ageClass(i)}">${esc(ageText(i))}</span></button>`).join('')}</div>`
+      const row = i => `<button type="button" class="c-row ${isLate(i) ? 'late' : ''}" data-r="${i.rowIndex}"><u></u><div><small><span>${esc(projectInfo(getProject(i)).label)} · ${esc(shortIr(i.irNumber))}</span><i class="c-tag ${isLate(i) ? 'bad' : ''}">${esc(ageText(i))}</i></small><b>${esc(villaOf(i))}</b><em>${esc(activityOf(i))} · Rev ${esc(i.rev || '0')}</em></div></button>`;
+      const groups = [['Late', list.filter(isLate)], ['Today', list.filter(i => !isLate(i) && i.ageDays === 0)], ['Earlier', list.filter(i => !isLate(i) && i.ageDays !== 0)]];
+      html += list.length ? groups.filter(g => g[1].length).map(g => `<div class="c-tl"><h3>${g[0]} · ${g[1].length}</h3>${g[1].slice(0, 150).map(row).join('')}</div>`).join('')
         : '<div class="sx-empty big"><div class="sx-bell">✅</div><b>Nothing here</b><br>No request matches.</div>';
       res.innerHTML = html;
     }
@@ -334,6 +335,30 @@
     };
   }
 
+  // looks: Me > Appearance
+  const SKINS = [
+    ['', 'Classic', 'Blue and gold, as it was', '#0b2a5b', '#1b4a9e', '#f5b800'],
+    ['midnight', 'Midnight Glass', 'Dark, frosted cards, floating bar', '#050d20', '#1b4a9e', '#ffc61a'],
+    ['ivory', 'Ivory Luxe', 'Warm white, serif titles, gold lines', '#f8f4ea', '#13203d', '#c99700'],
+    ['onyx', 'Onyx Gold', 'True black with gold details', '#000000', '#2a2a2e', '#e6b422'],
+    ['ocean', 'Ocean', 'Bold blue header, white cards', '#0b2a5b', '#ffffff', '#f5b800']
+  ];
+  function setSkin(k) {
+    if (k) document.documentElement.setAttribute('data-skin', k); else document.documentElement.removeAttribute('data-skin');
+    try { k ? localStorage.setItem('shkSkin', k) : localStorage.removeItem('shkSkin'); } catch (e) {}
+  }
+  function openAppearance() {
+    const pg = page('Appearance', { small: 'Appearance' });
+    const cur = document.documentElement.getAttribute('data-skin') || '';
+    pg.body.innerHTML = `<p class="sx-sub">Pick the look you like. It changes only the colours and style, not how the app works. It is saved on this phone.</p>
+      <div class="sx-skins">${SKINS.map(s => `<button type="button" class="sx-skin${s[0] === cur ? ' on' : ''}" data-k="${s[0]}"><i style="background:${s[3]};--c2:${s[4]};--c3:${s[5]}"></i><b>${esc(s[1])}</b><small>${esc(s[2])}</small></button>`).join('')}</div>`;
+    pg.body.addEventListener('click', e => {
+      const b = e.target.closest('.sx-skin'); if (!b) return;
+      setSkin(b.dataset.k); tap();
+      pg.body.querySelectorAll('.sx-skin').forEach(x => x.classList.toggle('on', x === b));
+    });
+  }
+
   // my photo in the account sheet and the home header
   function paintMe() {
     const box = $('acctAv');
@@ -409,7 +434,7 @@
   setInterval(pollUnread, 60000);
 
   window.Shk = window.Shk || {};
-  Shk.sx = { cmHtml, fmt, av, tab, openInbox, openRequests, openProfile, openThread, openPhotos, paintTabs, people: () => people,
+  Shk.sx = { cmHtml, fmt, av, tab, openInbox, openRequests, openProfile, openAppearance, setSkin, openThread, openPhotos, paintTabs, people: () => people,
              setUnread, bootstrap, page, closePages };
   document.addEventListener('DOMContentLoaded', () => { build(); setTimeout(() => { bootstrap().then(() => { ready = true; }); startCard(); paintMe(); }, 900); });
   if (document.readyState !== 'loading') { build(); setTimeout(() => { bootstrap().then(() => { ready = true; }); startCard(); paintMe(); }, 900); }

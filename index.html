@@ -576,6 +576,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="ios.css">
+  <link rel="stylesheet" href="skins.css">
+  <link rel="stylesheet" href="concept-c.css">
+  <script>try{var _s=localStorage.getItem("shkSkin");if(_s)document.documentElement.setAttribute("data-skin",_s)}catch(e){}</script>
 </head>
 <body>
   <div id="decor" aria-hidden="true"></div>
@@ -2588,6 +2591,7 @@
       <div class="acct-list">
         <button type="button" onclick="PtahApp.closeAccount();Shk.sx.openProfile()"><span>Edit profile, photo and @username</span><i>›</i></button>
         <button type="button" onclick="PtahApp.closeAccount();Shk.sx.tab('inbox')"><span>Inbox</span><i>›</i></button>
+        <button type="button" onclick="PtahApp.closeAccount();Shk.sx.openAppearance()"><span>Appearance</span><i>›</i></button>
         <button type="button" class="admin-only gold" onclick="PtahApp.closeAccount();Shk.openAdmin()"><span>Admin screen</span><i>›</i></button>
         <button type="button" onclick="PtahApp.closeAccount();Shk.openSheets()"><span>Browse the sheet (view only)</span><i>›</i></button>
         <button type="button" onclick="PtahApp.closeAccount();Shk.openHandover()"><span>Handover tracker</span><i>›</i></button>

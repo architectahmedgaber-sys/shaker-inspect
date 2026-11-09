@@ -22,16 +22,27 @@
     const items = allItems || [], late = lateCount(items), done = closedToday();
     const name = firstName(window.PtahApp && PtahApp.engineer());
     const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+    const sorted = items.slice().sort(byAge), feat = sorted[0], next = sorted.slice(1, 4);
+    const nm = it => esc(villaOf(it)), co = it => esc(projectInfo(getProject(it)).label);
+    const tag = it => it.overdue ? '<i class="c-tag bad">' + esc(ageText(it)) + '</i>' : isLate(it) ? '<i class="c-tag bad">' + esc(ageText(it)) + '</i>' : '<i class="c-tag">' + esc(ageText(it)) + '</i>';
     el.innerHTML = `
-      <div class="hero-hi"><div><small>${esc(date)}</small><h2>${esc(greet())}${name ? ', <br>' + esc(name) : ''}</h2></div>
-        <button type="button" class="hero-av" onclick="PtahApp.openAccount()" title="Account">${esc(initials(window.PtahApp && PtahApp.engineer()))}</button></div>
-      ${PtahApp.role() === 'Admin' ? '<button type="button" class="hero-admin" onclick="Shk.openAdmin()">Admin screen<i>›</i></button>' : ''}
-      ${PtahApp.role() === 'Viewer' ? '<div class="hero-view">View only · you can look at everything but not close requests</div>' : ''}
-      <div class="hero-stats">
-        <div class="hs"><b data-n="${items.length}">${items.length}</b><span>Pending</span></div>
-        <div class="hs late${late ? ' on' : ''}"><b data-n="${late}">${late}</b><span>Late</span></div>
-        <div class="hs ok"><b data-n="${done}">${done}</b><span>Closed today</span></div>
-      </div>`;
+      <div class="c-head">
+        <div class="hero-hi"><div><small>${esc(greet())}</small><h2>${esc(name || 'Welcome')}</h2></div>
+          <button type="button" class="hero-av" onclick="PtahApp.openAccount()" title="Account">${esc(initials(window.PtahApp && PtahApp.engineer()))}</button></div>
+        ${PtahApp.role() === 'Admin' ? '<button type="button" class="hero-admin" onclick="Shk.openAdmin()">Admin screen<i>›</i></button>' : ''}
+        ${PtahApp.role() === 'Viewer' ? '<div class="hero-view">View only · you can look at everything but not close requests</div>' : ''}
+        <div class="c-big"><b data-n="${items.length}">${items.length}</b><span>${items.length === 1 ? 'request waiting' : 'requests waiting'}</span></div>
+        <div class="hero-stats">
+          <div class="hs"><b data-n="${items.length}">${items.length}</b><span>Pending</span></div>
+          <div class="hs late${late ? ' on' : ''}"><b data-n="${late}">${late}</b><span>Late</span></div>
+          <div class="hs ok"><b data-n="${done}">${done}</b><span>Closed today</span></div>
+        </div>
+      </div>
+      ${feat ? `<button type="button" class="c-feat${isLate(feat) ? ' late' : ''}" data-ci="${esc(feat.rowIndex)}">
+        <small>${co(feat)} · ${esc(feat.irNumber)}</small><b>${nm(feat)}</b><p>${esc(activityOf(feat))}</p>
+        <span>${tag(feat)}<i class="c-tag">Rev ${esc(feat.rev)}</i></span></button>` : '<div class="c-feat empty"><b>All clear</b><p>No pending requests. Nice work.</p></div>'}
+      ${next.length ? `<div class="c-tl"><h3>Up next</h3>${next.map(it => `<button type="button" class="c-row${isLate(it) ? ' late' : ''}" data-ci="${esc(it.rowIndex)}"><u></u><div><small><span>${co(it)}</span>${tag(it)}</small><b>${nm(it)}</b><em>${esc(activityOf(it))}</em></div></button>`).join('')}</div>` : ''}`;
+    el.querySelectorAll('[data-ci]').forEach(b => b.onclick = () => { const it = (allItems || []).find(i => String(i.rowIndex) === b.dataset.ci); if (it) openModal(it); });
     signature();
     if (!el.dataset.counted) { el.dataset.counted = 1; el.querySelectorAll('b[data-n]').forEach(countUp); }
   }
@@ -124,5 +135,22 @@
       ind.style.transform = ''; ind.style.opacity = 0; ind.classList.remove('arm'); y0 = null; });
   }
 
-  splash(); skeleton(); buildTabs(); pull();
+  // ---------- slide to close (phones): drives the normal Close button, so every rule still applies ----------
+  function slider() {
+    const f = document.querySelector('.modal-footer'), btn = $('modalSaveBtn'); if (!f || !btn || f.querySelector('.c-slide')) return;
+    const s = document.createElement('div'); s.className = 'c-slide'; s.setAttribute('role', 'button'); s.tabIndex = 0; s.setAttribute('aria-label', 'Slide to close request');
+    s.innerHTML = '<span class="c-knob"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span><em>Slide to close request</em>';
+    f.appendChild(s);
+    const knob = s.firstChild; let x0 = null, max = 0;
+    const fire = () => { try { navigator.vibrate && navigator.vibrate(14); } catch (e) {} if (!btn.disabled) btn.click(); };
+    const reset = () => { knob.style.transition = 'transform .3s cubic-bezier(.32,.72,0,1)'; knob.style.transform = ''; s.classList.remove('go'); };
+    knob.addEventListener('pointerdown', e => { x0 = e.clientX; max = s.clientWidth - knob.offsetWidth - 8; knob.style.transition = 'none'; knob.setPointerCapture(e.pointerId); });
+    knob.addEventListener('pointermove', e => { if (x0 == null) return; const d = Math.max(0, Math.min(max, e.clientX - x0)); knob.style.transform = `translateX(${d}px)`; s.classList.toggle('go', d > max * .85); });
+    const end = e => { if (x0 == null) return; const d = Math.max(0, e.clientX - x0); x0 = null; if (d >= max * .85) { fire(); setTimeout(reset, 400); } else reset(); };
+    knob.addEventListener('pointerup', end); knob.addEventListener('pointercancel', () => { x0 = null; reset(); });
+    s.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fire(); } });
+    s.addEventListener('click', e => { if (e.target === s || e.target.tagName === 'EM') { s.classList.add('hint'); setTimeout(() => s.classList.remove('hint'), 700); } });
+  }
+
+  splash(); skeleton(); buildTabs(); pull(); slider();
 })();

@@ -1,0 +1,110 @@
+/* Shaker Inspect · looks (Me > Appearance). Only changes the wrapper: colours, cards, tab bar, titles.
+   html[data-skin="..."] is set from localStorage before the page paints. No skin = the standard blue and gold look.
+   :root:root raises the weight so a skin wins over both the light and the dark theme. */
+
+/* shared by the floating-bar looks */
+html[data-skin="midnight"] body, html[data-skin="ivory"] body, html[data-skin="onyx"] body, html[data-skin="ocean"] body { background-image: none; }
+html[data-skin] .sx-nav, html[data-skin] .topbar { backdrop-filter: saturate(180%) blur(22px); -webkit-backdrop-filter: saturate(180%) blur(22px); }
+
+/* ================= 1. MIDNIGHT GLASS (dark, frosted cards, gold) ================= */
+html[data-skin="midnight"]:root:root {
+  --paper: #050d20; --surface: rgba(255, 255, 255, .07); --surface-solid: #0d1b3a; --surface-2: rgba(255, 255, 255, .09);
+  --ink: #f3f1ea; --muted: #9fb0d0; --line: rgba(255, 255, 255, .11); --line-strong: rgba(255, 255, 255, .2);
+  --accent: #ffc61a; --accent-ink: #0b2a5b; --accent-soft: rgba(255, 198, 26, .16); --navy: #ffc61a; --navy-d: #0b2a5b; --navy2: #ffd75e;
+  --glass: rgba(8, 18, 42, .62); --sh-1: 0 1px 0 rgba(255, 255, 255, .07) inset, 0 10px 30px -14px rgba(0, 0, 0, .7); --sh-2: 0 24px 50px -18px rgba(0, 0, 0, .9);
+  --r-card: 24px; color-scheme: dark;
+}
+html[data-skin="midnight"] body { background: radial-gradient(120% 60% at 85% -10%, rgba(245, 184, 0, .22), transparent 55%), radial-gradient(90% 50% at -10% 20%, rgba(27, 74, 158, .55), transparent 60%), #050d20 !important; background-attachment: fixed !important; }
+html[data-skin="midnight"] .card, html[data-skin="midnight"] .nav-tile, html[data-skin="midnight"] .hs, html[data-skin="midnight"] .sx-list, html[data-skin="midnight"] .sx-start, html[data-skin="midnight"] .sx-bub, html[data-skin="midnight"] .sx-chips button {
+  background: rgba(255, 255, 255, .07) !important; border: 1px solid rgba(255, 255, 255, .11) !important; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+html[data-skin="midnight"] .hs:first-child { background: linear-gradient(135deg, #ffd75e, #f5b800) !important; color: #0b2a5b; }
+html[data-skin="midnight"] .hs:first-child span { color: rgba(11, 42, 91, .8) !important; }
+html[data-skin="midnight"] .sx-page { background: #050d20 radial-gradient(90% 40% at 90% 0, rgba(245, 184, 0, .16), transparent 60%); }
+html[data-skin="midnight"] .sx-cm.mine .sx-bub { background: linear-gradient(135deg, #ffd75e, #f5b800) !important; color: #0b2a5b; border: 0 !important; }
+html[data-skin="midnight"] .sx-search, html[data-skin="midnight"] .search-box input { background: rgba(255, 255, 255, .08) !important; border-color: rgba(255, 255, 255, .12) !important; }
+html[data-skin="midnight"] .sx-chips button.on { background: #ffc61a !important; color: #0b2a5b; }
+
+/* ================= 2. IVORY LUXE (light, serif titles, gold hairlines) ================= */
+html[data-skin="ivory"]:root:root {
+  --paper: #f8f4ea; --surface: #ffffff; --surface-solid: #ffffff; --surface-2: #f1ecdf;
+  --ink: #13203d; --muted: #766f5f; --line: #e8e0cd; --line-strong: #d6cba9;
+  --accent: #c99700; --accent-ink: #ffffff; --accent-soft: rgba(201, 151, 0, .14); --navy: #13203d; --navy-d: #13203d; --navy2: #24407a;
+  --glass: rgba(248, 244, 234, .8); --sh-1: 0 1px 2px rgba(60, 45, 10, .06), 0 14px 30px -18px rgba(60, 45, 10, .3); --sh-2: 0 28px 50px -22px rgba(60, 45, 10, .4);
+  --r-card: 26px; color-scheme: light;
+}
+html[data-skin="ivory"] body { background: #f8f4ea !important; }
+html[data-skin="ivory"] .sx-h1, html[data-skin="ivory"] .hero-hi h2, html[data-skin="ivory"] .tb-title h1, html[data-skin="ivory"] .sx-pcard h2 { font-family: ui-serif, "New York", "Iowan Old Style", Georgia, "Times New Roman", serif !important; font-weight: 700; letter-spacing: -.01em; }
+html[data-skin="ivory"] .card, html[data-skin="ivory"] .nav-tile, html[data-skin="ivory"] .hs, html[data-skin="ivory"] .sx-list, html[data-skin="ivory"] .sx-start { border: 1px solid #e8e0cd !important; }
+html[data-skin="ivory"] .hs:first-child { background: linear-gradient(135deg, #1e3a73, #13203d) !important; color: #fff; }
+html[data-skin="ivory"] .hs:first-child span { color: rgba(255, 255, 255, .8) !important; }
+html[data-skin="ivory"] .sx-chips button.on { background: #13203d !important; color: #f6dc8a; }
+html[data-skin="ivory"] .sx-fab, html[data-skin="ivory"] .sx-btn.primary, html[data-skin="ivory"] .login-btn { background: linear-gradient(135deg, #e3b93c, #c99700) !important; color: #fff !important; }
+html[data-skin="ivory"] .sx-cm.mine .sx-bub { background: #13203d; color: #fff; }
+html[data-skin="ivory"] .sx-send { background: #c99700; color: #fff; }
+
+/* ================= 3. ONYX GOLD (true black, gold lines, serif) ================= */
+html[data-skin="onyx"]:root:root {
+  --paper: #000000; --surface: #0e0e10; --surface-solid: #0e0e10; --surface-2: #17171a;
+  --ink: #f6eedb; --muted: #a39a82; --line: rgba(230, 180, 34, .2); --line-strong: rgba(230, 180, 34, .38);
+  --accent: #e6b422; --accent-ink: #1a1300; --accent-soft: rgba(230, 180, 34, .14); --navy: #e6b422; --navy-d: #1a1300; --navy2: #f2cb55;
+  --glass: rgba(0, 0, 0, .72); --sh-1: 0 0 0 1px rgba(230, 180, 34, .12), 0 12px 28px -14px rgba(0, 0, 0, .9); --sh-2: 0 24px 50px -18px rgba(0, 0, 0, 1);
+  --r-card: 20px; color-scheme: dark;
+}
+html[data-skin="onyx"] body { background: #000 !important; }
+html[data-skin="onyx"] .sx-h1, html[data-skin="onyx"] .hero-hi h2, html[data-skin="onyx"] .tb-title h1, html[data-skin="onyx"] .sx-pcard h2 { font-family: ui-serif, "New York", "Iowan Old Style", Georgia, serif !important; font-weight: 700; color: #f6eedb; }
+html[data-skin="onyx"] .card, html[data-skin="onyx"] .nav-tile, html[data-skin="onyx"] .hs, html[data-skin="onyx"] .sx-list, html[data-skin="onyx"] .sx-start { border: 1px solid rgba(230, 180, 34, .22) !important; background: #0e0e10 !important; }
+html[data-skin="onyx"] .hs:first-child { background: linear-gradient(135deg, #f2cb55, #b8860b) !important; color: #1a1300; }
+html[data-skin="onyx"] .hs:first-child span { color: rgba(26, 19, 0, .8) !important; }
+html[data-skin="onyx"] .hs b { color: #f6eedb; } html[data-skin="onyx"] .hs:first-child b { color: #1a1300; }
+html[data-skin="onyx"] .sx-page { background: #000; }
+html[data-skin="onyx"] .sx-chips button { background: #0e0e10 !important; border: 1px solid rgba(230, 180, 34, .25); box-shadow: none; }
+html[data-skin="onyx"] .sx-chips button.on { background: linear-gradient(135deg, #f2cb55, #b8860b) !important; color: #1a1300; }
+html[data-skin="onyx"] .sx-fab, html[data-skin="onyx"] .sx-btn.primary, html[data-skin="onyx"] .login-btn, html[data-skin="onyx"] .sx-send { background: linear-gradient(135deg, #f2cb55, #b8860b) !important; color: #1a1300 !important; }
+html[data-skin="onyx"] .sx-cm.mine .sx-bub { background: linear-gradient(135deg, #f2cb55, #b8860b) !important; color: #1a1300; }
+html[data-skin="onyx"] .sx-search { background: #17171a; border: 1px solid rgba(230, 180, 34, .2); }
+
+/* ================= 4. OCEAN (light, bold blue header, white cards) ================= */
+html[data-skin="ocean"]:root:root {
+  --paper: #eaf0fa; --surface: #ffffff; --surface-solid: #ffffff; --surface-2: #e3ebf8;
+  --ink: #0b1f44; --muted: #5a6b8c; --line: #dbe4f3; --line-strong: #c3d0e8;
+  --accent: #f5b800; --accent-ink: #0b2a5b; --accent-soft: rgba(245, 184, 0, .2); --navy: #0b2a5b; --navy-d: #0b2a5b; --navy2: #1b4a9e;
+  --glass: rgba(255, 255, 255, .85); --sh-1: 0 1px 2px rgba(11, 42, 91, .06), 0 14px 28px -16px rgba(11, 42, 91, .35); --sh-2: 0 26px 50px -20px rgba(11, 42, 91, .5);
+  --r-card: 22px; color-scheme: light;
+}
+html[data-skin="ocean"] body { background: #eaf0fa !important; }
+html[data-skin="ocean"] .hero { margin: 0 !important; padding: calc(18px + env(safe-area-inset-top)) 18px 22px !important; max-width: none !important; background: linear-gradient(160deg, #0b2a5b, #1b4a9e 70%, #2a63c4); border-radius: 0 0 34px 34px; color: #fff; box-shadow: 0 20px 40px -22px rgba(11, 42, 91, .8); }
+html[data-skin="ocean"] .hero-hi small { color: rgba(255, 255, 255, .7); } html[data-skin="ocean"] .hero-hi h2 { color: #fff; }
+html[data-skin="ocean"] .hs { background: rgba(255, 255, 255, .14) !important; border: 1px solid rgba(255, 255, 255, .22) !important; box-shadow: none !important; color: #fff; backdrop-filter: blur(10px); }
+html[data-skin="ocean"] .hs span { color: rgba(255, 255, 255, .78) !important; } html[data-skin="ocean"] .hs b { color: #fff !important; }
+html[data-skin="ocean"] .hs:first-child { background: linear-gradient(135deg, #ffd75e, #f5b800) !important; color: #0b2a5b; border: 0 !important; }
+html[data-skin="ocean"] .hs:first-child b, html[data-skin="ocean"] .hs:first-child span { color: #0b2a5b !important; }
+html[data-skin="ocean"] .hs.late.on b { color: #ffb3bd !important; }
+html[data-skin="ocean"] .hero-admin { background: rgba(255, 255, 255, .16); color: #fff; }
+html[data-skin="ocean"] .hero-bell { background: rgba(255, 255, 255, .16); color: #fff; box-shadow: none; }
+html[data-skin="ocean"] .sx-start { margin-top: 16px; }
+html[data-skin="ocean"] .sx-chips button.on { background: #0b2a5b !important; color: #fff; }
+html[data-skin="ocean"] .sx-h1 { color: #0b2a5b; }
+
+/* ---------- tab bar by look ---------- */
+@media (max-width: 719px) {
+  html[data-skin="midnight"] .tabbar, html[data-skin="ivory"] .tabbar, html[data-skin="onyx"] .tabbar {
+    left: 14px !important; right: 14px !important; bottom: calc(10px + env(safe-area-inset-bottom)) !important; border-radius: 30px !important; border: 1px solid var(--line) !important; padding: 6px 6px !important; box-shadow: var(--sh-2); }
+  html[data-skin="midnight"] .tabbar { background: rgba(10, 22, 48, .7) !important; border-color: rgba(255, 255, 255, .14) !important; }
+  html[data-skin="ivory"] .tabbar { background: rgba(255, 255, 255, .86) !important; }
+  html[data-skin="onyx"] .tabbar { background: rgba(10, 10, 12, .85) !important; border-color: rgba(230, 180, 34, .35) !important; }
+  html[data-skin="ivory"] .tabbar button.on { color: #13203d !important; } html[data-skin="ivory"] .tabbar button.on svg { stroke: #c99700 !important; fill: rgba(201, 151, 0, .18); }
+  html[data-skin="midnight"] .tabbar button.on, html[data-skin="onyx"] .tabbar button.on { color: #ffc61a !important; } html[data-skin="midnight"] .tabbar button.on svg { stroke: #ffc61a !important; } html[data-skin="onyx"] .tabbar button.on svg { stroke: #e6b422 !important; fill: rgba(230, 180, 34, .16); }
+  html[data-skin="ocean"] .tabbar { border-radius: 26px 26px 0 0 !important; background: #fff !important; box-shadow: 0 -14px 34px -18px rgba(11, 42, 91, .5); border-top: 0 !important; }
+  html[data-skin="ocean"] .tabbar button.on { color: #0b2a5b !important; } html[data-skin="ocean"] .tabbar button.on svg { stroke: #f5b800 !important; fill: rgba(245, 184, 0, .22); }
+  html[data-skin="midnight"] .sx-fab, html[data-skin="ivory"] .sx-fab, html[data-skin="onyx"] .sx-fab { bottom: calc(92px + env(safe-area-inset-bottom)); }
+  html[data-skin="midnight"] .sx-body, html[data-skin="ivory"] .sx-body, html[data-skin="onyx"] .sx-body { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+}
+
+/* Appearance picker */
+.sx-skins { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sx-skin { border: 2px solid transparent; border-radius: 22px; padding: 0; background: var(--surface); box-shadow: var(--sh-1); overflow: hidden; text-align: left; }
+.sx-skin.on { border-color: #f5b800; }
+.sx-skin i { display: block; height: 96px; position: relative; }
+.sx-skin i::before { content: ""; position: absolute; left: 12px; right: 12px; top: 12px; height: 26px; border-radius: 10px; background: var(--c2); opacity: .9; }
+.sx-skin i::after { content: ""; position: absolute; left: 12px; width: 44%; bottom: 12px; height: 28px; border-radius: 10px; background: var(--c3); }
+.sx-skin b { display: block; font: 800 15px var(--f-ios); padding: 10px 12px 0; } .sx-skin small { display: block; color: var(--muted); font-size: 12.5px; padding: 2px 12px 12px; }
