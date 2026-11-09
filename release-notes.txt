@@ -1,1 +1,2 @@
+Camera fix: the Camera button in the close screen now opens the phone camera directly (not the gallery).
 ACC upload: admins can upload the ACC export from the app (Admin > ACC upload). It goes to DailyAction or to the Handover tracker.

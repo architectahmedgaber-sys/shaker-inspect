@@ -206,7 +206,7 @@
           <div class="dx-cm-new" id="dxCmNew"><input type="text" id="dxCmIn" dir="auto" maxlength="1000" placeholder="Write a comment for the team..."><button type="button" class="pill-btn" id="dxCmSend">Send</button></div>
         </div>
       </div>`);
-    $('dxCamBtn').onclick = () => $('dxCam').click();
+    $('dxCamBtn').onclick = takePhoto;
     $('dxGalBtn').onclick = () => $('dxGal').click();
     $('dxCam').onchange = e => addPhotos(e.target.files);
     $('dxGal').onchange = e => addPhotos(e.target.files);
@@ -214,6 +214,24 @@
     $('dxMic').onclick = voice;
     $('dxCmSend').onclick = sendComment;
     $('dxCmIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendComment(); } });
+  }
+
+  // In the Android app the web file chooser can fall back to the gallery, so the native Camera plugin opens the camera directly.
+  async function takePhoto() {
+    if (NATIVE && Capacitor.isPluginAvailable && Capacitor.isPluginAvailable('Camera')) {
+      try {
+        const r = await nativeP('Camera', 'getPhoto', { source: 'CAMERA', resultType: 'base64', quality: 80, width: 1600, correctOrientation: true, saveToGallery: false });
+        if (r && r.base64String) {
+          const bin = atob(r.base64String), u = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+          return addPhotos([new File([u], 'photo.jpg', { type: 'image/' + (r.format || 'jpeg'), lastModified: Date.now() })]);
+        }
+        return;
+      } catch (e) {
+        if (/cancel/i.test(String(e && (e.message || e)))) return;
+      }
+    }
+    $('dxCam').click();
   }
 
   // ---- photos: compressed on the phone (max 1280 px, JPEG) so the PDF stays small ----
