@@ -575,6 +575,7 @@
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="ios.css">
 </head>
 <body>
   <div id="decor" aria-hidden="true"></div>
@@ -2580,11 +2581,13 @@
   <!-- ===== account sheet ===== -->
   <div id="acctOverlay" class="acct-overlay">
     <div class="acct-box" role="dialog" aria-labelledby="acctName">
-      <div class="acct-head"><span class="acct-av" aria-hidden="true">✓</span><div><b id="acctName"></b><small id="acctEmail"></small><span id="acctRole" class="role-badge"></span></div></div>
+      <div class="acct-head"><span class="acct-av" id="acctAv" aria-hidden="true">✓</span><div><b id="acctName"></b><small id="acctUser"></small><small id="acctEmail"></small><span id="acctRole" class="role-badge"></span></div></div>
       <p class="acct-txt">You are signed in on this device for 30 days. Everything you close is saved under this name.</p>
       <button type="button" id="acctInstall" class="login-btn" onclick="PtahApp.install()" hidden>Install the app</button>
       <p id="acctIosHint" class="acct-txt" hidden>To install on iPhone: tap Share, then "Add to Home Screen".</p>
       <div class="acct-list">
+        <button type="button" onclick="PtahApp.closeAccount();Shk.sx.openProfile()"><span>Edit profile, photo and @username</span><i>›</i></button>
+        <button type="button" onclick="PtahApp.closeAccount();Shk.sx.tab('inbox')"><span>Inbox</span><i>›</i></button>
         <button type="button" class="admin-only gold" onclick="PtahApp.closeAccount();Shk.openAdmin()"><span>Admin screen</span><i>›</i></button>
         <button type="button" onclick="PtahApp.closeAccount();Shk.openSheets()"><span>Browse the sheet (view only)</span><i>›</i></button>
         <button type="button" onclick="PtahApp.closeAccount();Shk.openHandover()"><span>Handover tracker</span><i>›</i></button>
@@ -2624,6 +2627,7 @@
   <script src="app-daily.js"></script>
   <script src="app-extras.js"></script>
   <script src="app-acc.js"></script>
+  <script src="app-social.js"></script>
   <script src="app-update.js"></script>
 </body>
 </html>
