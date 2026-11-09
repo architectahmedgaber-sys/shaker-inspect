@@ -1,7 +1,8 @@
 {
- "version": "1.0.15",
- "build": 15,
+ "version": "1.0.16",
+ "build": 16,
  "notes": [
+  "Camera fix: the Camera button in the close screen now opens the phone camera directly (not the gallery).",
   "ACC upload: admins can upload the ACC export from the app (Admin > ACC upload). It goes to DailyAction or to the Handover tracker."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
