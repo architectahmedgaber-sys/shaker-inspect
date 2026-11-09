@@ -1,5 +1,5 @@
 // Shaker Inspect service worker: the app opens fast and installs; data always comes live from the sheet.
-const VERSION = 'shk-v12';
+const VERSION = 'shk-v13';
 const SHELL = ['./', 'index.html', 'tracker.html', 'app.css', 'app-api.js', 'app-ui.js', 'app-nav.js', 'app-screens.js', 'app-daily.js', 'app-extras.js', 'app-acc.js', 'config.js', 'version.js', 'app-update.js', 'manifest.webmanifest', 'theme.css', 'icons/icon-192.png', 'icons/icon-512.png'];
 const CDN = /^https:\/\/(cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)\//;
 
