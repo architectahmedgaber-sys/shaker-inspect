@@ -82,3 +82,7 @@ html[data-theme="dark"] .code-row .pill-btn.code-active { background: var(--gold
   .sx-body { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
   #endSign { margin-bottom: 90px; }
 }
+
+/* account sheet: username and email each on their own line */
+.acct-head small { display: block; }
+#acctUser { margin-bottom: 1px; }
