@@ -1,12 +1,9 @@
 {
- "version": "1.0.17",
- "build": 17,
+ "version": "1.0.18",
+ "build": 18,
  "notes": [
-  "New look: iOS-style design, translucent bars, smooth slide-in screens and bottom sheets.",
-  "Five tabs: Home, Requests, Villas, Inbox, Me. Requests is a real screen with search and filters.",
-  "@mentions: type @ in a comment to mention a colleague. They get it in the Inbox (and email).",
-  "Username and profile photo: Me > Edit profile. Comments on each photo: open a request > Photos.",
-  "\"Start here\" card and a gold \"Close a request\" button on Home. Needs the new server files (api-6)."
+  "Fix: \"Check for updates\" in the phone app said \"No connection\". It now reads the version from the website.",
+  "New look: iOS-style design, five tabs (Home, Requests, Villas, Inbox, Me), @mentions, usernames, profile photos, comments on photos."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
