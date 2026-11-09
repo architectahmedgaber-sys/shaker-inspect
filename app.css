@@ -356,3 +356,18 @@ html[dir="rtl"] .cl-tx { text-align: left; }
 .card-list .mini.b-no, .card-list .mini.b-ok { width: auto; padding: 0 14px; font: 700 13px var(--f-ui); }
 .mini.b-no { background: transparent; border-color: #e5484d; color: #e5484d; }
 .vx-scan-btns .b-no, .vx-draw .b-no { color: #fff !important; }
+
+/* ---------- ACC upload (app-acc.js) ---------- */
+.acc-k { margin: 12px 0 6px; }
+.acc-msg { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 13.5px; line-height: 1.45; }
+.acc-msg.bad { background: rgba(229, 72, 77, .12); color: var(--rej, #e5484d); font-weight: 600; }
+.acc-done { border-color: #0f9d58; }
+.acc-from { font-style: normal; color: var(--muted); font-size: 12px; margin-left: 4px; }
+.acc-work { text-align: center; } .acc-work .small { margin: 6px 0 0; }
+.acc-tbl { overflow-x: auto; background: var(--surface-solid); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 6px; }
+.acc-tbl table { width: 100%; border-collapse: collapse; font: 13.5px var(--f-mono); }
+.acc-tbl th, .acc-tbl td { padding: 8px 10px; text-align: right; border-top: 1px solid var(--line); white-space: nowrap; }
+.acc-tbl th { border-top: 0; font: 700 11.5px var(--f-ui); color: var(--muted); letter-spacing: .05em; text-transform: uppercase; }
+.acc-tbl th:first-child, .acc-tbl td:first-child { text-align: left; }
+.acc-tbl td.diff { color: var(--rej, #e5484d); font-weight: 700; }
+.acc-tbl td small { display: block; color: var(--muted); font-weight: 400; font-size: 11px; }
