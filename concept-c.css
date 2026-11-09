@@ -71,3 +71,14 @@ html[data-theme="dark"] .code-row .pill-btn.code-active { background: var(--gold
   .c-knob svg { width: 24px; height: 24px; fill: none; stroke: #0b2a5b; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
   body.role-viewer .c-slide { display: none; }
 }
+
+/* ---------- tab bar: floating rounded bar ---------- */
+@media (max-width: 719px) {
+  .tabbar { left: 10px !important; right: 10px !important; bottom: calc(8px + env(safe-area-inset-bottom)) !important; width: auto !important; border: 0 !important; border-radius: 28px !important; padding: 6px 4px !important; box-shadow: 0 18px 40px -12px rgba(11, 31, 68, .35), 0 2px 6px rgba(11, 31, 68, .08) !important; }
+  .tabbar button.on { color: #0b2a5b !important; }
+  html[data-theme="dark"] .tabbar button.on { color: var(--gold) !important; }
+  .tabbar button.on::after { content: ""; position: absolute; bottom: 2px; width: 18px; height: 3px; border-radius: 2px; background: var(--gold); }
+  .sx-fab { bottom: calc(92px + env(safe-area-inset-bottom)); }
+  .sx-body { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+  #endSign { margin-bottom: 90px; }
+}

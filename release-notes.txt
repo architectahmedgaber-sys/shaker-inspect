@@ -1,1 +1,2 @@
+New look: a blue header with one big number, a card for the oldest request, a timeline for Requests, bigger A/B/C/D tiles, and slide to close on phones. Everything works as before.
 New: Me > Appearance. Pick a look: Classic, Midnight Glass, Ivory Luxe, Onyx Gold or Ocean. It only changes the style, not how the app works.
