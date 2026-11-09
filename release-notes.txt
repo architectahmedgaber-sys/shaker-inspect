@@ -1,2 +1,1 @@
-Fix: "Check for updates" in the phone app said "No connection". It now reads the version from the website.
-New look: iOS-style design, five tabs (Home, Requests, Villas, Inbox, Me), @mentions, usernames, profile photos, comments on photos.
+New: Me > Appearance. Pick a look: Classic, Midnight Glass, Ivory Luxe, Onyx Gold or Ocean. It only changes the style, not how the app works.

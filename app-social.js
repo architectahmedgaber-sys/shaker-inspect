@@ -334,6 +334,30 @@
     };
   }
 
+  // looks: Me > Appearance
+  const SKINS = [
+    ['', 'Classic', 'Blue and gold, as it was', '#0b2a5b', '#1b4a9e', '#f5b800'],
+    ['midnight', 'Midnight Glass', 'Dark, frosted cards, floating bar', '#050d20', '#1b4a9e', '#ffc61a'],
+    ['ivory', 'Ivory Luxe', 'Warm white, serif titles, gold lines', '#f8f4ea', '#13203d', '#c99700'],
+    ['onyx', 'Onyx Gold', 'True black with gold details', '#000000', '#2a2a2e', '#e6b422'],
+    ['ocean', 'Ocean', 'Bold blue header, white cards', '#0b2a5b', '#ffffff', '#f5b800']
+  ];
+  function setSkin(k) {
+    if (k) document.documentElement.setAttribute('data-skin', k); else document.documentElement.removeAttribute('data-skin');
+    try { k ? localStorage.setItem('shkSkin', k) : localStorage.removeItem('shkSkin'); } catch (e) {}
+  }
+  function openAppearance() {
+    const pg = page('Appearance', { small: 'Appearance' });
+    const cur = document.documentElement.getAttribute('data-skin') || '';
+    pg.body.innerHTML = `<p class="sx-sub">Pick the look you like. It changes only the colours and style, not how the app works. It is saved on this phone.</p>
+      <div class="sx-skins">${SKINS.map(s => `<button type="button" class="sx-skin${s[0] === cur ? ' on' : ''}" data-k="${s[0]}"><i style="background:${s[3]};--c2:${s[4]};--c3:${s[5]}"></i><b>${esc(s[1])}</b><small>${esc(s[2])}</small></button>`).join('')}</div>`;
+    pg.body.addEventListener('click', e => {
+      const b = e.target.closest('.sx-skin'); if (!b) return;
+      setSkin(b.dataset.k); tap();
+      pg.body.querySelectorAll('.sx-skin').forEach(x => x.classList.toggle('on', x === b));
+    });
+  }
+
   // my photo in the account sheet and the home header
   function paintMe() {
     const box = $('acctAv');
@@ -409,7 +433,7 @@
   setInterval(pollUnread, 60000);
 
   window.Shk = window.Shk || {};
-  Shk.sx = { cmHtml, fmt, av, tab, openInbox, openRequests, openProfile, openThread, openPhotos, paintTabs, people: () => people,
+  Shk.sx = { cmHtml, fmt, av, tab, openInbox, openRequests, openProfile, openAppearance, setSkin, openThread, openPhotos, paintTabs, people: () => people,
              setUnread, bootstrap, page, closePages };
   document.addEventListener('DOMContentLoaded', () => { build(); setTimeout(() => { bootstrap().then(() => { ready = true; }); startCard(); paintMe(); }, 900); });
   if (document.readyState !== 'loading') { build(); setTimeout(() => { bootstrap().then(() => { ready = true; }); startCard(); paintMe(); }, 900); }
