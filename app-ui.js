@@ -58,8 +58,8 @@
   // ---------- phone tab bar ----------
   function tabs() {
     const bar = $('tabBar'); if (!bar) return;
-    const lvl = typeof view !== 'undefined' ? view.level : 'home';
-    bar.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === (document.body.classList.contains('scr-ho') ? 'villa' : document.body.classList.contains('scr-sheet') ? 'sheet' : (lvl === 'home' ? 'home' : 'list'))));
+    if (window.Shk && Shk.sx) return Shk.sx.paintTabs();
+    bar.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === 'home'));
   }
   function buildTabs() {
     const bar = document.createElement('nav'); bar.id = 'tabBar'; bar.className = 'tabbar'; bar.setAttribute('aria-label', 'Main');
@@ -72,9 +72,15 @@
     };
     ic.sheet = '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/>';
     ic.villa = '<path d="M3 20h18M5 20V9l7-5 7 5v11"/><path d="M10 20v-6h4v6"/>';
-    const items = [['home', 'Home', () => goHome()], ['list', 'Requests', openAll], ['sheet', 'Sheets', () => Shk.openSheets()], ['villa', 'Handover', () => Shk.openHandover()], ['me', 'Me', () => PtahApp.openAccount()]];
-    bar.innerHTML = items.map(([k, l]) => `<button type="button" data-t="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${ic[k]}</svg><span>${l}</span></button>`).join('');
-    bar.querySelectorAll('button').forEach((b, i) => b.onclick = () => { if (items[i][0] !== 'me' && items[i][0] !== 'sheet' && items[i][0] !== 'villa') Shk.closeAll && Shk.closeAll(); items[i][2](); tabs(); });
+    ic.inbox = '<path d="M4 13l2.2-7A2 2 0 0 1 8.1 4.6h7.8a2 2 0 0 1 1.9 1.4L20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M4 13h4.5l1 2.5h5l1-2.5H20"/>';
+    const items = [['home', 'Home'], ['requests', 'Requests'], ['villas', 'Villas'], ['inbox', 'Inbox'], ['me', 'Me']];
+    ic.requests = ic.list; ic.villas = ic.villa;
+    bar.innerHTML = items.map(([k, l]) => `<button type="button" data-t="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${ic[k]}</svg>${k === 'inbox' ? '<b class="sx-badge" hidden></b>' : ''}<span>${l}</span></button>`).join('');
+    bar.querySelectorAll('button').forEach((b, i) => b.onclick = () => {
+      const k = items[i][0];
+      if (k === 'me') { try { navigator.vibrate && navigator.vibrate(8); } catch (e) {} return PtahApp.openAccount(); }
+      Shk.sx.tab(k);
+    });
     (window.Shk = window.Shk || {}).tabsRefresh = tabs;
     document.body.appendChild(bar);
   }
@@ -93,9 +99,11 @@
     document.body.appendChild(s);
     // 1) the signature writes itself in (about 1.8 s)  2) it stays long enough to be read
     // 3) the whole screen wipes away from left to right, and the sign-in / home page shows underneath
-    const quick = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let seen = false; const day = new Date().toDateString();
+    try { seen = localStorage.getItem('shkSplashDay') === day; localStorage.setItem('shkSplashDay', day); } catch (e) {}
+    const quick = matchMedia('(prefers-reduced-motion: reduce)').matches || seen;   // the long signature plays once a day
     setTimeout(() => s.classList.add('wipe'), quick ? 1200 : 3700);
-    setTimeout(() => s.remove(), quick ? 1500 : 4700);
+    setTimeout(() => s.remove(), quick ? 1700 : 4700);
   }
   // the intro always plays in full; other code may call this, it does nothing now
   function hideSplash() {}

@@ -201,9 +201,9 @@
         </div>
         <div class="pills-group dx-sigrow" id="dxSigRow"></div>
         <div class="pills-group dx-cm">
-          <span class="pills-label">Comments <small id="dxCmN"></small></span>
+          <span class="pills-label">Comments <small id="dxCmN"></small><button type="button" class="sx-ph-btn" id="sxPhBtn">📷 Photos</button></span>
           <div class="dx-cm-list" id="dxCmList"></div>
-          <div class="dx-cm-new" id="dxCmNew"><input type="text" id="dxCmIn" dir="auto" maxlength="1000" placeholder="Write a comment for the team..."><button type="button" class="pill-btn" id="dxCmSend">Send</button></div>
+          <div class="dx-cm-new" id="dxCmNew"><input type="text" id="dxCmIn" data-mention dir="auto" maxlength="1000" placeholder="Write a comment. Type @ to mention someone"><button type="button" class="pill-btn" id="dxCmSend">Send</button></div>
         </div>
       </div>`);
     $('dxCamBtn').onclick = takePhoto;
@@ -309,13 +309,13 @@
     $('dxCmN').textContent = n ? String(n) : '';
     list.innerHTML = n ? '<div class="dx-cm-empty">Loading...</div>' : '<div class="dx-cm-empty">No comments yet.</div>';
     if (!n) return;
-    api('comments_list', [item.irNumber]).then(r => { if (req === cmReq) paintComments(r); }).catch(e => { if (req === cmReq) list.innerHTML = `<div class="dx-cm-empty">${esc(e.message)}</div>`; });
+    api('comments_list2', [item.irNumber, '']).then(r => { if (req === cmReq) paintComments(r); }).catch(e => { if (req === cmReq) list.innerHTML = `<div class="dx-cm-empty">${esc(e.message)}</div>`; });
   }
   function paintComments(rows) {
     const me = PtahApp.email();
     $('dxCmN').textContent = rows.length ? String(rows.length) : '';
     if (currentItem) boot.comments[currentItem.irNumber] = rows.length;
-    $('dxCmList').innerHTML = rows.length ? rows.map(c => `<div class="dx-cm-it${c.email === me ? ' mine' : ''}"><b>${esc(c.engineer)}${c.role === 'Admin' ? ' <i>Admin</i>' : ''}</b><p dir="auto">${esc(c.text)}</p><small>Rev ${esc(c.rev)} · ${esc(new Date(c.t).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }))}</small></div>`).join('')
+    $('dxCmList').innerHTML = rows.length ? rows.map(c => (window.Shk && Shk.sx ? Shk.sx.cmHtml(c, me) : `<div class="dx-cm-it${c.email === me ? ' mine' : ''}"><b>${esc(c.engineer)}</b><p dir="auto">${esc(c.text)}</p></div>`)).join('')
       : '<div class="dx-cm-empty">No comments yet.</div>';
     const l = $('dxCmList'); l.scrollTop = l.scrollHeight;
   }
@@ -323,7 +323,7 @@
     const inp = $('dxCmIn'), t = inp.value.trim(), it = currentItem;
     if (!t || !it) return;
     const b = $('dxCmSend'); b.disabled = true;
-    try { paintComments(await api('comments_add', [it.irNumber, it.rev, t])); inp.value = ''; render(); }
+    try { paintComments(await api('comments_add2', [it.irNumber, it.rev, t, ''])); inp.value = ''; render(); }
     catch (e) { note(e.message, 5000); }
     finally { b.disabled = false; }
   }

@@ -212,10 +212,11 @@
   function slides() {
     const view = PtahApp.role() === 'Viewer';
     return [
-      { ic: '✉️', t: 'Sign in with your email', p: 'Type your email and the 6-digit code we send you. You stay signed in for 30 days on this phone.' },
-      view ? { ic: '👁️', t: 'Look around, view only', p: 'See the requests, the sheet tabs and the Handover tracker. Closing requests is for engineers.' }
-           : { ic: '✅', t: 'Close a request in 3 taps', p: 'Open the request, pick the code (A, B, C or D), tick the checklist and press Close. It is saved under your own name.' },
-      { ic: '💬', t: 'Need help?', p: 'Open Me, then "Contact the developer". You can reach Ahmed on WhatsApp or email.' }
+      { ic: '👋', t: 'Welcome to Shaker Inspect', p: 'Five tabs at the bottom: Home, Requests, Villas, Inbox and Me. That is all you need.' },
+      view ? { ic: '👁️', t: 'Look around, view only', p: 'See the requests, villas, photos and comments. Closing requests is for engineers.' }
+           : { ic: '✅', t: 'Close a request in 3 taps', p: 'Tap the gold "Close a request" button, pick the request, choose the code (A, B, C or D) and press Close. It is saved under your name.' },
+      { ic: '💬', t: 'Talk to your team', p: 'Comment on a request or on any photo. Type @ and a name to mention a colleague. They get it in their Inbox.' },
+      { ic: '🙂', t: 'Make it yours', p: 'Open Me, then Edit profile, to add your photo and your @username. Need help? Me, then Contact the developer.' }
     ];
   }
   let step = 0;
