@@ -20,19 +20,19 @@
 
   // ================= ADMIN =================
   let adminTab = 'today', logQ = '', mode = 'admin';
-  const ADMIN_TABS = [['today', 'Today'], ['users', 'Users'], ['perf', 'Performance'], ['closes', 'Undo'], ['trash', 'Trash'], ['log', 'Log'], ['settings', 'Settings']];
+  const ADMIN_TABS = [['today', 'Today'], ['acc', 'ACC upload'], ['users', 'Users'], ['perf', 'Performance'], ['closes', 'Undo'], ['trash', 'Trash'], ['log', 'Log'], ['settings', 'Settings']];
 
-  function openAdmin() {
+  function openAdmin(tab) {
     if (PtahApp.role() !== 'Admin') return;
     mode = 'admin'; closeHandover();
     frame('Admin', ADMIN_TABS.map(([k, l]) => `<button type="button" data-tab="${k}">${l}</button>`).join(''));
-    gotoTab(adminTab);
+    gotoTab(typeof tab === 'string' && ADMIN_TABS.some(t => t[0] === tab) ? tab : adminTab);
   }
   function gotoTab(k) {
     adminTab = k;
     document.querySelectorAll('#scTabs button').forEach(b => { b.classList.toggle('on', b.dataset.tab === k); if (b.dataset.tab === k) b.scrollIntoView({ inline: 'center', block: 'nearest' }); });
     loading();
-    ({ today: tToday, users: tUsers, perf: tPerf, log: tLog, settings: tSettings, closes: () => Shk.admCloses(), trash: () => Shk.admTrash() })[k]();
+    ({ today: tToday, users: tUsers, perf: tPerf, log: tLog, settings: tSettings, closes: () => Shk.admCloses(), trash: () => Shk.admTrash(), acc: () => Shk.admAcc() })[k]();
   }
 
   function tToday() {

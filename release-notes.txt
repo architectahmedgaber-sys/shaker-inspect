@@ -1,1 +1,1 @@
-Update notice: the app now tells you when a new version is available.
+ACC upload: admins can upload the ACC export from the app (Admin > ACC upload). It goes to DailyAction or to the Handover tracker.
