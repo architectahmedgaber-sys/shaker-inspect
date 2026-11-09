@@ -5,6 +5,8 @@
 (function () {
   const CUR = window.SHK_VERSION || { version: '0', build: 0 };
   const NATIVE = !!(window.Capacitor && Capacitor.getPlatform && Capacitor.getPlatform() !== 'web');
+  // the phone app runs from files inside the APK, so it must read the version file from the website
+  const VER_URL = NATIVE ? 'https://architectahmedgaber-sys.github.io/shaker-inspect/version.json' : 'version.json';
   const APK = 'https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   let latest = null, lastCheck = 0, dismissed = 0;
@@ -29,7 +31,7 @@
     if (!force && now - lastCheck < 10 * 60 * 1000) return null;
     lastCheck = now;
     try {
-      const r = await fetch('version.json?t=' + now, { cache: 'no-store' });
+      const r = await fetch(VER_URL + '?t=' + now, { cache: 'no-store' });
       if (!r.ok) throw new Error('v' + r.status);
       latest = await r.json();
     } catch (e) { return null; }                      // offline or not published yet: stay quiet
