@@ -22,16 +22,27 @@
     const items = allItems || [], late = lateCount(items), done = closedToday();
     const name = firstName(window.PtahApp && PtahApp.engineer());
     const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+    const sorted = items.slice().sort(byAge), feat = sorted[0], next = sorted.slice(1, 4);
+    const nm = it => esc(villaOf(it)), co = it => esc(projectInfo(getProject(it)).label);
+    const tag = it => it.overdue ? '<i class="c-tag bad">' + esc(ageText(it)) + '</i>' : isLate(it) ? '<i class="c-tag bad">' + esc(ageText(it)) + '</i>' : '<i class="c-tag">' + esc(ageText(it)) + '</i>';
     el.innerHTML = `
-      <div class="hero-hi"><div><small>${esc(date)}</small><h2>${esc(greet())}${name ? ', <br>' + esc(name) : ''}</h2></div>
-        <button type="button" class="hero-av" onclick="PtahApp.openAccount()" title="Account">${esc(initials(window.PtahApp && PtahApp.engineer()))}</button></div>
-      ${PtahApp.role() === 'Admin' ? '<button type="button" class="hero-admin" onclick="Shk.openAdmin()">Admin screen<i>›</i></button>' : ''}
-      ${PtahApp.role() === 'Viewer' ? '<div class="hero-view">View only · you can look at everything but not close requests</div>' : ''}
-      <div class="hero-stats">
-        <div class="hs"><b data-n="${items.length}">${items.length}</b><span>Pending</span></div>
-        <div class="hs late${late ? ' on' : ''}"><b data-n="${late}">${late}</b><span>Late</span></div>
-        <div class="hs ok"><b data-n="${done}">${done}</b><span>Closed today</span></div>
-      </div>`;
+      <div class="c-head">
+        <div class="hero-hi"><div><small>${esc(greet())}</small><h2>${esc(name || 'Welcome')}</h2></div>
+          <button type="button" class="hero-av" onclick="PtahApp.openAccount()" title="Account">${esc(initials(window.PtahApp && PtahApp.engineer()))}</button></div>
+        ${PtahApp.role() === 'Admin' ? '<button type="button" class="hero-admin" onclick="Shk.openAdmin()">Admin screen<i>›</i></button>' : ''}
+        ${PtahApp.role() === 'Viewer' ? '<div class="hero-view">View only · you can look at everything but not close requests</div>' : ''}
+        <div class="c-big"><b data-n="${items.length}">${items.length}</b><span>${items.length === 1 ? 'request waiting' : 'requests waiting'}</span></div>
+        <div class="hero-stats">
+          <div class="hs"><b data-n="${items.length}">${items.length}</b><span>Pending</span></div>
+          <div class="hs late${late ? ' on' : ''}"><b data-n="${late}">${late}</b><span>Late</span></div>
+          <div class="hs ok"><b data-n="${done}">${done}</b><span>Closed today</span></div>
+        </div>
+      </div>
+      ${feat ? `<button type="button" class="c-feat${isLate(feat) ? ' late' : ''}" data-ci="${esc(feat.rowIndex)}">
+        <small>${co(feat)} · ${esc(feat.irNumber)}</small><b>${nm(feat)}</b><p>${esc(activityOf(feat))}</p>
+        <span>${tag(feat)}<i class="c-tag">Rev ${esc(feat.rev)}</i></span></button>` : '<div class="c-feat empty"><b>All clear</b><p>No pending requests. Nice work.</p></div>'}
+      ${next.length ? `<div class="c-tl"><h3>Up next</h3>${next.map(it => `<button type="button" class="c-row${isLate(it) ? ' late' : ''}" data-ci="${esc(it.rowIndex)}"><u></u><div><small><span>${co(it)}</span>${tag(it)}</small><b>${nm(it)}</b><em>${esc(activityOf(it))}</em></div></button>`).join('')}</div>` : ''}`;
+    el.querySelectorAll('[data-ci]').forEach(b => b.onclick = () => { const it = (allItems || []).find(i => String(i.rowIndex) === b.dataset.ci); if (it) openModal(it); });
     signature();
     if (!el.dataset.counted) { el.dataset.counted = 1; el.querySelectorAll('b[data-n]').forEach(countUp); }
   }
