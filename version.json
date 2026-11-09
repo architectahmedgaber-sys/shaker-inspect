@@ -1,8 +1,8 @@
 {
- "version": "1.0.14",
- "build": 14,
+ "version": "1.0.15",
+ "build": 15,
  "notes": [
-  "Update notice: the app now tells you when a new version is available."
+  "ACC upload: admins can upload the ACC export from the app (Admin > ACC upload). It goes to DailyAction or to the Handover tracker."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
