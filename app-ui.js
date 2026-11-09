@@ -135,5 +135,22 @@
       ind.style.transform = ''; ind.style.opacity = 0; ind.classList.remove('arm'); y0 = null; });
   }
 
-  splash(); skeleton(); buildTabs(); pull();
+  // ---------- slide to close (phones): drives the normal Close button, so every rule still applies ----------
+  function slider() {
+    const f = document.querySelector('.modal-footer'), btn = $('modalSaveBtn'); if (!f || !btn || f.querySelector('.c-slide')) return;
+    const s = document.createElement('div'); s.className = 'c-slide'; s.setAttribute('role', 'button'); s.tabIndex = 0; s.setAttribute('aria-label', 'Slide to close request');
+    s.innerHTML = '<span class="c-knob"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span><em>Slide to close request</em>';
+    f.appendChild(s);
+    const knob = s.firstChild; let x0 = null, max = 0;
+    const fire = () => { try { navigator.vibrate && navigator.vibrate(14); } catch (e) {} if (!btn.disabled) btn.click(); };
+    const reset = () => { knob.style.transition = 'transform .3s cubic-bezier(.32,.72,0,1)'; knob.style.transform = ''; s.classList.remove('go'); };
+    knob.addEventListener('pointerdown', e => { x0 = e.clientX; max = s.clientWidth - knob.offsetWidth - 8; knob.style.transition = 'none'; knob.setPointerCapture(e.pointerId); });
+    knob.addEventListener('pointermove', e => { if (x0 == null) return; const d = Math.max(0, Math.min(max, e.clientX - x0)); knob.style.transform = `translateX(${d}px)`; s.classList.toggle('go', d > max * .85); });
+    const end = e => { if (x0 == null) return; const d = Math.max(0, e.clientX - x0); x0 = null; if (d >= max * .85) { fire(); setTimeout(reset, 400); } else reset(); };
+    knob.addEventListener('pointerup', end); knob.addEventListener('pointercancel', () => { x0 = null; reset(); });
+    s.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fire(); } });
+    s.addEventListener('click', e => { if (e.target === s || e.target.tagName === 'EM') { s.classList.add('hint'); setTimeout(() => s.classList.remove('hint'), 700); } });
+  }
+
+  splash(); skeleton(); buildTabs(); pull(); slider();
 })();

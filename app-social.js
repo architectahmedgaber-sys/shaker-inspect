@@ -255,8 +255,9 @@
         const vm = ql.match(/^(?:villa\s*)?(\d{1,4})$/);
         if (vm) html += `<h3 class="sx-sec">Villa</h3><div class="sx-list"><button type="button" class="sx-row" data-v="${esc(vm[1])}"><span class="sx-ic">🏘</span><span class="sx-rt"><b>Villa ${esc(vm[1])}</b><small>All requests and notes</small></span><i class="sx-chev">›</i></button></div>`;
       }
-      html += `<h3 class="sx-sec">${list.length} request${list.length === 1 ? '' : 's'}</h3>`;
-      html += list.length ? `<div class="sx-list">${list.slice(0, 150).map(i => `<button type="button" class="sx-row" data-r="${i.rowIndex}"><span class="sx-st ${ageClass(i)}"></span><span class="sx-rt"><b>${esc(villaOf(i))}</b><small>${esc(activityOf(i))}</small><em>${esc(shortIr(i.irNumber))} · Rev ${esc(i.rev || '0')} · ${esc(projectInfo(getProject(i)).label)}</em></span><span class="age-chip ${ageClass(i)}">${esc(ageText(i))}</span></button>`).join('')}</div>`
+      const row = i => `<button type="button" class="c-row ${isLate(i) ? 'late' : ''}" data-r="${i.rowIndex}"><u></u><div><small><span>${esc(projectInfo(getProject(i)).label)} · ${esc(shortIr(i.irNumber))}</span><i class="c-tag ${isLate(i) ? 'bad' : ''}">${esc(ageText(i))}</i></small><b>${esc(villaOf(i))}</b><em>${esc(activityOf(i))} · Rev ${esc(i.rev || '0')}</em></div></button>`;
+      const groups = [['Late', list.filter(isLate)], ['Today', list.filter(i => !isLate(i) && i.ageDays === 0)], ['Earlier', list.filter(i => !isLate(i) && i.ageDays !== 0)]];
+      html += list.length ? groups.filter(g => g[1].length).map(g => `<div class="c-tl"><h3>${g[0]} · ${g[1].length}</h3>${g[1].slice(0, 150).map(row).join('')}</div>`).join('')
         : '<div class="sx-empty big"><div class="sx-bell">✅</div><b>Nothing here</b><br>No request matches.</div>';
       res.innerHTML = html;
     }
