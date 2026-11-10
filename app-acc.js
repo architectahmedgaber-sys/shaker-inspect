@@ -19,13 +19,21 @@
   const host = () => $('accBox');
 
   let lib = null;
+  // the Excel reader is kept inside the app (vendor/); the CDN is only a fallback. Each try gives up after 20 s.
+  function loadScript(src) {
+    return new Promise((ok, bad) => {
+      const s = document.createElement('script'); let done = false;
+      const end = f => { if (done) return; done = true; clearTimeout(t); f(); };
+      const t = setTimeout(() => end(() => { s.remove(); bad(new Error('timeout')); }), 20000);
+      s.onload = () => end(ok); s.onerror = () => end(() => { s.remove(); bad(new Error('failed')); });
+      s.src = src; document.head.appendChild(s);
+    });
+  }
   function loadXlsx() {
     if (window.XLSX) return Promise.resolve();
-    return lib || (lib = new Promise((ok, bad) => {
-      const s = document.createElement('script'); s.src = XLSX_URL; s.onload = ok;
-      s.onerror = () => { lib = null; bad(new Error('Could not load the Excel reader. Check the connection.')); };
-      document.head.appendChild(s);
-    }));
+    return lib || (lib = loadScript('vendor/xlsx.full.min.js').catch(() => loadScript(XLSX_URL)).then(() => {
+      if (!window.XLSX) throw new Error('x');
+    }).catch(() => { lib = null; throw new Error('Could not load the Excel reader. Check the connection and try again.'); }));
   }
 
   // ---------------------------------------------------------------- reading the .xlsx on the phone
@@ -95,7 +103,13 @@
         ${msg ? `<div class="acc-msg bad">${msg}</div>` : ''}
       </div>
       <div id="accLast"></div>`;
-    $('accFile').onchange = e => { const f = e.target.files && e.target.files[0]; if (f) check(f); };
+    $('accFile').onchange = e => {
+      const f = e.target.files && e.target.files[0];
+      e.target.value = '';                  // so choosing the same file again still fires
+      if (!f) return;
+      if (!/\.xlsx$/i.test(f.name)) return drawStart('This is not an Excel .xlsx file: ' + esc(f.name) + '. Export the Submittal item summary from ACC as Excel (.xlsx).');
+      check(f);
+    };
     api('admin_accLast').then(drawLast).catch(() => {});
   }
   function drawLast(L) {
@@ -105,14 +119,28 @@
       ${L.canUndo ? `<div class="btnrow"><button type="button" class="b-no" data-acc="undo">Take back this upload</button></div>`
                   : `<small class="hint">Cannot be taken back: ${esc(L.why)}</small>`}</div>`;
   }
-  const working = t => { host().innerHTML = `<div class="card acc-work"><div class="sc-load"><i></i><i></i><i></i></div><p class="small" id="accStep">${esc(t)}</p></div>`; };
-  const step = t => { const s = $('accStep'); if (s) s.textContent = t; };
+  // a visible progress card: what is happening now, and how many seconds it has been running
+  let stepText = '', stepT0 = 0, tick = null;
+  function paintStep() {
+    const s = $('accStep'); if (!s) { clearInterval(tick); tick = null; return; }
+    const sec = Math.round((Date.now() - stepT0) / 1000);
+    s.innerHTML = esc(stepText) + (sec >= 3 ? ' <small class="hint">(' + sec + ' s' + (sec >= 25 ? ' · still working, large files and slow signal take a while' : '') + ')</small>' : '');
+  }
+  const working = t => {
+    host().innerHTML = `<div class="card acc-work"><div class="sc-load"><i></i><i></i><i></i></div><p class="small" id="accStep"></p></div>`;
+    stepText = t; stepT0 = Date.now(); paintStep();
+    if (!tick) tick = setInterval(paintStep, 1000);
+    try { host().scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+  };
+  const step = t => { stepText = t; stepT0 = Date.now(); paintStep(); };
 
   async function check(file, opt) {
     if (busy) return; busy = true;
     try {
-      if (!opt) { working('Reading ' + file.name + '...'); rep = await readFile(file); }
-      step('Checking it against the sheet...');
+      const kb = Math.max(1, Math.round((file.size || 0) / 1024));
+      working('Got ' + file.name + ' (' + kb + ' KB). Reading it...');
+      if (!opt) rep = await readFile(file);
+      step('Read ' + rep.rows.length + ' rows. Sending them to the server to check against the sheet...');
       plan = await api('admin_accCheck', [rep, opt || {}]);
       plan.kind === 'daily' ? drawDaily() : drawTracker();
     } catch (e) { drawStart(esc(e.message || e)); }
