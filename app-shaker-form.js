@@ -150,7 +150,6 @@
       page.drawImage(logo, { x: RX - lw, y: H - 30 - lh, width: lw, height: lh });
       TL('مشروع ساوث ميد', ML, 38, X, 11, INK);
       TL('قوائم الفحص والاستلام للأعمال المعمارية', ML, 55, R, 7.6, SUB);
-      if (d.irNumber) TL(d.irNumber + ' · Rev ' + d.rev, ML, 68, R, 7, MUTE);
       y = 96;
     }
 
@@ -185,7 +184,37 @@
           if (c[1]) TR(c[1], x2 - 4, yy - 0.5, B, 8.6, INK);
         });
       });
-      y += fh * 2 + 14;
+      y += fh * 2;
+      // the request as it is on ACC: IR number, weather, photos, and the title exactly as written there
+      const nPh = (d.photos || []).length;
+      const r3 = [[['رقم الـ IR:', (d.irNumber || '') + (d.irNumber ? ' · Rev ' + d.rev : ''), 0.42], ['الطقس:', d.weather || '', 0.29], ['الصور:', nPh ? nPh + ' صور · في الصفحات الأخيرة' : 'لا يوجد', 0.29]]];
+      const h3 = 31;
+      box(ML, y, CW, h3, null, INK, 0.9);
+      let xr3 = RX;
+      r3[0].forEach((c, j) => {
+        const cw = CW * c[2], xl = xr3 - cw;
+        if (j > 0) vl(xr3, y, y + h3, INK, 0.9);
+        TR(c[0], xr3 - 10, y + 9, B, 9, INK);
+        const lw = wid(c[0], B, 9) + 6;
+        if (c[1]) { if (hasAr(c[1])) TR(c[1], xr3 - 10 - lw, y + 8.5, B, 8.4, INK); else TR(c[1], xr3 - 10 - lw, y + 8.5, B, 9.4, INK); }
+        else hl(xl + 10, xr3 - 10 - lw, y + 22, MUTE, 0.5, [1, 2]);
+        xr3 = xl;
+      });
+      y += h3;
+      const tl = wrap(d.description || d.activity || '', B, 8.2, CW - 24 - wid('اسم التسليمة (ACC):', B, 9) - 8);
+      const h4 = Math.max(26, tl.length * 11 + 14);
+      box(ML, y, CW, h4, null, INK, 0.9);
+      TR('اسم التسليمة (ACC):', RX - 10, y + 9, B, 9, INK);
+      const tx = RX - 10 - wid('اسم التسليمة (ACC):', B, 9) - 8;
+      tl.forEach((l, k) => TR(l, tx, y + 8.5 + k * 11, B, 8.2, INK));
+      y += h4;
+      if (d.prevRev) {
+        box(ML, y, CW, 26, null, INK, 0.9);
+        TR('المراجعة السابقة:', RX - 10, y + 8, B, 9, INK);
+        wrap(d.prevRev, R, 8.2, CW - 24 - wid('المراجعة السابقة:', B, 9) - 8).slice(0, 1).forEach(l => TR(l, RX - 10 - wid('المراجعة السابقة:', B, 9) - 8, y + 8, R, 8.2, INK));
+        y += 26;
+      }
+      y += 14;
     }
 
     const TICK = 12.5, NUMW = 22;
@@ -283,6 +312,7 @@
           box(x, y, pw, hs[j], SHADE);
           page.drawImage(p.img, { x: x + (pw - w) / 2, y: H - y - hs[j], width: w, height: hs[j] });
           const lab = (k + j + 1) + ' · ' + (p.tag === 'before' ? 'قبل · ' : p.tag === 'after' ? 'بعد · ' : '') + p.cap;
+          if (p.tag) { const bw = wid(p.tag === 'before' ? 'قبل' : 'بعد', B, 7) + 12; box(x + pw - bw, y, bw, 13, p.tag === 'before' ? SUB : OKC); TC(p.tag === 'before' ? 'قبل' : 'بعد', x + pw - bw / 2, y + 2.4, B, 7, WHITE); }
           TR(lab, x + pw, y + hs[j] + 3, R, 7.2, SUB);
         });
         y += rowH + 6;
@@ -316,6 +346,9 @@
       const old = PR.build;
       PR.build = function (d, n) { return isFormCode(d) ? build(d, n) : old.call(PR, d, n); };
       PR.build.__shaker = true;
+      // keep the ACC title (as written) on the prepared data so the form can print it
+      const prep = PR.prepare;
+      if (prep) PR.prepare = function (req, cl, marks) { const d = prep.call(PR, req, cl, marks); d.description = req.description || ''; return d; };
     }
   }
 })(typeof window !== 'undefined' ? window : globalThis);
