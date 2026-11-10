@@ -1,8 +1,8 @@
 {
- "version": "1.0.22",
- "build": 22,
+ "version": "1.0.23",
+ "build": 23,
  "notes": [
-  "Fixed: the \"New update available\" notice no longer comes back after pressing Update (the browser kept old files for a few minutes)."
+  "Fixed: ACC upload page: the Choose button now opens the file picker directly, you can also drop the .xlsx file on the page, and the page shows the app build number."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
