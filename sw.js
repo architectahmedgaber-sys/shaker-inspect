@@ -1,6 +1,6 @@
 // Shaker Inspect service worker: the app opens fast and installs; data always comes live from the sheet.
-const VERSION = 'shk-v17';
-const SHELL = ['./', 'index.html', 'tracker.html', 'app.css', 'app-api.js', 'app-ui.js', 'app-nav.js', 'app-screens.js', 'app-daily.js', 'app-extras.js', 'app-acc.js', 'app-social.js', 'app-shaker-form.js', 'ios.css', 'skins.css', 'concept-c.css', 'config.js', 'version.js', 'app-update.js', 'manifest.webmanifest', 'theme.css', 'icons/icon-192.png', 'icons/icon-512.png'];
+const VERSION = 'shk-v18';
+const SHELL = ['./', 'index.html', 'tracker.html', 'app.css', 'app-api.js', 'app-ui.js', 'app-nav.js', 'app-screens.js', 'app-daily.js', 'app-extras.js', 'app-acc.js', 'vendor/xlsx.full.min.js', 'app-social.js', 'app-shaker-form.js', 'ios.css', 'skins.css', 'concept-c.css', 'config.js', 'version.js', 'app-update.js', 'manifest.webmanifest', 'theme.css', 'icons/icon-192.png', 'icons/icon-512.png'];
 const CDN = /^https:\/\/(cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)\//;
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });

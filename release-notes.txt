@@ -1,3 +1,4 @@
+Fixed: ACC upload now shows the file it got, a live progress step with seconds, and a clear message if something fails. The Excel reader is now inside the app, so it no longer depends on the internet.
 New look: a blue header with one big number, a card for the oldest request, a timeline for Requests, bigger A/B/C/D tiles, and slide to close on phones. Everything works as before.
 New: Me > Appearance. Pick a look: Classic, Midnight Glass, Ivory Luxe, Onyx Gold or Ocean. It only changes the style, not how the app works.
 New: the record PDF for the masonry and plaster activities (first course, raising walls, spatter dash and dots, plaster accessories, final plaster) now comes out in Arabic, right to left, with the Shaker logo, the IR number and title as written on ACC, summary, notes, signatures and photos.
