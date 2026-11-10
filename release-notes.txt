@@ -1,1 +1,1 @@
-Fixed: the "New update available" notice no longer comes back after pressing Update (the browser kept old files for a few minutes).
+Fixed: ACC upload page: the Choose button now opens the file picker directly, you can also drop the .xlsx file on the page, and the page shows the app build number.
