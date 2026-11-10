@@ -87,7 +87,7 @@
   let rep = null, plan = null, busy = false;
   function admAcc() {
     const b = $('scBody'); if (!b) return;
-    rep = null; plan = null;
+    rep = null; plan = null; busy = false;     // opening the page always starts clean
     b.innerHTML = `<div id="accBox"></div>${SIGN}`;
     drawStart();
   }
@@ -98,20 +98,31 @@
         <p class="small" style="margin:0 0 8px">Choose the ACC export <b>Submittal item summary</b> (.xlsx). The app tells which report it is:</p>
         <p class="small" style="margin:0">• <b>Open requests only</b> → added at the end of <b>DailyAction</b>.<br>• <b>With Closed requests</b> (the full export) → updates the <b>Handover tracker</b>.</p>
         <p class="small" style="margin:8px 0 0">Nothing is written until you press Save on the preview.</p>
-        <input type="file" id="accFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
-        <div class="btnrow"><button type="button" class="b-ok" data-acc="pick">Choose the file</button></div>
+        <label class="btnrow acc-pick" style="display:block"><span class="b-ok" style="display:block;text-align:center;padding:14px;border-radius:12px;cursor:pointer;font-weight:700">Choose the file</span>
+          <input type="file" id="accFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;width:1px;height:1px;opacity:0"></label>
+        <div id="accDrop" class="small" style="margin-top:10px;padding:14px;border:2px dashed var(--line-strong,#999);border-radius:12px;text-align:center">or drop the .xlsx file here</div>
+        <p class="small" style="margin:8px 0 0;opacity:.6">app build ${esc((window.SHK_VERSION || {}).build || '?')}</p>
         ${msg ? `<div class="acc-msg bad">${msg}</div>` : ''}
       </div>
       <div id="accLast"></div>`;
-    $('accFile').onchange = e => {
-      const f = e.target.files && e.target.files[0];
-      e.target.value = '';                  // so choosing the same file again still fires
-      if (!f) return;
-      if (!/\.xlsx$/i.test(f.name)) return drawStart('This is not an Excel .xlsx file: ' + esc(f.name) + '. Export the Submittal item summary from ACC as Excel (.xlsx).');
-      check(f);
-    };
+    const dz = $('accDrop');
+    dz.ondragover = e => { e.preventDefault(); dz.style.background = 'rgba(255,198,26,.18)'; };
+    dz.ondragleave = () => { dz.style.background = ''; };
+    dz.ondrop = e => { e.preventDefault(); dz.style.background = ''; const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) picked(f); };
     api('admin_accLast').then(drawLast).catch(() => {});
   }
+  // one place for a chosen file; the change listener is on the document so a redraw of the page cannot lose it
+  function picked(f) {
+    if (!f) return;
+    if (!/\.xlsx$/i.test(f.name)) return drawStart('This is not an Excel .xlsx file: ' + esc(f.name) + '. Export the Submittal item summary from ACC as Excel (.xlsx).');
+    check(f);
+  }
+  document.addEventListener('change', e => {
+    if (!e.target || e.target.id !== 'accFile') return;
+    const f = e.target.files && e.target.files[0];
+    try { e.target.value = ''; } catch (x) {}
+    picked(f);
+  });
   function drawLast(L) {
     const box = $('accLast'); if (!box || !L) return;
     box.innerHTML = `<h3 class="sc-h">Last upload to DailyAction</h3>
@@ -303,7 +314,6 @@
     const a = ev.target.closest && ev.target.closest('[data-acc]'); if (!a) return;
     const k = a.dataset.acc;
     if (k === 'open') { if (window.closeModal && document.querySelector('.modal-overlay.open')) closeModal(); return Shk.openAdmin('acc'); }
-    if (k === 'pick') return $('accFile').click();
     if (k === 'again') return admAcc();
     if (k === 'savedaily') return saveDaily(a);
     if (k === 'undo') return undoDaily(a);
