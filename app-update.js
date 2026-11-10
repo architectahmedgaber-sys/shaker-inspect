@@ -67,6 +67,12 @@
       if ('serviceWorker' in navigator) { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.unregister())); }
       if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); }
     } catch (e) {}
+    // the browser's own cache (GitHub Pages keeps files 10 min) must be refreshed too, or the reload shows the old files again
+    try {
+      const urls = [].concat([].map.call(document.querySelectorAll('script[src],link[rel=stylesheet][href]'), n => n.getAttribute('src') || n.getAttribute('href')),
+        ['version.json', 'index.html', './']).filter(u => u && !/^https?:\/\//.test(u));
+      await Promise.all(urls.map(u => fetch(u, { cache: 'reload' }).catch(() => null)));
+    } catch (e) {}
     location.replace(location.pathname + '?u=' + Date.now());
   }
 
