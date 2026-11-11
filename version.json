@@ -1,8 +1,8 @@
 {
- "version": "1.0.24",
- "build": 24,
+ "version": "1.0.25",
+ "build": 25,
  "notes": [
-  "Fixed: ACC upload page: the Choose button now opens the file picker directly, you can also drop the .xlsx file on the page, and the page shows the app build number."
+  "Changed: PDF records for the masonry and plaster activity checklists are now in English (items translated from the Arabic list, Arabic notes kept). The checklist in the app stays Arabic."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
