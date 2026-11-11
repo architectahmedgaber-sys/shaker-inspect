@@ -126,9 +126,11 @@
     $('loginHead').hidden = s === 'loginPendingStep';
     note('');
     const f = { loginEmailStep: 'loginEmail', loginCodeStep: 'loginCode', loginSignupStep: 'signupName' }[s];
+    if (s === 'loginSignupStep') setTimeout(() => { const n = $('signupName'); if (n && /@/.test(n.value)) n.value = ''; }, 200);
     if (f) setTimeout(() => $(f) && $(f).focus(), 50);
   }
-  function note(m, bad) { const n = $('loginNote'); n.textContent = m || ''; n.className = 'login-note' + (bad ? ' bad' : ''); }
+  function note(m, bad) { const n = $('loginNote'); n.textContent = m || ''; n.className = 'login-note' + (bad ? ' bad' : '');
+    if (m && bad) { try { n.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} } }
   function busy(btn, on, label) { btn.disabled = on; if (label) btn.textContent = label; }
 
   async function sendCode(ev) {
@@ -172,14 +174,17 @@
   }
   async function signup(ev) {
     if (ev) ev.preventDefault();
-    const name = $('signupName').value.trim(), msg = $('signupMsg').value.trim();
+    const name = $('signupName').value.replace(/\s+/g, ' ').trim(), msg = $('signupMsg').value.trim();
+    if (/[@\d]/.test(name) || name.split(' ').length < 2 || name.length < 5) return note('Write your full name (first and last), letters only, not your email.', true);
+    if (msg.length < 8) return note('Write a short message saying who you are and where you work (at least 8 letters).', true);
+    note('');
     const b = $('signupBtn'); busy(b, true, 'Sending...');
     try {
       const o = await post('signup_request', [name, msg], session.token);
       if (!o.ok) throw new Error(o.error);
       session.status = 'pending'; session.engineer = name; store.set(session);
       showStatus();
-    } catch (e) { note(e.message, true); }
+    } catch (e) { note(e.message || 'Could not send the request. Check your internet and try again.', true); }
     finally { busy(b, false, 'Send request'); }
   }
   async function refreshStatus() {
