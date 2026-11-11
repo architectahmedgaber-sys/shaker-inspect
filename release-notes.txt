@@ -1,1 +1,1 @@
-Fixed: Arabic in the record PDF: letters like ج were drawn without their dot (بؤج looked like بؤح) in the old English record; it now uses the Cairo font. The Arabic Shaker form is also used when the checklist code has odd spaces.
+Changed: PDF records for the masonry and plaster activity checklists are now in English (items translated from the Arabic list, Arabic notes kept). The checklist in the app stays Arabic.
