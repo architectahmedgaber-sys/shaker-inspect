@@ -1,6 +1,6 @@
 {
- "version": "1.0.23",
- "build": 23,
+ "version": "1.0.24",
+ "build": 24,
  "notes": [
   "Fixed: ACC upload page: the Choose button now opens the file picker directly, you can also drop the .xlsx file on the page, and the page shows the app build number."
  ],
