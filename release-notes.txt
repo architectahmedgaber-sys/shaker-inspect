@@ -1,1 +1,1 @@
-Fixed: ACC upload page: the Choose button now opens the file picker directly, you can also drop the .xlsx file on the page, and the page shows the app build number.
+Changed: PDF records for the masonry and plaster activity checklists are now in English (items translated from the Arabic list, Arabic notes kept). The checklist in the app stays Arabic.
