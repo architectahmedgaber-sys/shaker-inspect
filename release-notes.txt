@@ -1,1 +1,1 @@
-Fixed: ACC upload page: the Choose button now opens the file picker directly, you can also drop the .xlsx file on the page, and the page shows the app build number.
+Fixed: Arabic in the record PDF: letters like ج were drawn without their dot (بؤج looked like بؤح) in the old English record; it now uses the Cairo font. The Arabic Shaker form is also used when the checklist code has odd spaces.
