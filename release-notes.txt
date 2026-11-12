@@ -1,1 +1,1 @@
-New: a progress bar when uploading IR files (sending %, then saving on Drive).
+New: an IR file bigger than 12 MB opens on Google Drive instead of failing inside the app.

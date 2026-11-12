@@ -130,3 +130,5 @@ body.role-viewer .ir-tick { display: none !important; }
 @keyframes irbar { to { background-position: 28px 0; } }
 .ir-barx { font-size: 13px; line-height: 1.5; color: var(--muted); }
 .ir-barn { overflow-wrap: anywhere; }
+
+.ir-big { display: inline-block; margin-top: 10px; padding: 10px 16px; border-radius: 12px; background: var(--gold,#f5b800); color: #11203b; font-weight: 700; text-decoration: none; }
