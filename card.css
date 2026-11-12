@@ -83,3 +83,30 @@ body > footer, #app footer, footer:has(.title-block) { display: none !important;
 /* home is only the count and the list; the tools are in More */
 #dxQuick { display: none !important; }
 #cdIrUpload[hidden] { display: none !important; }
+
+/* ---------- web (laptop): one calm centred column and a slim tab rail on the left, the same five tabs as the phone ---------- */
+@media (min-width: 720px) {
+  html body .tabbar {
+    display: flex !important; flex-direction: column; justify-content: flex-start; gap: 6px; position: fixed !important; inset: 0 auto 0 0 !important;
+    width: 88px !important; padding: 18px 8px !important; border: 0 !important; border-right: 1px solid var(--line) !important; border-radius: 0 !important;
+    background: var(--surface) !important; box-shadow: none !important; z-index: 900;
+  }
+  html body:has(.modal-overlay.active) .tabbar, html body.locked .tabbar { display: none !important; }
+  html body .tabbar button { min-height: 62px; border: 0; border-radius: 14px; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--muted); font: 700 11px var(--f-ui); position: relative; cursor: pointer; padding: 4px 0; }
+  html body .tabbar svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  html body .tabbar button.on { color: var(--navy-d, #0b2a5b); }
+  html[data-theme="dark"] body .tabbar button.on { color: var(--gold); }
+  html body .tabbar .sx-badge { position: absolute; top: 6px; right: 14px; }
+  body.at-home .tb-title, body.at-home .tb-tools { display: none; }
+  #refreshBtn, #themeBtn, #acctBtn { display: none !important; }
+  html body .tabbar button:hover { background: var(--accent-soft, rgba(128,128,128,.12)); }
+  html body .tabbar button.on::before { display: none; }
+  html body .tabbar button.on { background: var(--accent-soft, rgba(245, 184, 0, .14)); }
+  html body .app { display: block !important; height: auto !important; overflow: visible !important; padding-left: 88px; min-height: 100vh; background: var(--paper); }
+  html body .side { display: none !important; }
+  html body .main { height: auto !important; overflow: visible !important; max-width: 720px; margin: 0 auto; width: 100%; }
+  html body .sx-page.tab, html body #shkScreen { left: 88px !important; }
+  html body .sx-page.tab .sx-body, html body #shkScreen .sc-body { max-width: 720px; }
+  #decor { display: none !important; }
+  .sx-fab { right: 28px; }
+}
