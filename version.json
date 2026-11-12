@@ -1,6 +1,6 @@
 {
- "version": "1.0.31",
- "build": 31,
+ "version": "1.0.32",
+ "build": 32,
  "notes": [
   "New: the IR is opened inside the request screen (From/To, file preview, prerequisites). IR files are uploaded by the DC by company and day, and the app fills Section C of the IR form when you close a request and saves it in Closed on Drive."
  ],
