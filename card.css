@@ -25,14 +25,14 @@ html body .modal-overlay.active { display: flex !important; animation: cdFade .2
 html body .modal-overlay .panel-empty { display: none !important; }
 html body .modal-overlay:not(.active) .modal-box { display: none; }
 html body .modal-box {
-  width: 100% !important; max-width: 580px !important; height: auto !important; max-height: calc(100dvh - 32px) !important;
+  width: 100% !important; max-width: 580px !important; height: auto !important; max-height: calc(100vh - 32px) !important; max-height: calc(100dvh - 32px) !important;
   overflow-y: auto !important; border-radius: 28px !important; padding: 22px 20px 18px !important;
   background: var(--paper) !important; border: 1px solid var(--line) !important;
   box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .65); animation: cdIn .24s cubic-bezier(.2, .8, .2, 1) !important;
 }
 @media (max-width: 719px) {
   html body .modal-overlay { align-items: flex-end !important; padding: 0; }
-  html body .modal-box { max-width: none !important; max-height: 93dvh !important; border-radius: 28px 28px 0 0 !important; padding-bottom: calc(18px + env(safe-area-inset-bottom)) !important; animation: cdUp .3s cubic-bezier(.2, .8, .2, 1) !important; }
+  html body .modal-box { max-width: none !important; max-height: 93vh !important; max-height: 93dvh !important; border-radius: 28px 28px 0 0 !important; padding-bottom: calc(18px + env(safe-area-inset-bottom)) !important; animation: cdUp .3s cubic-bezier(.2, .8, .2, 1) !important; }
 }
 @keyframes cdFade { from { opacity: 0 } to { opacity: 1 } }
 @keyframes cdIn { from { opacity: 0; transform: translateY(14px) scale(.985) } to { opacity: 1; transform: none } }
@@ -114,5 +114,5 @@ body > footer, #app footer, footer:has(.title-block) { display: none !important;
 /* sheets (IR files, About) open in the middle of the screen like the request card, never from the bottom */
 html body .ir-sheet { align-items: center !important; justify-content: center; padding: 16px; background: rgba(4, 9, 26, .58); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 html body .ir-sheet.open { animation: cdFade .2s ease-out; }
-html body .ir-sheet-box { max-width: 520px; max-height: calc(100dvh - 32px); border-radius: 28px; padding: 20px 20px 22px; box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .65); animation: cdIn .24s cubic-bezier(.2, .8, .2, 1); }
+html body .ir-sheet-box { max-width: 520px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); border-radius: 28px; padding: 20px 20px 22px; box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .65); animation: cdIn .24s cubic-bezier(.2, .8, .2, 1); }
 html body .ir-sheet .ir-hint { display: block; margin-top: 10px; }
