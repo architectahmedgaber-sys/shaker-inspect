@@ -20,7 +20,7 @@
 
   // ================= ADMIN =================
   let adminTab = 'today', logQ = '', mode = 'admin';
-  const ADMIN_TABS = [['today', 'Today'], ['acc', 'ACC upload'], ['users', 'Users'], ['perf', 'Performance'], ['closes', 'Undo'], ['trash', 'Trash'], ['log', 'Log'], ['settings', 'Settings']];
+  const ADMIN_TABS = [['today', 'Today'], ['acc', 'ACC upload'], ['ir', 'IR files'], ['users', 'Users'], ['perf', 'Performance'], ['closes', 'Undo'], ['trash', 'Trash'], ['log', 'Log'], ['settings', 'Settings']];
 
   function openAdmin(tab) {
     if (PtahApp.role() !== 'Admin') return;
@@ -32,7 +32,7 @@
     adminTab = k;
     document.querySelectorAll('#scTabs button').forEach(b => { b.classList.toggle('on', b.dataset.tab === k); if (b.dataset.tab === k) b.scrollIntoView({ inline: 'center', block: 'nearest' }); });
     loading();
-    ({ today: tToday, users: tUsers, perf: tPerf, log: tLog, settings: tSettings, closes: () => Shk.admCloses(), trash: () => Shk.admTrash(), acc: () => Shk.admAcc() })[k]();
+    ({ today: tToday, users: tUsers, perf: tPerf, log: tLog, settings: tSettings, closes: () => Shk.admCloses(), trash: () => Shk.admTrash(), acc: () => Shk.admAcc(), ir: () => Shk.admIr() })[k]();
   }
 
   function tToday() {
