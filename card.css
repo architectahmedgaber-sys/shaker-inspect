@@ -122,3 +122,11 @@ html body .ir-sheet .ir-hint { display: block; margin-top: 10px; }
 .ir-tick[hidden] { display: none !important; }
 .ir-tick input { width: 20px; height: 20px; flex: none; accent-color: var(--gold, #f5b800); }
 body.role-viewer .ir-tick { display: none !important; }
+
+/* upload progress bar */
+.ir-bar { box-sizing: content-box; height: 10px; border-radius: 6px; background: rgba(120,130,150,.25); overflow: hidden; margin: 2px 0 8px; }
+.ir-bar > .ir-fill { display: block; height: 10px; width: 0; background: var(--gold,#f5b800); border-radius: 6px; transition: width .25s ease; }
+.ir-bar.busy > .ir-fill { background: repeating-linear-gradient(45deg, var(--gold,#f5b800) 0 10px, rgba(245,184,0,.55) 10px 20px); background-size: 28px 28px; animation: irbar 0.8s linear infinite; }
+@keyframes irbar { to { background-position: 28px 0; } }
+.ir-barx { font-size: 13px; line-height: 1.5; color: var(--muted); }
+.ir-barn { overflow-wrap: anywhere; }
