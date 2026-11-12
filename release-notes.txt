@@ -1,1 +1,1 @@
-New: a calmer web version with a slim tab bar on the left (Home, Requests, Files, Inbox, More) and one centred column.
+New: the Files and About sheets open in the middle of the screen instead of from the bottom.

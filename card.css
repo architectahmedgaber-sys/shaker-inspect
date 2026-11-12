@@ -110,3 +110,9 @@ body > footer, #app footer, footer:has(.title-block) { display: none !important;
   #decor { display: none !important; }
   .sx-fab { right: 28px; }
 }
+
+/* sheets (IR files, About) open in the middle of the screen like the request card, never from the bottom */
+html body .ir-sheet { align-items: center !important; justify-content: center; padding: 16px; background: rgba(4, 9, 26, .58); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+html body .ir-sheet.open { animation: cdFade .2s ease-out; }
+html body .ir-sheet-box { max-width: 520px; max-height: calc(100dvh - 32px); border-radius: 28px; padding: 20px 20px 22px; box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .65); animation: cdIn .24s cubic-bezier(.2, .8, .2, 1); }
+html body .ir-sheet .ir-hint { display: block; margin-top: 10px; }
