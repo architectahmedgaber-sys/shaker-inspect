@@ -1,0 +1,75 @@
+/* Shaker Inspect · calm look: one readable font, the request card over a dimmed screen, a normal Close button.
+   Loaded after every other stylesheet. */
+
+/* ---------- font: Inter for Latin letters and numbers, IBM Plex Sans Arabic for Arabic ---------- */
+html:root, html[data-theme] {
+  --f-ui: 'Inter', 'IBM Plex Sans Arabic', -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+  --f-label: var(--f-ui); --f-mono: var(--f-ui); --f-ios: var(--f-ui);
+}
+html, body, button, input, select, textarea { font-family: var(--f-ui); }
+body { font-size: 15px; line-height: 1.5; font-feature-settings: 'cv11', 'ss01'; letter-spacing: 0; }
+/* small shouting labels are tiring: normal case, a little bigger, no wide spacing */
+.lbl-up, .pills-label, .form-row label, .sc-h, .k, .ir-sec, .modal-header .num {
+  text-transform: none !important; letter-spacing: 0 !important; font-weight: 600 !important; font-size: 13px !important; color: var(--muted);
+}
+html[dir="rtl"] body { line-height: 1.65; }
+
+/* ---------- the request card ---------- */
+html body .modal-overlay {
+  position: fixed !important; inset: 0 !important; z-index: 1100; height: auto !important; width: auto !important;
+  display: none; align-items: center !important; justify-content: center !important; padding: 16px;
+  background: rgba(4, 9, 26, .58) !important; border: 0 !important;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+html body .modal-overlay.active { display: flex !important; animation: cdFade .2s ease-out; }
+html body .modal-overlay .panel-empty { display: none !important; }
+html body .modal-overlay:not(.active) .modal-box { display: none; }
+html body .modal-box {
+  width: 100% !important; max-width: 580px !important; height: auto !important; max-height: calc(100dvh - 32px) !important;
+  overflow-y: auto !important; border-radius: 28px !important; padding: 22px 20px 18px !important;
+  background: var(--paper) !important; border: 1px solid var(--line) !important;
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .65); animation: cdIn .24s cubic-bezier(.2, .8, .2, 1) !important;
+}
+@media (max-width: 719px) {
+  html body .modal-overlay { align-items: flex-end !important; padding: 0; }
+  html body .modal-box { max-width: none !important; max-height: 93dvh !important; border-radius: 28px 28px 0 0 !important; padding-bottom: calc(18px + env(safe-area-inset-bottom)) !important; animation: cdUp .3s cubic-bezier(.2, .8, .2, 1) !important; }
+}
+@keyframes cdFade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes cdIn { from { opacity: 0; transform: translateY(14px) scale(.985) } to { opacity: 1; transform: none } }
+@keyframes cdUp { from { transform: translateY(40px); opacity: .6 } to { transform: none; opacity: 1 } }
+
+/* header: villa big and calm, the long description small and quiet (not a yellow box) */
+.modal-header h3 { font-size: 30px !important; letter-spacing: -.01em !important; font-weight: 800 !important; }
+.modal-desc { background: none !important; border: 0 !important; padding: 0 !important; margin: 2px 0 0 !important; font: 500 14px/1.45 var(--f-ui) !important; color: var(--muted) !important; }
+#modalSubTitle { font-size: 13px; color: var(--muted); }
+
+/* the decision */
+.cd-codes { margin-top: 14px; }
+.code-row .pill-btn { min-height: 74px !important; border: 1px solid var(--line) !important; }
+.code-row .pill-btn b { font-size: 26px !important; }
+.code-row .pill-btn small { font-size: 12px !important; letter-spacing: 0 !important; text-transform: none !important; opacity: .8 !important; font-weight: 600 !important; }
+.cd-notes textarea { min-height: 76px; border-radius: 16px !important; font: 500 15px/1.5 var(--f-ui) !important; }
+
+/* folded rows */
+.cd-rows { margin-top: 10px; display: grid; gap: 8px; }
+.cd-row { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); overflow: hidden; }
+.cd-row > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 14px 16px; font-weight: 600; font-size: 15px; cursor: pointer; }
+.cd-row > summary::-webkit-details-marker { display: none; }
+.cd-row > summary span { flex: 1; }
+.cd-row .cd-sum { color: var(--muted); font-size: 13px; font-weight: 500; }
+.cd-row > summary i { font-style: normal; color: var(--muted); font-size: 20px; transition: transform .15s; }
+.cd-row[open] > summary i { transform: rotate(90deg); }
+.cd-body { padding: 4px 14px 14px; display: grid; gap: 12px; }
+.cd-body .pills-group, .cd-body .form-row { margin: 0 !important; }
+.cd-body .cl-head .pills-label { display: none; }
+
+/* the normal Close button (no slider) */
+.c-slide { display: none !important; }
+html body #modalSaveBtn {
+  display: flex !important; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 56px; border: 0; border-radius: 18px;
+  background: var(--gold); color: #0b2a5b; font: 800 17px var(--f-ui); letter-spacing: 0; cursor: pointer; box-shadow: 0 10px 24px -12px rgba(245, 184, 0, .7);
+}
+html body #modalSaveBtn:disabled { opacity: .55; }
+html body #modalSaveBtn kbd { display: none; }
+html body .modal-footer { display: flex !important; flex-direction: column; gap: 8px; position: static !important; background: none !important; padding: 14px 0 0 !important; }
+body.role-viewer .cd-rows, body.role-viewer .cd-codes { display: none !important; }
