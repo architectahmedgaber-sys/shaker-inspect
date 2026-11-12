@@ -1,8 +1,8 @@
 {
- "version": "1.0.42",
- "build": 42,
+ "version": "1.0.43",
+ "build": 43,
  "notes": [
-  "New: a progress bar when uploading IR files (sending %, then saving on Drive)."
+  "New: an IR file bigger than 12 MB opens on Google Drive instead of failing inside the app."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
