@@ -1,8 +1,8 @@
 {
- "version": "1.0.35",
- "build": 35,
+ "version": "1.0.37",
+ "build": 37,
  "notes": [
-  "New: simpler home screen, plus a Files tab that opens the Drive folders (Open and Closed by company and day). Calendar, Re-inspection, Daily report, Villas, Scan and Upload IR are in More."
+  "New: the Files and About sheets open in the middle of the screen instead of from the bottom."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
