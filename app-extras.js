@@ -60,7 +60,7 @@
   // ---- Arabic: the app's own words are swapped on screen (checklists, names and request titles stay as written) ----
   const AR = Object.assign({
     // home, lists, top bar
-    'Home': 'الرئيسية', 'Requests': 'الطلبات', 'Search by Villa or activity...': 'دوّر برقم الفيلا أو النشاط...', 'Refresh': 'تحديث',
+    'Home': 'الرئيسية', 'Requests': 'الطلبات', 'Files': 'الملفات', 'Search by Villa or activity...': 'دوّر برقم الفيلا أو النشاط...', 'Refresh': 'تحديث',
     'Load the latest requests from the sheet': 'هات آخر الطلبات من الشيت', 'Account': 'الحساب', 'Me': 'أنا', 'More': 'المزيد', 'About': 'عن التطبيق', 'Main': 'الرئيسية', 'Sheets': 'الشيتات', 'Handover': 'التسليم',
     'All contractors': 'كل المقاولين', 'Late by contractor': 'المتأخر لكل مقاول', 'Waiting longest': 'الأقدم في الانتظار', 'requests closed today': 'طلبات اتقفلت النهارده',
     'Good morning,': 'صباح الخير،', 'Good afternoon,': 'مساء الخير،', 'Good evening,': 'مساء الخير،', 'Today': 'النهارده', 'Late': 'متأخر', 'Open': 'مفتوح', 'Closed': 'مقفول',

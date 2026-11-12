@@ -79,3 +79,7 @@ body > footer, #app footer, footer:has(.title-block) { display: none !important;
 .cd-about .title-block { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
 .cd-about .tbk.wide { grid-column: 1 / -1; }
 #cdAbout { width: 100%; }
+
+/* home is only the count and the list; the tools are in More */
+#dxQuick { display: none !important; }
+#cdIrUpload[hidden] { display: none !important; }
