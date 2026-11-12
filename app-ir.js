@@ -101,9 +101,30 @@
   }
   const b64bytes = b => { const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
 
+  // zoom of the open file: the + / - buttons and pinching with two fingers. `after` is called (once the finger stops) so a PDF is redrawn sharp.
+  const ZSTEPS = [1, 1.5, 2, 3, 4];
+  let zoomSet = null;
+  function bindZoom(after) {
+    const host = $('irPages'), zw = $('irZw'), lab = $('irZ'); if (!host || !zw) return;
+    let z = 1, timer = 0;
+    const apply = (nz, redraw) => {
+      nz = Math.max(1, Math.min(4, nz));
+      const cx = (host.scrollLeft + host.clientWidth / 2) / Math.max(1, host.scrollWidth), cy = (host.scrollTop + host.clientHeight / 2) / Math.max(1, host.scrollHeight);
+      z = nz; zw.style.width = Math.round(z * 100) + '%'; if (lab) lab.textContent = Math.round(z * 100) + '%';
+      host.scrollLeft = cx * host.scrollWidth - host.clientWidth / 2; host.scrollTop = cy * host.scrollHeight - host.clientHeight / 2;
+      clearTimeout(timer); if (after) timer = setTimeout(() => after(z), redraw ? 0 : 280);
+    };
+    zoomSet = dir => { const i = ZSTEPS.findIndex(x => x >= z - 0.01); const cur = i < 0 ? ZSTEPS.length - 1 : i; apply(ZSTEPS[Math.max(0, Math.min(ZSTEPS.length - 1, cur + dir))], true); };
+    let d0 = 0, z0 = 1;
+    const dist = e => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    host.addEventListener('touchstart', e => { if (e.touches.length === 2) { d0 = dist(e); z0 = z; } }, { passive: true });
+    host.addEventListener('touchmove', e => { if (e.touches.length === 2 && d0) apply(z0 * dist(e) / d0, false); }, { passive: true });
+    host.addEventListener('touchend', e => { if (e.touches.length < 2) d0 = 0; }, { passive: true });
+  }
+
   async function openFile(id, name) {
     const v = $('irView'); if (!v) return;
-    const seq = ++loadSeq; curFile = id; paintFiles();
+    const seq = ++loadSeq; curFile = id; zoomSet = null; paintFiles();
     v.hidden = false; v.innerHTML = `<div class="ir-load">${t('Opening…', 'بيفتح…')}</div>`;
     const meta = (index || []).find(x => x.id === id);
     if (meta && meta.size > BIG_FILE) {       // too big to bring into the phone through the server: open it on Drive itself
@@ -118,22 +139,43 @@
       if (seq !== loadSeq) return;
       const bytes = b64bytes(f.b64), blob = new Blob([bytes], { type: f.mime });
       const url = URL.createObjectURL(blob);
-      const bar = `<div class="ir-bar"><b dir="auto">${esc(f.name)}</b><a class="ir-lnk" href="${url}" target="_blank" rel="noopener" download="${esc(f.name)}">${t('Open / save', 'فتح / حفظ')}</a><button type="button" class="ir-lnk" data-ir="hide">${t('Hide', 'اخفي')}</button></div>`;
-      if (/^image\//.test(f.mime)) { v.innerHTML = bar + `<div class="ir-pages"><img src="${url}" alt=""></div>`; return; }
+      const zc = `<span class="ir-zm"><button type="button" class="ir-lnk" data-ir="zout" aria-label="Zoom out">−</button><b id="irZ">100%</b><button type="button" class="ir-lnk" data-ir="zin" aria-label="Zoom in">+</button></span>`;
+      const bar = `<div class="ir-bar"><b dir="auto">${esc(f.name)}</b>${zc}<a class="ir-lnk" href="${url}" target="_blank" rel="noopener" download="${esc(f.name)}">${t('Open / save', 'فتح / حفظ')}</a><button type="button" class="ir-lnk" data-ir="hide">${t('Hide', 'اخفي')}</button></div>`;
+      if (/^image\//.test(f.mime)) {
+        v.innerHTML = bar + `<div class="ir-pages" id="irPages"><div class="ir-zw" id="irZw"><img src="${url}" alt=""></div></div>`;
+        bindZoom(null); return;
+      }
       v.innerHTML = bar + `<div class="ir-pages" id="irPages"><div class="ir-load">${t('Drawing pages…', 'بيرسم الصفحات…')}</div></div>`;
       let lib; try { lib = await loadPdfJs(); } catch (e) { $('irPages').innerHTML = `<div class="ir-load">${t('Could not load the viewer. Use "Open / save".', 'العارض مفتحش. استخدم "فتح / حفظ".')}</div>`; return; }
       const doc = await lib.getDocument({ data: bytes }).promise;
       if (seq !== loadSeq) return;
-      const host = $('irPages'); host.innerHTML = '';
-      const w = Math.min(host.clientWidth || 360, 900), dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const host = $('irPages'); host.innerHTML = '<div class="ir-zw" id="irZw"></div>';
+      const zw = $('irZw');
+      const baseW = Math.min(host.clientWidth || 360, 900), dpr = Math.min(window.devicePixelRatio || 1, 2);
       const n = Math.min(doc.numPages, 30);
+      const pages = [];
       for (let p = 1; p <= n; p++) {
         const pg = await doc.getPage(p); if (seq !== loadSeq) return;
-        const vp0 = pg.getViewport({ scale: 1 }), sc = w / vp0.width, vp = pg.getViewport({ scale: sc * dpr });
-        const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height; c.style.width = '100%';
-        host.appendChild(c);
-        await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+        const vp0 = pg.getViewport({ scale: 1 });
+        const c = document.createElement('canvas'); c.style.aspectRatio = vp0.width + ' / ' + vp0.height;
+        zw.appendChild(c); pages.push({ pg: pg, c: c, w: vp0.width, z: 0 });
       }
+      // pages are drawn when they come near the screen, at the sharpness of the current zoom (a page is redrawn after a zoom)
+      let zoomNow = 1, queue = Promise.resolve();
+      const draw = pg => { queue = queue.then(async () => {
+        if (seq !== loadSeq || pg.z === zoomNow) return;
+        const z = zoomNow, sc = Math.min((baseW * z / pg.w) * dpr, 3000 / pg.w), vp = pg.pg.getViewport({ scale: sc });
+        pg.c.width = vp.width; pg.c.height = vp.height;
+        await pg.pg.render({ canvasContext: pg.c.getContext('2d'), viewport: vp }).promise; pg.z = z;
+      }).catch(() => {}); };
+      let io = null;
+      const watch = () => {
+        if (io) io.disconnect();
+        io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { const pg = pages.find(x => x.c === e.target); if (pg) draw(pg); } }), { root: host, rootMargin: '500px 0px' });
+        pages.forEach(pg => io.observe(pg.c));
+      };
+      bindZoom(z => { zoomNow = z; pages.forEach(pg => { if (pg.z !== z && pg.z) { pg.c.width = 1; pg.c.height = 1; pg.z = 0; } }); watch(); });
+      watch();
       if (doc.numPages > n) host.insertAdjacentHTML('beforeend', `<div class="ir-load">${t('Only the first 30 pages are shown. Use "Open / save" for the rest.', 'ظاهر أول 30 صفحة بس. استخدم "فتح / حفظ" للباقي.')}</div>`);
     } catch (e) {
       if (seq === loadSeq) v.innerHTML = `<div class="ir-load bad">${esc(e.message || e)}</div>`;
@@ -176,6 +218,7 @@
     const b = ev.target.closest('[data-ir]'); if (!b) return;
     const k = b.dataset.ir;
     if (k === 'open') return openFile(b.dataset.id);
+    if (k === 'zin' || k === 'zout') { if (zoomSet) zoomSet(k === 'zin' ? 1 : -1); return; }
     if (k === 'hide') { loadSeq++; curFile = null; $('irView').hidden = true; $('irView').innerHTML = ''; return paintFiles(); }
     if (k === 'st') { const st = getSt(); const i = b.dataset.i; if (st[i] === b.dataset.v) delete st[i]; else st[i] = b.dataset.v; setSt(st); return paintPrereq(); }
     if (k === 'codec') return applyCodeC();
@@ -232,7 +275,7 @@
   function paintUp(out, i, n, name, f, phase) {
     const pct = Math.max(0, Math.min(100, Math.round(((i + (phase === 'save' ? 1 : phase === 'send' ? f * 0.95 : 0)) / n) * 100)));
     const msg = phase === 'save' ? t('Saving on Drive…', 'بيتحفظ على الدرايف…') : phase === 'send' ? t('Sending ', 'بيتبعت ') + Math.round(f * 100) + '%' : t('Reading the file…', 'بيقرأ الملف…');
-    out.innerHTML = `<div class="ir-bar${phase === 'save' ? ' busy' : ''}"><span class="ir-fill" style="width:${pct}%"></span></div>
+    out.innerHTML = `<div class="ir-prog${phase === 'save' ? ' busy' : ''}"><span class="ir-progfill" style="width:${pct}%"></span></div>
       <div class="ir-barx"><b>${i + 1} / ${n}</b> · <span class="ir-barn">${esc(name)}</span></div><div class="ir-barx">${msg}</div>`;
   }
   async function admIr() {

@@ -1,1 +1,1 @@
-New: an IR file bigger than 12 MB opens on Google Drive instead of failing inside the app.
+New: zoom for the open IR file (+ / - buttons and pinch). Fix: the file name bar of the viewer is back to normal.
