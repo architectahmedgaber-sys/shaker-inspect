@@ -1,1 +1,1 @@
-New: a small tick on the close card. Ticked = the IR file on Drive is filled and moved to Closed. Not ticked = closed in the sheet only.
+New: closing a request now fills the IR form for Square (SQ) and Alexandria (AT) as well as El-Shorouk (SH). The comment stays inside its box and a very long one is shortened on the form only.
