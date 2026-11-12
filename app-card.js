@@ -78,10 +78,18 @@
   function roleRows() { const u = $('cdIrUpload'); if (!u) return; const rl = window.PtahApp && PtahApp.role && PtahApp.role(); u.hidden = !(rl === 'Admin' || rl === 'DC'); }
   new MutationObserver(() => { ensureAbout(); roleRows(); }).observe(document.body, { childList: true, subtree: true });
 
+  let touched = false;
+  document.addEventListener('touchstart', e => { if (e.target.closest && e.target.closest('.modal-box')) touched = true; }, { passive: true });
   const baseOpen = window.openModal;
   window.openModal = function (item) {
     const r = baseOpen.apply(this, arguments);
-    try { build(); document.querySelectorAll('#cdRows details').forEach(d => { d.open = false; }); const b = document.querySelector('.modal-box'); if (b) b.scrollTop = 0; } catch (e) { console.warn(e); }
+    try {
+      build(); document.querySelectorAll('#cdRows details').forEach(d => { d.open = false; });
+      // a request always opens at its first line; content that arrives a moment later must not push the top out of view
+      const top = () => { const b = document.querySelector('.modal-box'), o = document.getElementById('modalOverlay'); if (b) b.scrollTop = 0; if (o) o.scrollTop = 0; };
+      top(); [60, 250, 700, 1500].forEach(ms => setTimeout(() => { if (!touched) top(); }, ms));
+      touched = false;
+    } catch (e) { console.warn(e); }
     return r;
   };
 })();

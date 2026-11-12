@@ -1,1 +1,1 @@
-Fix (Android app): the Back button now goes back one step at a time (popup, request, previous screen) and only leaves the app from Home. The request card no longer gets cut off at the top on older phones.
+Fix: the request card always opens at its first line (the top is no longer cut off).
