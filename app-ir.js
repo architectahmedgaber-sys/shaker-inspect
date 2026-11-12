@@ -32,6 +32,7 @@
       .catch(e => { if (!index) index = null; throw e; }).finally(() => { indexBusy = null; });
     return indexBusy;
   }
+  const getProjectKey = item => { try { return getProject(item); } catch (e) { return ''; } };
   const keyOf = item => { const m = String(item.irNumber || '').match(/(\d{3,})\D*$/); return m ? m[1] : ''; };
   function filesFor(item) {
     const k = keyOf(item); if (!k || !index) return [];
@@ -77,11 +78,12 @@
     const el = $('irFiles'); if (!el || !cur) return;
     if (index === null) { el.innerHTML = `<span class="ir-none">${t('IR file: loading…', 'ملف الـ IR: بيحمّل…')}</span>`; return; }
     const hits = filesFor(cur);
+    const fb = `<button type="button" class="ir-lnk" data-ir="folders">📁 ${t('Folders', 'الفولدرات')}</button>`;
     if (!hits.length) {
-      el.innerHTML = `<span class="ir-none">⚠ ${t('The IR file is not uploaded yet.', 'ملف الـ IR لسه مترفعش.')}</span>${isAdmin() ? `<button type="button" class="ir-lnk" data-ir="admin">${t('Upload IR files', 'ارفع ملفات الـ IR')}</button>` : ''}`;
+      el.innerHTML = fb + `<span class="ir-none">⚠ ${t('The IR file is not uploaded yet.', 'ملف الـ IR لسه مترفعش.')}</span>${isAdmin() ? `<button type="button" class="ir-lnk" data-ir="admin">${t('Upload IR files', 'ارفع ملفات الـ IR')}</button>` : ''}`;
       return;
     }
-    el.innerHTML = `<div class="ir-chips">${hits.map(f => `<button type="button" class="ir-chip${curFile === f.id ? ' on' : ''}" data-ir="open" data-id="${esc(f.id)}">📄 ${esc(f.name.replace(/\.[^.]+$/, ''))}</button>`).join('')}</div>` +
+    el.innerHTML = fb + `<div class="ir-chips">${hits.map(f => `<button type="button" class="ir-chip${curFile === f.id ? ' on' : ''}" data-ir="open" data-id="${esc(f.id)}">📄 ${esc(f.name.replace(/\.[^.]+$/, ''))}</button>`).join('')}</div>` +
       (curFile ? '' : `<small class="ir-hint">${t('Tap a file to look at it before you decide.', 'دوس على الملف تشوفه قبل ما تقرر.')}</small>`);
   }
 
@@ -168,6 +170,7 @@
     if (k === 'hide') { loadSeq++; curFile = null; $('irView').hidden = true; $('irView').innerHTML = ''; return paintFiles(); }
     if (k === 'st') { const st = getSt(); const i = b.dataset.i; if (st[i] === b.dataset.v) delete st[i]; else st[i] = b.dataset.v; setSt(st); return paintPrereq(); }
     if (k === 'codec') return applyCodeC();
+    if (k === 'folders') return openFolders(cur && getProjectKey(cur));
     if (k === 'admin') { if (window.closeModal) try { closeModal(); } catch (e) {} return Shk.openAdmin('ir'); }
   }
 
@@ -185,7 +188,31 @@
   const baseHide = window.hidePanel;
   if (typeof baseHide === 'function') window.hidePanel = function () { cur = null; loadSeq++; return baseHide.apply(this, arguments); };
 
+  // ---------------------------------------------------------------- Drive folders sheet (everybody)
+  async function openFolders(prefer) {
+    let sh = $('irSheet');
+    if (!sh) { sh = document.createElement('div'); sh.id = 'irSheet'; sh.className = 'ir-sheet'; document.body.appendChild(sh);
+      sh.addEventListener('click', e => { if (e.target === sh || e.target.closest('[data-irx]')) sh.classList.remove('open'); }); }
+    sh.innerHTML = `<div class="ir-sheet-box"><div class="ir-sheet-h"><b>${t('IR files on Drive', 'ملفات الـ IR على الدرايف')}</b><button type="button" data-irx="1" class="ir-lnk">✕</button></div><div class="ir-load">${t('Loading…', 'بيحمّل…')}</div></div>`;
+    sh.classList.add('open');
+    try {
+      const r = await api('ir_links');
+      const box = sh.querySelector('.ir-sheet-box');
+      const cos = (r.companies || []).slice().sort((a, b) => (b.key === prefer) - (a.key === prefer));
+      box.innerHTML = `<div class="ir-sheet-h"><b>${t('IR files on Drive', 'ملفات الـ IR على الدرايف')}</b><button type="button" data-irx="1" class="ir-lnk">✕</button></div>` +
+        (r.root ? `<a class="ir-go" href="${esc(r.root)}" target="_blank" rel="noopener">📁 ${t('All companies', 'كل الشركات')}</a>` : '') +
+        (cos.length ? cos.map(c => `<div class="ir-co"><a class="ir-go" href="${esc(c.url)}" target="_blank" rel="noopener">📁 ${esc(c.name)}</a>
+          <div class="ir-days">${c.days.length ? c.days.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('') : `<small class="ir-hint">${t('No days yet.', 'مفيش أيام لسه.')}</small>`}</div></div>`).join('') : `<div class="ir-load">${t('No files uploaded yet.', 'لسه مفيش ملفات مرفوعة.')}</div>`) +
+        `<small class="ir-hint">${t('If Drive asks for access, sign in with the same Google account you use in the app.', 'لو الدرايف طلب إذن، ادخل بنفس حساب جوجل اللي بتستخدمه في الأبليكيشن.')}</small>`;
+    } catch (e) { sh.querySelector('.ir-sheet-box').innerHTML += `<div class="ir-load bad">${esc(e.message || e)}</div>`; }
+  }
+
   // ---------------------------------------------------------------- admin screen: IR files
+  const COMPANIES = [['SH', 'SH · EL-Shorouk'], ['SQ', 'SQ · Square'], ['AT', 'AT · Alexandria'], ['OTHER', 'Other']];
+  const lsGet = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+  const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const pathOf = f => f.co ? ((COMPANIES.find(c => c[0] === f.co) || [0, f.co])[1]) + (f.day ? ' / ' + f.day : '') : t('(no company)', '(من غير شركة)');
   const fmtSize = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
   const toB64 = f => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).replace(/^data:[^,]*,/, '')); r.onerror = () => bad(new Error('read')); r.readAsDataURL(f); });
 
@@ -193,15 +220,21 @@
     const b = $('scBody'); if (!b) return;
     b.innerHTML = `<h3 class="sc-h">${t('IR files', 'ملفات الـ IR')}</h3>
       <div class="card"><p class="small" style="margin:0 0 8px">${t('Download the IR files from ACC (PDF or pictures) and choose them here, many at once. The app matches each file to its request by the IR number inside the file name. Attachments that have the same number in the name show up beside it.', 'نزّل ملفات الـ IR من ACC (PDF أو صور) واختارها هنا مرة واحدة. الأبليكيشن بيربط كل ملف بالطلب من رقم الـ IR في اسم الملف. المرفقات اللي فيها نفس الرقم في الاسم بتظهر جنبه.')}</p>
-        <div class="btnrow"><label class="ir-pick"><input type="file" id="irPick" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/*" multiple hidden>${t('Choose files', 'اختار الملفات')}</label></div>
+        <div class="ir-sel"><label>${t('Company', 'الشركة')}<select id="irCo" class="sc-in"><option value="">${t('Choose the company…', 'اختار الشركة…')}</option>${COMPANIES.map(c => `<option value="${c[0]}"${lsGet('shkIrCo') === c[0] ? ' selected' : ''}>${esc(c[1])}</option>`).join('')}</select></label>
+          <label>${t('Work of the day', 'شغل يوم')}<input type="date" id="irDay" class="sc-in" value="${today()}"></label></div>
+        <div class="btnrow"><label class="ir-pick" id="irPickLab"><input type="file" id="irPick" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/*" multiple hidden>${t('Choose files', 'اختار الملفات')}</label></div>
         <div id="irUp" class="small" style="margin-top:8px"></div></div>
       <div id="irList"><div class="sc-load"><i></i><i></i><i></i></div></div><p class="shk-sign">architected by Ptah</p>`;
+    const gate = () => { const ok = !!$('irCo').value && !!$('irDay').value; $('irPickLab').classList.toggle('off', !ok); $('irPick').disabled = !ok; try { lsSet('shkIrCo', $('irCo').value); } catch (e) {} };
+    $('irCo').onchange = $('irDay').onchange = gate; gate();
     $('irPick').onchange = async e => {
       const files = Array.from(e.target.files || []); e.target.value = '';
+      const co = $('irCo').value, day = $('irDay').value;
+      if (!co || !day) { $('irUp').textContent = t('Choose the company and the day first.', 'اختار الشركة واليوم الأول.'); return; }
       const out = $('irUp'); let ok = 0; const bad = [];
       for (let i = 0; i < files.length; i++) {
         out.textContent = t('Uploading ', 'بيرفع ') + (i + 1) + ' / ' + files.length + ' · ' + files[i].name;
-        try { await api('admin_irUpload', [files[i].name, await toB64(files[i])]); ok++; } catch (er) { bad.push(files[i].name + ': ' + (er.message || er)); }
+        try { await api('admin_irUpload', [files[i].name, await toB64(files[i]), co, day]); ok++; } catch (er) { bad.push(files[i].name + ': ' + (er.message || er)); }
       }
       out.innerHTML = `✓ ${ok} ${t('uploaded', 'اترفع')}` + (bad.length ? `<br><span class="bad">${bad.map(esc).join('<br>')}</span>` : '');
       index = null; drawList();
@@ -215,10 +248,11 @@
       const open = (typeof allItems !== 'undefined' && allItems) || [];
       const withFile = open.filter(i => filesFor(i).length).length;
       el.innerHTML = `<div class="kpis"><div class="kpi"><b>${r.files.length}</b><span>${t('Files', 'ملفات')}</span></div><div class="kpi ${open.length - withFile ? 'bad' : 'ok'}"><b>${withFile}/${open.length}</b><span>${t('Open requests with a file', 'طلبات مفتوحة لها ملف')}</span></div></div>` +
-        `<div class="card-list">${r.files.length ? r.files.map(f => `<div class="row"><span dir="auto">${esc(f.name)}</span><span class="mono">${fmtSize(f.size)} <button type="button" class="ir-lnk" data-irdel="${esc(f.id)}">✕</button></span></div>`).join('') : `<div class="sc-empty">${t('No files yet.', 'مفيش ملفات لسه.')}</div>`}</div>`;
+        `<div class="card-list">${r.files.length ? r.files.map(f => `<div class="row"><span dir="auto">${esc(f.name)}<small class="ir-path">${esc(pathOf(f))}</small></span><span class="mono">${fmtSize(f.size)} <button type="button" class="ir-lnk" data-irdel="${esc(f.id)}">✕</button></span></div>`).join('') : `<div class="sc-empty">${t('No files yet.', 'مفيش ملفات لسه.')}</div>`}</div>`;
     } catch (e) { el.innerHTML = `<div class="sc-empty">${esc(e.message || e)}</div>`; }
   }
   document.addEventListener('click', async ev => {
+    const fo = ev.target.closest && ev.target.closest('#dxQuick [data-ir="folders"]'); if (fo) return openFolders();
     const d = ev.target.closest && ev.target.closest('[data-irdel]'); if (d) {
       d.disabled = true;
       try { await api('admin_irDelete', [d.dataset.irdel]); index = null; drawList(); } catch (e) { d.disabled = false; }
@@ -235,7 +269,8 @@
       const r = baseRender.apply(this, arguments);
       try {
         const q = $('dxQuick');
-        if (q && isAdmin() && !q.querySelector('[data-ir="adminopen"]')) q.insertAdjacentHTML('beforeend', `<button type="button" data-ir="adminopen"><i>📄</i>${t('IR files', 'ملفات IR')}</button>`);
+        if (q && !q.querySelector('[data-ir="folders"]')) q.insertAdjacentHTML('beforeend', `<button type="button" data-ir="folders"><i>📁</i>${t('IR folder', 'فولدر IR')}</button>`);
+        if (q && isAdmin() && !q.querySelector('[data-ir="adminopen"]')) q.insertAdjacentHTML('beforeend', `<button type="button" data-ir="adminopen"><i>⬆</i>${t('Upload IR', 'ارفع IR')}</button>`);
       } catch (e) { console.warn(e); }
       return r;
     };
