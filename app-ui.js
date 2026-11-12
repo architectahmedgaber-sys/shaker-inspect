@@ -85,7 +85,7 @@
     ic.sheet = '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/>';
     ic.villa = '<path d="M3 20h18M5 20V9l7-5 7 5v11"/><path d="M10 20v-6h4v6"/>';
     ic.inbox = '<path d="M4 13l2.2-7A2 2 0 0 1 8.1 4.6h7.8a2 2 0 0 1 1.9 1.4L20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M4 13h4.5l1 2.5h5l1-2.5H20"/>';
-    const items = [['home', 'Home'], ['requests', 'Requests'], ['villas', 'Villas'], ['inbox', 'Inbox'], ['me', 'Me']];
+    const items = [['home', 'Home'], ['requests', 'Requests'], ['inbox', 'Inbox'], ['me', 'More']];
     ic.requests = ic.list; ic.villas = ic.villa;
     bar.innerHTML = items.map(([k, l]) => `<button type="button" data-t="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${ic[k]}</svg>${k === 'inbox' ? '<b class="sx-badge" hidden></b>' : ''}<span>${l}</span></button>`).join('');
     bar.querySelectorAll('button').forEach((b, i) => b.onclick = () => {
