@@ -1,2 +1,2 @@
 // Written by the build workflow (.github/workflows/android.yml). Do not edit by hand.
-window.SHK_VERSION = { version: '1.0.27', build: 27 };
+window.SHK_VERSION = { version: '1.0.28', build: 28 };
