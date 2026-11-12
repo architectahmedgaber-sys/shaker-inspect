@@ -153,5 +153,5 @@
     s.addEventListener('click', e => { if (e.target === s || e.target.tagName === 'EM') { s.classList.add('hint'); setTimeout(() => s.classList.remove('hint'), 700); } });
   }
 
-  splash(); skeleton(); buildTabs(); pull(); slider();
+  splash(); skeleton(); buildTabs(); pull();
 })();
