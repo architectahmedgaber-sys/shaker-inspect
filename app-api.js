@@ -61,7 +61,7 @@
         if (hit) { window.SHK_OFFLINE_SINCE = hit.t; document.dispatchEvent(new CustomEvent('shk-offline', { detail: { fn: job.fn, t: hit.t } })); return job.resolve(hit.v); }
         throw e;
       }
-      if (o.ok) { cachePut(job, o.result); if (job.fn === 'getDailyActions') window.SHK_OFFLINE_SINCE = 0; return job.resolve(o.result); }
+      if (o.ok) { cachePut(job, o.result); if (job.fn === 'processAndSaveAction' && o.result && o.result.success) { try { document.dispatchEvent(new CustomEvent('shk-closed', { detail: { payload: (job.args || [])[0] || {}, res: o.result } })); } catch (e) {} } if (job.fn === 'getDailyActions') window.SHK_OFFLINE_SINCE = 0; return job.resolve(o.result); }
       if (o.auth) { session = null; store.set(null); waiting.push(job); STANDALONE ? location.replace('./') : showLogin(o.error); return; }
       if (o.state) { session.status = o.state; store.set(session); waiting.push(job); showStatus(); return; }
       job.reject(new Error(o.error || 'Unknown error'));
