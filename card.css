@@ -124,11 +124,19 @@ html body .ir-sheet .ir-hint { display: block; margin-top: 10px; }
 body.role-viewer .ir-tick { display: none !important; }
 
 /* upload progress bar */
-.ir-bar { box-sizing: content-box; height: 10px; border-radius: 6px; background: rgba(120,130,150,.25); overflow: hidden; margin: 2px 0 8px; }
-.ir-bar > .ir-fill { display: block; height: 10px; width: 0; background: var(--gold,#f5b800); border-radius: 6px; transition: width .25s ease; }
-.ir-bar.busy > .ir-fill { background: repeating-linear-gradient(45deg, var(--gold,#f5b800) 0 10px, rgba(245,184,0,.55) 10px 20px); background-size: 28px 28px; animation: irbar 0.8s linear infinite; }
+.ir-prog { box-sizing: content-box; height: 10px; border-radius: 6px; background: rgba(120,130,150,.25); overflow: hidden; margin: 2px 0 8px; }
+.ir-prog > .ir-progfill { display: block; height: 10px; width: 0; background: var(--gold,#f5b800); border-radius: 6px; transition: width .25s ease; }
+.ir-prog.busy > .ir-progfill { background: repeating-linear-gradient(45deg, var(--gold,#f5b800) 0 10px, rgba(245,184,0,.55) 10px 20px); background-size: 28px 28px; animation: irbar 0.8s linear infinite; }
 @keyframes irbar { to { background-position: 28px 0; } }
 .ir-barx { font-size: 13px; line-height: 1.5; color: var(--muted); }
 .ir-barn { overflow-wrap: anywhere; }
 
 .ir-big { display: inline-block; margin-top: 10px; padding: 10px 16px; border-radius: 12px; background: var(--gold,#f5b800); color: #11203b; font-weight: 700; text-decoration: none; }
+
+/* zoom of the open IR file */
+.ir-pages { touch-action: pan-x pan-y; }
+.ir-zw { width: 100%; }
+.ir-zw canvas, .ir-zw img { display: block; width: 100%; height: auto; margin: 0 0 4px; background: #fff; }
+.ir-zm { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.ir-zm button { min-width: 30px; height: 28px; font-size: 18px; line-height: 1; }
+.ir-zm b { flex: none; min-width: 42px; text-align: center; font-size: 12px; }
