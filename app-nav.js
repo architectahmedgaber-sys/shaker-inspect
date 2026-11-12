@@ -81,5 +81,23 @@
     const el = m.target;
     if (m.type === 'attributes' && el.classList && el.classList.contains('open') && /overlay|ir-sheet/.test(el.className)) top0(el);
   })).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+
+  // ---- phone app (APK): the system Back button is handled here, step by step, instead of by Android ----
+  // top layer first (page, popup, IR sheet), then an open request, then the previous screen, and only from Home the app goes to the background.
+  (function () {
+    const C = window.Capacitor; if (!C || !C.addListener || !C.getPlatform || C.getPlatform() === 'web') return;
+    function nativeBack() {
+      try {
+        if (total() > 0 || document.querySelector('.ir-sheet.open, .acct-overlay.open, .tour-overlay.open, .ed-overlay.open')) { history.back(); return; }
+        const ov = document.getElementById('modalOverlay');
+        if (ov && ov.classList.contains('active')) { if (typeof closeModal === 'function') closeModal(); else ov.classList.remove('active'); return; }
+        if (document.body.dataset.sxTab && window.Shk && Shk.sx && Shk.sx.tab) { Shk.sx.tab('home'); return; }
+        if (typeof depth === 'number' && depth > 0 && typeof goBack === 'function') { goBack(); return; }
+        if (typeof view !== 'undefined' && view && view.level && view.level !== 'home' && typeof goHome === 'function') { goHome(); return; }
+        if (C.nativePromise) C.nativePromise('App', 'minimizeApp', {}).catch(() => {});
+      } catch (e) { console.warn(e); }
+    }
+    try { C.addListener('App', 'backButton', nativeBack); } catch (e) { console.warn(e); }
+  })();
   window.Shk = window.Shk || {}; Shk.navBack = () => history.back();
 })();

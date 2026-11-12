@@ -1,1 +1,1 @@
-New: the Files and About sheets open in the middle of the screen instead of from the bottom.
+Fix (Android app): the Back button now goes back one step at a time (popup, request, previous screen) and only leaves the app from Home. The request card no longer gets cut off at the top on older phones.

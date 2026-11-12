@@ -12,6 +12,7 @@
     "@capacitor/push-notifications": "^6.0.4",
     "@capacitor/camera": "^6.1.0",
     "@capacitor/filesystem": "^6.0.3",
-    "@capacitor/share": "^6.0.3"
+    "@capacitor/share": "^6.0.3",
+    "@capacitor/app": "^6.0.2"
   }
 }
