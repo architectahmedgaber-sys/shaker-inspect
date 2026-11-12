@@ -74,5 +74,12 @@
     if (e.data.shk === 'exit') history.back();
   });
   new MutationObserver(() => sync()).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+
+  // a screen that opens (or switches tab) always starts at its beginning, never at the place the last one was left
+  const top0 = el => { try { el.scrollTop = 0; el.querySelectorAll('.acct-box,.tour-box,.sx-body,.sc-body,.modal-box,.ir-sheet-box').forEach(x => { x.scrollTop = 0; }); } catch (e) {} };
+  new MutationObserver(ms => ms.forEach(m => {
+    const el = m.target;
+    if (m.type === 'attributes' && el.classList && el.classList.contains('open') && /overlay|ir-sheet/.test(el.className)) top0(el);
+  })).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
   window.Shk = window.Shk || {}; Shk.navBack = () => history.back();
 })();
