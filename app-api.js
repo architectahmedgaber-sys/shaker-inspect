@@ -276,6 +276,7 @@
     const o = await post(PREFIX + fn, args, session.token);          // throws with e.net = true when there is no signal
     if (o.auth) { const e = new Error(o.error || 'Please sign in again.'); e.auth = true; throw e; }
     if (!o.ok) throw new Error(o.error || 'Unknown error');
+    if (fn === 'processAndSaveAction' && o.result && o.result.success) { try { document.dispatchEvent(new CustomEvent('shk-closed', { detail: { payload: (args || [])[0] || {}, res: o.result } })); } catch (e) {} }
     return o.result;
   }
   // put a "read" answer in the phone cache by hand (e.g. checklists fetched in bulk)

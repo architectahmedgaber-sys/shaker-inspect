@@ -1,1 +1,1 @@
-Fix: the request card always opens at its first line (the top is no longer cut off).
+New: a small tick on the close card. Ticked = the IR file on Drive is filled and moved to Closed. Not ticked = closed in the sheet only.
