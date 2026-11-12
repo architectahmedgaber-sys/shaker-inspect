@@ -1,8 +1,8 @@
 {
- "version": "1.0.29",
- "build": 29,
+ "version": "1.0.30",
+ "build": 30,
  "notes": [
-  "Changed: PDF records for the masonry and plaster activity checklists are now in English (items translated from the Arabic list, Arabic notes kept). The checklist in the app stays Arabic."
+  "New: the IR is opened inside the request screen (From/To, file preview, prerequisites). IR files are uploaded by the DC by company and day, and the app fills Section C of the IR form when you close a request and saves it in Closed on Drive."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
