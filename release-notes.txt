@@ -1,1 +1,1 @@
-New: Villas moved into More, the project information card moved into More > About, and the last tab is now called More.
+New: a simpler home screen (the count and your requests only). Calendar, Re-inspection, Daily report, Villas, Scan, IR folder and Upload IR are all in More.

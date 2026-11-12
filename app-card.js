@@ -67,10 +67,17 @@
     const b = document.createElement('button'); b.type = 'button'; b.id = 'cdAbout'; b.className = 'dx-me-row';
     b.innerHTML = `<span>ⓘ ${t('About', 'عن التطبيق')}</span><i>›</i>`;
     b.onclick = openAbout;
-    const wrap = document.createElement('div'); wrap.className = 'dx-me'; wrap.appendChild(b);
+    const wrap = document.createElement('div'); wrap.className = 'dx-me';
+    const row = (id, label, fn) => { const x = document.createElement('button'); x.type = 'button'; x.id = id; x.innerHTML = `<span>${label}</span><i>›</i>`; x.onclick = fn; wrap.appendChild(x); };
+    // the tools that used to sit in a row on the home screen: every one of them is reached from here, and only from here
+    row('cdIrFolder', '📁 ' + t('IR folder', 'فولدر IR'), () => { try { PtahApp.closeAccount && PtahApp.closeAccount(); } catch (e) {} const o = $('acctOverlay'); if (o) o.classList.remove('open'); if (window.Shk && Shk.ir) Shk.ir.openFolders(); });
+    row('cdIrUpload', '⬆ ' + t('Upload IR', 'ارفع IR'), () => { const o = $('acctOverlay'); if (o) o.classList.remove('open'); if (window.Shk && Shk.openAdmin) Shk.openAdmin('ir'); });
+    wrap.appendChild(b);
     list.appendChild(wrap);
   }
-  new MutationObserver(ensureAbout).observe(document.body, { childList: true, subtree: true });
+  // 'Upload IR' is for Admin and DC only; the role is known a moment after sign-in, so it is shown or hidden every time
+  function roleRows() { const u = $('cdIrUpload'); if (!u) return; const rl = window.PtahApp && PtahApp.role && PtahApp.role(); u.hidden = !(rl === 'Admin' || rl === 'DC'); }
+  new MutationObserver(() => { ensureAbout(); roleRows(); }).observe(document.body, { childList: true, subtree: true });
 
   const baseOpen = window.openModal;
   window.openModal = function (item) {
