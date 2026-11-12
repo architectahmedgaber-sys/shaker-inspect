@@ -140,3 +140,7 @@ body.role-viewer .ir-tick { display: none !important; }
 .ir-zm { display: inline-flex; align-items: center; gap: 4px; flex: none; }
 .ir-zm button { min-width: 30px; height: 28px; font-size: 18px; line-height: 1; }
 .ir-zm b { flex: none; min-width: 42px; text-align: center; font-size: 12px; }
+
+/* tab bar: any number of tabs (Admin and DC get a sixth one); hidden ones take no room */
+.tabbar { grid-auto-flow: column; grid-auto-columns: 1fr; grid-template-columns: none !important; }
+html body .tabbar button[hidden] { display: none !important; }
