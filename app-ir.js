@@ -219,6 +219,13 @@
   const fmtSize = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
   const toB64 = f => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).replace(/^data:[^,]*,/, '')); r.onerror = () => bad(new Error('read')); r.readAsDataURL(f); });
 
+  // upload progress: one bar for the whole batch; while a file is being sent it moves with the bytes, then "saving on Drive" (the server is working, no percentage)
+  function paintUp(out, i, n, name, f, phase) {
+    const pct = Math.max(0, Math.min(100, Math.round(((i + (phase === 'save' ? 1 : phase === 'send' ? f * 0.95 : 0)) / n) * 100)));
+    const msg = phase === 'save' ? t('Saving on Drive…', 'بيتحفظ على الدرايف…') : phase === 'send' ? t('Sending ', 'بيتبعت ') + Math.round(f * 100) + '%' : t('Reading the file…', 'بيقرأ الملف…');
+    out.innerHTML = `<div class="ir-bar${phase === 'save' ? ' busy' : ''}"><span class="ir-fill" style="width:${pct}%"></span></div>
+      <div class="ir-barx"><b>${i + 1} / ${n}</b> · <span class="ir-barn">${esc(name)}</span></div><div class="ir-barx">${msg}</div>`;
+  }
   async function admIr() {
     const b = $('scBody'); if (!b) return;
     b.innerHTML = `<h3 class="sc-h">${t('IR files', 'ملفات الـ IR')}</h3>
@@ -236,8 +243,13 @@
       if (!co || !day) { $('irUp').textContent = t('Choose the company and the day first.', 'اختار الشركة واليوم الأول.'); return; }
       const out = $('irUp'); let ok = 0; const bad = [];
       for (let i = 0; i < files.length; i++) {
-        out.textContent = t('Uploading ', 'بيرفع ') + (i + 1) + ' / ' + files.length + ' · ' + files[i].name;
-        try { await api('admin_irUpload', [files[i].name, await toB64(files[i]), co, day]); ok++; } catch (er) { bad.push(files[i].name + ': ' + (er.message || er)); }
+        paintUp(out, i, files.length, files[i].name, 0, 'read');
+        try {
+          const b64 = await toB64(files[i]);
+          paintUp(out, i, files.length, files[i].name, 0, 'send');
+          await PtahApp.call('admin_irUpload', [files[i].name, b64, co, day], (f, done) => paintUp(out, i, files.length, files[i].name, f, done ? 'save' : 'send'));
+          ok++;
+        } catch (er) { bad.push(files[i].name + ': ' + (er.message || er)); }
       }
       out.innerHTML = `✓ ${ok} ${t('uploaded', 'اترفع')}` + (bad.length ? `<br><span class="bad">${bad.map(esc).join('<br>')}</span>` : '');
       index = null; drawList();
@@ -265,7 +277,7 @@
   });
   Object.assign(window.Shk = window.Shk || {}, { admIr: admIr });
 
-  Object.assign(window.Shk, { ir: { loadIndex, filesFor, loadPdfJs, b64bytes, projectKey: getProjectKey, openFolders } });
+  Object.assign(window.Shk, { ir: { loadIndex, filesFor, loadPdfJs, b64bytes, projectKey: getProjectKey, openFolders, paintUp } });
 
   // home: quick buttons (everybody gets "IR folder", admins and DC also get "Upload IR").
   // The home screen rebuilds its button row now and then, so the buttons are put back whenever they are missing.

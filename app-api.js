@@ -14,9 +14,25 @@
 
   function apiUrl() { return (window.SHK_CONFIG || {}).API_URL || ''; }
 
-  async function post(fn, args, token) {
+  // same request as fetch, but with XMLHttpRequest so the bytes sent can be shown (used for file uploads)
+  function postXhr(url, body, onUp) {
+    return new Promise((ok, bad) => {
+      const x = new XMLHttpRequest();
+      const net = () => { const err = new Error(navigator.onLine === false ? 'No internet connection.' : 'Could not reach the server. Check the connection and try again.'); err.net = true; bad(err); };
+      x.open('POST', url, true);
+      x.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+      x.upload.onprogress = e => { try { if (e.lengthComputable) onUp(e.loaded / e.total, false); } catch (z) {} };
+      x.upload.onload = () => { try { onUp(1, true); } catch (z) {} };
+      x.onerror = net; x.ontimeout = net; x.onabort = net;
+      x.onload = () => { let o; try { o = JSON.parse(x.responseText); } catch (e) { return bad(new Error('The server answered in a wrong format (' + x.status + '). Check the deployment access is "Anyone".')); } ok(o); };
+      x.send(body);
+    });
+  }
+
+  async function post(fn, args, token, onUp) {
     const url = apiUrl();
     if (!/^https:\/\//.test(url)) throw new Error('The app is not connected yet: put the Web app URL in config.js.');
+    if (onUp) return postXhr(url, JSON.stringify({ fn: fn, args: args || [], token: token || '' }), onUp);
     let r;
     try {
       // text/plain keeps it a "simple" request, so Apps Script answers without a CORS preflight
@@ -32,9 +48,9 @@
     return o;
   }
 
-  function call(fn, args) {
+  function call(fn, args, onUp) {
     return new Promise((resolve, reject) => {
-      const job = { fn: PREFIX + fn, args, resolve, reject };
+      const job = { fn: PREFIX + fn, args, resolve, reject, onUp };
       if (!session) { waiting.push(job); if (STANDALONE) location.replace('./'); else showLogin(); return; }
       if (session.status !== 'approved') { waiting.push(job); showStatus(); return; }
       send(job);
@@ -55,7 +71,7 @@
   async function send(job) {
     try {
       let o;
-      try { o = await post(job.fn, job.args, session && session.token); }
+      try { o = await post(job.fn, job.args, session && session.token, job.onUp); }
       catch (e) {
         const hit = e.net && READS[job.fn] && cacheGet(job);
         if (hit) { window.SHK_OFFLINE_SINCE = hit.t; document.dispatchEvent(new CustomEvent('shk-offline', { detail: { fn: job.fn, t: hit.t } })); return job.resolve(hit.v); }

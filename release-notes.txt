@@ -1,1 +1,1 @@
-New: closing a request now fills the IR form for Square (SQ) and Alexandria (AT) as well as El-Shorouk (SH). The comment stays inside its box and a very long one is shortened on the form only.
+New: a progress bar when uploading IR files (sending %, then saving on Drive).
