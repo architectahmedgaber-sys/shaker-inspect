@@ -1,6 +1,6 @@
 {
- "version": "1.0.28",
- "build": 28,
+ "version": "1.0.29",
+ "build": 29,
  "notes": [
   "Changed: PDF records for the masonry and plaster activity checklists are now in English (items translated from the Arabic list, Arabic notes kept). The checklist in the app stays Arabic."
  ],
