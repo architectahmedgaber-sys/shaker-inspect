@@ -89,7 +89,8 @@
     const r = role();
     document.body.classList.toggle('role-admin', r === 'Admin');
     document.body.classList.toggle('role-engineer', r === 'Engineer');
-    document.body.classList.toggle('role-viewer', r === 'Viewer');
+    document.body.classList.toggle('role-viewer', r === 'Viewer' || r === 'DC');   // DC = document controller: looks, uploads files and ACC, does not close
+    document.body.classList.toggle('role-dc', r === 'DC');
     window.SHK_ROLE = r;
     // the checklist editor asks for a PIN; the server uses its own for admins, so the app skips the question
     try { r === 'Admin' ? sessionStorage.setItem('ptahEdPin', 'admin') : sessionStorage.removeItem('ptahEdPin'); } catch (e) {}

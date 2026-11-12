@@ -30,6 +30,7 @@
         <div class="hero-hi"><div><small>${esc(greet())}</small><h2>${esc(name || 'Welcome')}</h2></div>
           <button type="button" class="hero-av" onclick="PtahApp.openAccount()" title="Account">${esc(initials(window.PtahApp && PtahApp.engineer()))}</button></div>
         ${PtahApp.role() === 'Admin' ? '<button type="button" class="hero-admin" onclick="Shk.openAdmin()">Admin screen<i>›</i></button>' : ''}
+        ${PtahApp.role() === 'DC' ? '<button type="button" class="hero-admin" onclick="Shk.openAdmin()">IR files &amp; ACC upload<i>›</i></button>' : ''}
         ${PtahApp.role() === 'Viewer' ? '<div class="hero-view">View only · you can look at everything but not close requests</div>' : ''}
         <div class="c-big"><b data-n="${items.length}">${items.length}</b><span>${items.length === 1 ? 'request waiting' : 'requests waiting'}</span></div>
         <div class="hero-stats">

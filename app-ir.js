@@ -11,7 +11,7 @@
   const api = (fn, args) => PtahApp.call(fn, args || []);
   const AR = () => { try { return JSON.parse(localStorage.getItem('shkLang') || '"en"') === 'ar'; } catch (e) { return false; } };
   const t = (en, ar) => AR() ? ar : en;
-  const isAdmin = () => PtahApp.role() === 'Admin';
+  const isAdmin = () => PtahApp.role() === 'Admin' || PtahApp.role() === 'DC';   // Admin or DC (document controller)
   const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
   const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 

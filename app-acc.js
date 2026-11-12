@@ -9,7 +9,7 @@
   const $ = id => document.getElementById(id);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const api = (fn, args) => PtahApp.call(fn, args || []);
-  const isAdmin = () => PtahApp.role() === 'Admin';
+  const isAdmin = () => PtahApp.role() === 'Admin' || PtahApp.role() === 'DC';   // Admin or DC (document controller)
   const SIGN = '<p class="shk-sign">architected by Ptah</p>';
   const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
   const BATCH = 60;                         // requests per call to the tracker
