@@ -375,7 +375,7 @@ html[dir="rtl"] .cl-tx { text-align: left; }
 /* ---- IR inside the request screen (app-ir.js) ---- */
 .ir-box { margin: 10px 0 0; }
 .ir-ft { display: flex; align-items: stretch; gap: 8px; flex-wrap: wrap; }
-.ir-p { flex: 1 1 140px; min-width: 0; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line, rgba(128,128,128,.25)); background: var(--card, transparent); display: flex; flex-direction: column; gap: 1px; }
+.ir-p { flex: 1 1 140px; min-width: 0; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line, rgba(128,128,128,.25)); background: var(--surface); display: flex; flex-direction: column; gap: 1px; }
 .ir-p small { font-size: 11px; color: var(--muted); }
 .ir-p b { font-size: 14px; overflow-wrap: anywhere; }
 .ir-p em { font-style: normal; font-size: 12px; color: var(--muted); }
@@ -392,7 +392,7 @@ html[dir="rtl"] .cl-tx { text-align: left; }
 .ir-bar b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ir-pages { max-height: 60vh; overflow: auto; background: #777; }
 .ir-pages canvas, .ir-pages img { display: block; width: 100%; height: auto; margin: 0 0 4px; background: #fff; }
-.ir-load { padding: 14px; font-size: 13px; color: var(--muted); text-align: center; background: var(--card, transparent); }
+.ir-load { padding: 14px; font-size: 13px; color: var(--muted); text-align: center; background: var(--surface); }
 .ir-load.bad, .bad { color: var(--rej, #e5484d); }
 .ir-pre { margin-top: 10px; }
 .ir-ph { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
@@ -405,3 +405,15 @@ html[dir="rtl"] .cl-tx { text-align: left; }
 .ir-3 button.on.y { border-color: #2e9d5b; background: rgba(46,157,91,.16); }
 .ir-warn { margin-top: 8px; padding: 9px 12px; border-radius: 12px; font-size: 13.5px; background: rgba(229,72,77,.1); border: 1px dashed var(--rej, #e5484d); }
 .ir-pick { display: inline-block; padding: 10px 16px; border-radius: 12px; background: var(--accent); color: #0b2a5b; font-weight: 700; cursor: pointer; }
+.ir-sel { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px; }
+.ir-sel label { flex: 1 1 140px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.ir-pick.off { opacity: .45; pointer-events: none; }
+.ir-path { display: block; font-size: 11.5px; color: var(--muted); }
+.ir-sheet { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,.5); display: none; align-items: flex-end; justify-content: center; }
+.ir-sheet.open { display: flex; }
+.ir-sheet-box { width: 100%; max-width: 520px; max-height: 80vh; overflow: auto; background: var(--surface); color: var(--ink); border-radius: 18px 18px 0 0; padding: 14px 16px 22px; }
+.ir-sheet-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.ir-go { display: block; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--accent); color: inherit; text-decoration: none; font-weight: 600; margin-top: 8px; }
+.ir-co { margin-top: 6px; }
+.ir-days { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.ir-days a { padding: 6px 10px; border-radius: 999px; background: rgba(128,128,128,.18); color: inherit; text-decoration: none; font-size: 13px; }
