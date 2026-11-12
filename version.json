@@ -1,8 +1,8 @@
 {
- "version": "1.0.40",
- "build": 40,
+ "version": "1.0.41",
+ "build": 41,
  "notes": [
-  "New: a small tick on the close card. Ticked = the IR file on Drive is filled and moved to Closed. Not ticked = closed in the sheet only."
+  "New: closing a request now fills the IR form for Square (SQ) and Alexandria (AT) as well as El-Shorouk (SH). The comment stays inside its box and a very long one is shortened on the form only."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
