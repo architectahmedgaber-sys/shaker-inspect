@@ -73,3 +73,9 @@ html body #modalSaveBtn:disabled { opacity: .55; }
 html body #modalSaveBtn kbd { display: none; }
 html body .modal-footer { display: flex !important; flex-direction: column; gap: 8px; position: static !important; background: none !important; padding: 14px 0 0 !important; }
 body.role-viewer .cd-rows, body.role-viewer .cd-codes { display: none !important; }
+
+/* the project information card now lives in More > About */
+body > footer, #app footer, footer:has(.title-block) { display: none !important; }
+.cd-about .title-block { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.cd-about .tbk.wide { grid-column: 1 / -1; }
+#cdAbout { width: 100%; }

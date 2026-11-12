@@ -61,7 +61,7 @@
   const AR = Object.assign({
     // home, lists, top bar
     'Home': 'الرئيسية', 'Requests': 'الطلبات', 'Search by Villa or activity...': 'دوّر برقم الفيلا أو النشاط...', 'Refresh': 'تحديث',
-    'Load the latest requests from the sheet': 'هات آخر الطلبات من الشيت', 'Account': 'الحساب', 'Me': 'أنا', 'Main': 'الرئيسية', 'Sheets': 'الشيتات', 'Handover': 'التسليم',
+    'Load the latest requests from the sheet': 'هات آخر الطلبات من الشيت', 'Account': 'الحساب', 'Me': 'أنا', 'More': 'المزيد', 'About': 'عن التطبيق', 'Main': 'الرئيسية', 'Sheets': 'الشيتات', 'Handover': 'التسليم',
     'All contractors': 'كل المقاولين', 'Late by contractor': 'المتأخر لكل مقاول', 'Waiting longest': 'الأقدم في الانتظار', 'requests closed today': 'طلبات اتقفلت النهارده',
     'Good morning,': 'صباح الخير،', 'Good afternoon,': 'مساء الخير،', 'Good evening,': 'مساء الخير،', 'Today': 'النهارده', 'Late': 'متأخر', 'Open': 'مفتوح', 'Closed': 'مقفول',
     'Pending': 'مستني', 'Pending · Late': 'مستني · متأخر', 'Open →': 'افتح ←', 'Daily Site Inspections': 'المرور اليومي على الموقع', 'Fetching pending inspections...': 'بنجيب الطلبات المفتوحة...',

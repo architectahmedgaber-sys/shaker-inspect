@@ -51,6 +51,27 @@
     if (st) new MutationObserver(() => { const m = st.textContent || ''; if (/checklist|الـ Checklist/i.test(m)) rCl.open = true; if (/photo|صور/i.test(m)) rPh.open = true; }).observe(st, { childList: true, characterData: true, subtree: true });
   }
 
+
+  // ---------- "About": the project information card that used to sit at the bottom of the home page ----------
+  function openAbout() {
+    const src = document.querySelector('footer .title-block'); if (!src) return;
+    const old = $('cdAboutSheet'); if (old) old.remove();
+    const sh = document.createElement('div'); sh.id = 'cdAboutSheet'; sh.className = 'ir-sheet';
+    sh.innerHTML = `<div class="ir-sheet-box"><div class="ir-sheet-h"><b>${t('About', 'عن التطبيق')}</b><button type="button" data-irx="1" class="ir-lnk">✕</button></div><div class="cd-about"></div></div>`;
+    sh.querySelector('.cd-about').appendChild(src.cloneNode(true));
+    sh.addEventListener('click', e => { if (e.target === sh || (e.target.closest && e.target.closest('[data-irx]'))) sh.remove(); });
+    document.body.appendChild(sh); requestAnimationFrame(() => sh.classList.add('open'));
+  }
+  function ensureAbout() {
+    const list = document.querySelector('#acctOverlay .acct-list'); if (!list || $('cdAbout')) return;
+    const b = document.createElement('button'); b.type = 'button'; b.id = 'cdAbout'; b.className = 'dx-me-row';
+    b.innerHTML = `<span>ⓘ ${t('About', 'عن التطبيق')}</span><i>›</i>`;
+    b.onclick = openAbout;
+    const wrap = document.createElement('div'); wrap.className = 'dx-me'; wrap.appendChild(b);
+    list.appendChild(wrap);
+  }
+  new MutationObserver(ensureAbout).observe(document.body, { childList: true, subtree: true });
+
   const baseOpen = window.openModal;
   window.openModal = function (item) {
     const r = baseOpen.apply(this, arguments);

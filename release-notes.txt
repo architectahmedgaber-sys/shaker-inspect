@@ -1,1 +1,1 @@
-New: a calmer request card (opens in the middle over a blurred screen, normal Close button, clearer font). The Back button and swipe-back now go to the previous screen, even with a request open, and never leave the app by mistake.
+New: Villas moved into More, the project information card moved into More > About, and the last tab is now called More.
