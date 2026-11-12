@@ -112,11 +112,13 @@
     else if (name === 'requests') openRequests();
     else if (name === 'villas') { Shk.openVillas(); }
     else if (name === 'inbox') openInbox();
+    else if (name === 'admin') { Shk.openAdmin(); }
     paintTabs();
   }
   function current() {
     const t = document.body.dataset.sxTab;
     if (t === 'requests' || t === 'inbox') return document.querySelector('.sx-page.tab:not([data-closing])') ? t : '';
+    if (t === 'admin') return document.body.classList.contains('scr-open') ? 'admin' : '';
     if (t === 'villas') return document.body.classList.contains('scr-open') ? 'villas' : '';
     return '';
   }

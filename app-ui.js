@@ -29,8 +29,6 @@
       <div class="c-head">
         <div class="hero-hi"><div><small>${esc(greet())}</small><h2>${esc(name || 'Welcome')}</h2></div>
           <button type="button" class="hero-av" onclick="PtahApp.openAccount()" title="Account">${esc(initials(window.PtahApp && PtahApp.engineer()))}</button></div>
-        ${PtahApp.role() === 'Admin' ? '<button type="button" class="hero-admin" onclick="Shk.openAdmin()">Admin screen<i>›</i></button>' : ''}
-        ${PtahApp.role() === 'DC' ? '<button type="button" class="hero-admin" onclick="Shk.openAdmin()">IR files &amp; ACC upload<i>›</i></button>' : ''}
         ${PtahApp.role() === 'Viewer' ? '<div class="hero-view">View only · you can look at everything but not close requests</div>' : ''}
         <div class="c-big"><b data-n="${items.length}">${items.length}</b><span>${items.length === 1 ? 'request waiting' : 'requests waiting'}</span></div>
         <div class="hero-stats">
@@ -70,8 +68,16 @@
   // ---------- phone tab bar ----------
   function tabs() {
     const bar = $('tabBar'); if (!bar) return;
+    adminTabShow();
     if (window.Shk && Shk.sx) return Shk.sx.paintTabs();
     bar.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === 'home'));
+  }
+  // the Admin tab is only for Admin (and "Docs" for the document controller); the role is known a moment after sign-in
+  function adminTabShow() {
+    const b = document.querySelector('#tabBar [data-t="admin"]'); if (!b) return;
+    const rl = window.PtahApp && PtahApp.role && PtahApp.role();
+    b.hidden = !(rl === 'Admin' || rl === 'DC');
+    const sp = b.querySelector('span'); if (sp) sp.textContent = rl === 'DC' ? 'Docs' : 'Admin';
   }
   function buildTabs() {
     const bar = document.createElement('nav'); bar.id = 'tabBar'; bar.className = 'tabbar'; bar.setAttribute('aria-label', 'Main');
@@ -85,10 +91,11 @@
     ic.sheet = '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/>';
     ic.villa = '<path d="M3 20h18M5 20V9l7-5 7 5v11"/><path d="M10 20v-6h4v6"/>';
     ic.inbox = '<path d="M4 13l2.2-7A2 2 0 0 1 8.1 4.6h7.8a2 2 0 0 1 1.9 1.4L20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M4 13h4.5l1 2.5h5l1-2.5H20"/>';
-    const items = [['home', 'Home'], ['requests', 'Requests'], ['files', 'Files'], ['inbox', 'Inbox'], ['me', 'More']];
+    const items = [['home', 'Home'], ['requests', 'Requests'], ['files', 'Files'], ['inbox', 'Inbox'], ['admin', 'Admin'], ['me', 'More']];
+    ic.admin = '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>';
     ic.files = '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>';
     ic.requests = ic.list; ic.villas = ic.villa;
-    bar.innerHTML = items.map(([k, l]) => `<button type="button" data-t="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${ic[k]}</svg>${k === 'inbox' ? '<b class="sx-badge" hidden></b>' : ''}<span>${l}</span></button>`).join('');
+    bar.innerHTML = items.map(([k, l]) => `<button type="button" data-t="${k}"${k === 'admin' ? ' hidden' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ic[k]}</svg>${k === 'inbox' ? '<b class="sx-badge" hidden></b>' : ''}<span>${l}</span></button>`).join('');
     bar.querySelectorAll('button').forEach((b, i) => b.onclick = () => {
       const k = items[i][0];
       if (k === 'me') { try { navigator.vibrate && navigator.vibrate(8); } catch (e) {} return PtahApp.openAccount(); }
@@ -96,7 +103,7 @@
       Shk.sx.tab(k);
     });
     (window.Shk = window.Shk || {}).tabsRefresh = tabs;
-    document.body.appendChild(bar);
+    document.body.appendChild(bar); adminTabShow();
   }
   // "Requests": the busiest contractor's CIR list (one tap from the field)
   function openAll() {
