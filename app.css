@@ -417,3 +417,4 @@ html[dir="rtl"] .cl-tx { text-align: left; }
 .ir-co { margin-top: 6px; }
 .ir-days { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .ir-days a { padding: 6px 10px; border-radius: 999px; background: rgba(128,128,128,.18); color: inherit; text-decoration: none; font-size: 13px; }
+.ir-sec { margin: 14px 0 0; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }

@@ -198,12 +198,14 @@
     try {
       const r = await api('ir_links');
       const box = sh.querySelector('.ir-sheet-box');
-      const cos = (r.companies || []).slice().sort((a, b) => (b.key === prefer) - (a.key === prefer));
+      const sect = (title, url, list) => {
+        const cos = (list || []).slice().sort((a, b) => (b.key === prefer) - (a.key === prefer));
+        return `<h4 class="ir-sec">${title}</h4>` + (url ? `<a class="ir-go" href="${esc(url)}" target="_blank" rel="noopener">📁 ${title} · ${t('all companies', 'كل الشركات')}</a>` : '') +
+          (cos.length ? cos.map(c => `<div class="ir-co"><a class="ir-go" href="${esc(c.url)}" target="_blank" rel="noopener">📁 ${esc(c.name)}</a>
+            <div class="ir-days">${c.days.length ? c.days.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('') : `<small class="ir-hint">${t('No days yet.', 'مفيش أيام لسه.')}</small>`}</div></div>`).join('') : `<small class="ir-hint">${t('Nothing here yet.', 'مفيش حاجة هنا لسه.')}</small>`);
+      };
       box.innerHTML = `<div class="ir-sheet-h"><b>${t('IR files on Drive', 'ملفات الـ IR على الدرايف')}</b><button type="button" data-irx="1" class="ir-lnk">✕</button></div>` +
-        (r.root ? `<a class="ir-go" href="${esc(r.root)}" target="_blank" rel="noopener">📁 ${t('All companies', 'كل الشركات')}</a>` : '') +
-        (cos.length ? cos.map(c => `<div class="ir-co"><a class="ir-go" href="${esc(c.url)}" target="_blank" rel="noopener">📁 ${esc(c.name)}</a>
-          ${c.closedUrl ? `<a class="ir-go ir-closed" href="${esc(c.closedUrl)}" target="_blank" rel="noopener">✅ ${t('Closed (filled forms)', 'اللي اتقفل (الفورم مملية)')}</a><div class="ir-days">${(c.closed || []).map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('')}</div>` : ''}
-          <div class="ir-days">${c.days.length ? c.days.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('') : `<small class="ir-hint">${t('No days yet.', 'مفيش أيام لسه.')}</small>`}</div></div>`).join('') : `<div class="ir-load">${t('No files uploaded yet.', 'لسه مفيش ملفات مرفوعة.')}</div>`) +
+        sect(t('Open', 'Open (لسه متقفلتش)'), r.openUrl, r.open) + sect(t('Closed', 'Closed (الفورم مملية)'), r.closedUrl, r.closed) +
         `<small class="ir-hint">${t('If Drive asks for access, sign in with the same Google account you use in the app.', 'لو الدرايف طلب إذن، ادخل بنفس حساب جوجل اللي بتستخدمه في الأبليكيشن.')}</small>`;
     } catch (e) { sh.querySelector('.ir-sheet-box').innerHTML += `<div class="ir-load bad">${esc(e.message || e)}</div>`; }
   }
