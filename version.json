@@ -1,6 +1,6 @@
 {
- "version": "1.0.46",
- "build": 46,
+ "version": "1.0.47",
+ "build": 47,
  "notes": [
   "New: IR upload even faster (links for the whole batch in one call, 5 files at once). Needs the newest IrFiles.gs; the older one still works but slower."
  ],
