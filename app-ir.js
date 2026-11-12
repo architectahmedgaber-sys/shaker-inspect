@@ -271,6 +271,30 @@
   const fmtSize = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
   const toB64 = f => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).replace(/^data:[^,]*,/, '')); r.onerror = () => bad(new Error('read')); r.readAsDataURL(f); });
 
+  // fast upload: the phone sends the file straight to a one-time Drive link made by the server (the folders and names are still decided by the server)
+  const UP_PARALLEL = 3;
+  let fastOff = false;                    // set when the fast way fails once: the rest of the files use the old way
+  function putToDrive(url, file, onProg) {
+    return new Promise((ok, bad) => {
+      const x = new XMLHttpRequest();
+      x.open('PUT', url, true);
+      x.setRequestHeader('Content-Type', file.type || (/\.pdf$/i.test(file.name) ? 'application/pdf' : 'application/octet-stream'));
+      x.upload.onprogress = e => { try { if (e.lengthComputable) onProg(e.loaded / e.total); } catch (z) {} };
+      x.onerror = x.ontimeout = x.onabort = () => bad(new Error('direct upload failed'));
+      x.onload = () => { let o = null; try { o = JSON.parse(x.responseText); } catch (e) {} (x.status >= 200 && x.status < 300 && o && o.id) ? ok(o) : bad(new Error('direct upload refused (' + x.status + ')')); };
+      x.send(file);
+    });
+  }
+  // one bar for the whole batch, moved by the bytes of all files being sent
+  function paintBatch(out, st, finished) {
+    const total = st.reduce((a, f) => a + f.size, 0) || 1, sent = st.reduce((a, f) => a + Math.min(f.sent, f.size), 0);
+    const pct = Math.max(0, Math.min(100, Math.round(sent / total * 100)));
+    const live = st.filter(f => f.phase === 'send' || f.phase === 'save' || f.phase === 'read');
+    const saving = live.length && live.every(f => f.phase === 'save');
+    out.innerHTML = `<div class="ir-prog${saving ? ' busy' : ''}"><span class="ir-progfill" style="width:${pct}%"></span></div>
+      <div class="ir-barx"><b>${finished} / ${st.length}</b> · ${saving ? t('Saving on Drive…', 'بيتحفظ على الدرايف…') : t('Sending ', 'بيتبعت ') + pct + '%'}</div>` +
+      live.slice(0, 3).map(f => `<div class="ir-barx"><span class="ir-barn">${esc(f.name)}</span></div>`).join('');
+  }
   // upload progress: one bar for the whole batch; while a file is being sent it moves with the bytes, then "saving on Drive" (the server is working, no percentage)
   function paintUp(out, i, n, name, f, phase) {
     const pct = Math.max(0, Math.min(100, Math.round(((i + (phase === 'save' ? 1 : phase === 'send' ? f * 0.95 : 0)) / n) * 100)));
@@ -293,17 +317,40 @@
       const files = Array.from(e.target.files || []); e.target.value = '';
       const co = $('irCo').value, day = $('irDay').value;
       if (!co || !day) { $('irUp').textContent = t('Choose the company and the day first.', 'اختار الشركة واليوم الأول.'); return; }
-      const out = $('irUp'); let ok = 0; const bad = [];
-      for (let i = 0; i < files.length; i++) {
-        paintUp(out, i, files.length, files[i].name, 0, 'read');
+      const out = $('irUp'); let ok = 0, fast = 0, finished = 0; const bad = [];
+      // up to 3 files at once; each one goes straight to Drive (fast) and falls back to the old way through the server
+      const st = files.map(f => ({ name: f.name, size: f.size || 1, sent: 0, phase: 'wait' }));
+      const paint = () => paintBatch(out, st, finished);
+      const slow = async (f, i) => {
+        st[i].phase = 'read'; paint();
+        const b64 = await toB64(f);
+        st[i].phase = 'send'; paint();
+        await PtahApp.call('admin_irUpload', [f.name, b64, co, day], (fr, done) => { st[i].sent = st[i].size * (done ? 0.95 : fr * 0.95); st[i].phase = done ? 'save' : 'send'; paint(); });
+      };
+      const one = async i => {
+        const f = files[i];
         try {
-          const b64 = await toB64(files[i]);
-          paintUp(out, i, files.length, files[i].name, 0, 'send');
-          await PtahApp.call('admin_irUpload', [files[i].name, b64, co, day], (f, done) => paintUp(out, i, files.length, files[i].name, f, done ? 'save' : 'send'));
-          ok++;
-        } catch (er) { bad.push(files[i].name + ': ' + (er.message || er)); }
-      }
-      out.innerHTML = `✓ ${ok} ${t('uploaded', 'اترفع')}` + (bad.length ? `<br><span class="bad">${bad.map(esc).join('<br>')}</span>` : '');
+          if (!fastOff) {
+            let link = null;
+            try { link = await PtahApp.call('admin_irUploadStart', [f.name, f.size, co, day, location.origin]); } catch (er) { if (er && er.net) throw er; fastOff = true; }
+            if (link && link.url) {
+              st[i].phase = 'send'; paint();
+              let drive = null;
+              try { drive = await putToDrive(link.url, f, fr => { st[i].sent = st[i].size * fr * 0.95; paint(); }); } catch (er) { fastOff = true; }
+              if (drive && drive.id) {
+                st[i].phase = 'save'; st[i].sent = st[i].size * 0.95; paint();
+                await PtahApp.call('admin_irUploadDone', [drive.id, f.name, co, day]);
+                fast++; ok++; return;
+              }
+            }
+          }
+          await slow(f, i); ok++;
+        } catch (er) { bad.push(f.name + ': ' + (er.message || er)); }
+        finally { st[i].sent = st[i].size; st[i].phase = 'done'; finished++; paint(); }
+      };
+      let next = 0;
+      await Promise.all(Array.from({ length: Math.min(UP_PARALLEL, files.length) }, async () => { while (next < files.length) await one(next++); }));
+      out.innerHTML = `✓ ${ok} ${t('uploaded', 'اترفع')}` + (bad.length ? `<br><span class="bad">${bad.map(esc).join('<br>')}</span>` : '') + (ok && !fast && fastOff ? `<br><small class="ir-hint">${t('Uploaded the slower way (fast upload not available yet).', 'اترفع بالطريقة البطيئة (الرفع السريع لسه مش شغال).')}</small>` : '');
       index = null; drawList();
     };
     drawList();
