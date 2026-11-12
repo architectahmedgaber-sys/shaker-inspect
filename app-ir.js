@@ -88,6 +88,7 @@
   }
 
   // ---------------------------------------------------------------- viewer (pdf.js drawn to canvas; works in the Android app too)
+  const BIG_FILE = 12 * 1048576;      // bigger than this is opened on Drive (the server can only send up to 20 MB and phones struggle before that)
   let pdfLib = null;
   function loadPdfJs() {
     if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; return Promise.resolve(window.pdfjsLib); }
@@ -104,6 +105,14 @@
     const v = $('irView'); if (!v) return;
     const seq = ++loadSeq; curFile = id; paintFiles();
     v.hidden = false; v.innerHTML = `<div class="ir-load">${t('Opening…', 'بيفتح…')}</div>`;
+    const meta = (index || []).find(x => x.id === id);
+    if (meta && meta.size > BIG_FILE) {       // too big to bring into the phone through the server: open it on Drive itself
+      try { api('ir_links').catch(() => {}); } catch (e) {}      // makes sure this person has view access to the folder
+      const mb = Math.round(meta.size / 1048576);
+      v.innerHTML = `<div class="ir-bar"><b dir="auto">${esc(meta.name)}</b><button type="button" class="ir-lnk" data-ir="hide">${t('Hide', 'اخفي')}</button></div>
+        <div class="ir-load">${t('This file is big (' + mb + ' MB), so it opens on Google Drive.', 'الملف كبير (' + mb + ' ميجا) فبيتفتح على جوجل درايف.')}<br><a class="ir-lnk ir-big" href="https://drive.google.com/file/d/${encodeURIComponent(id)}/view" target="_blank" rel="noopener">${t('Open on Drive', 'افتحه على الدرايف')}</a></div>`;
+      return;
+    }
     try {
       const f = await api('ir_get', [id]);
       if (seq !== loadSeq) return;
