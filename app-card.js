@@ -70,7 +70,6 @@
     const wrap = document.createElement('div'); wrap.className = 'dx-me';
     const row = (id, label, fn) => { const x = document.createElement('button'); x.type = 'button'; x.id = id; x.innerHTML = `<span>${label}</span><i>›</i>`; x.onclick = fn; wrap.appendChild(x); };
     // the tools that used to sit in a row on the home screen: every one of them is reached from here, and only from here
-    row('cdIrFolder', '📁 ' + t('IR folder', 'فولدر IR'), () => { try { PtahApp.closeAccount && PtahApp.closeAccount(); } catch (e) {} const o = $('acctOverlay'); if (o) o.classList.remove('open'); if (window.Shk && Shk.ir) Shk.ir.openFolders(); });
     row('cdIrUpload', '⬆ ' + t('Upload IR', 'ارفع IR'), () => { const o = $('acctOverlay'); if (o) o.classList.remove('open'); if (window.Shk && Shk.openAdmin) Shk.openAdmin('ir'); });
     wrap.appendChild(b);
     list.appendChild(wrap);

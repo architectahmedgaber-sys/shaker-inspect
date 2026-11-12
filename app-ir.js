@@ -196,7 +196,7 @@
     sh.innerHTML = `<div class="ir-sheet-box"><div class="ir-sheet-h"><b>${t('IR files on Drive', 'ملفات الـ IR على الدرايف')}</b><button type="button" data-irx="1" class="ir-lnk">✕</button></div><div class="ir-load">${t('Loading…', 'بيحمّل…')}</div></div>`;
     sh.classList.add('open');
     try {
-      const r = await api('ir_links');
+      const r = (await api('ir_links')) || {};
       const box = sh.querySelector('.ir-sheet-box');
       const sect = (title, url, list) => {
         const cos = (list || []).slice().sort((a, b) => (b.key === prefer) - (a.key === prefer));
