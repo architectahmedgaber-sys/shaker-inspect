@@ -84,33 +84,89 @@
     return lines;
   }
 
+  // ---- download of the IR file: big files come in pieces (up to 4 at once) so a 50 MB scan is not one giant call ----
+  const CHUNK = 6 * 1024 * 1024, PAR = 4;
+  async function download(f, onProg) {
+    const ir = window.Shk.ir, size = Number(f.size) || 0;
+    if (!size || size <= 1.5 * 1024 * 1024) {                      // small: one call, same as before
+      const r = await api('ir_get', [f.id]); return ir.b64bytes(r.b64);
+    }
+    const n = Math.ceil(size / CHUNK), out = new Uint8Array(size); let got = 0, next = 0, broke = null;
+    const worker = async () => {
+      while (next < n && !broke) {
+        const i = next++, start = i * CHUNK, len = Math.min(CHUNK, size - start);
+        try { const r = await api('ir_getChunk', [f.id, start, len]); const b = ir.b64bytes(r.b64); out.set(b, start); got += b.length; if (onProg) onProg(got / size); }
+        catch (e) { broke = e; }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(PAR, n) }, worker));
+    if (broke) {                                                   // older server without pieces: the old way (up to 20 MB)
+      if (size > 20 * 1024 * 1024) throw new Error(t('the file is big and the server needs the new script (IrFiles.gs)', 'الملف كبير والسيرفر محتاج السكريبت الجديد (IrFiles.gs)'));
+      const r = await api('ir_get', [f.id]); return ir.b64bytes(r.b64);
+    }
+    return out;
+  }
+
   // the IR form of this request: a PDF whose first page has "Section C"
-  async function findForm(payload) {
+  async function findForm(payload, fresh) {
     const ir = window.Shk && Shk.ir; if (!ir) throw new Error('IR files are not ready');
-    await ir.loadIndex(true);
-    const hits = ir.filesFor({ irNumber: payload.irNumber, rev: payload.rev }).filter(f => /\.pdf$/i.test(f.name));
+    await ir.loadIndex(!!fresh);
+    let hits = ir.filesFor({ irNumber: payload.irNumber, rev: payload.rev }).filter(f => /\.pdf$/i.test(f.name));
+    if (!hits.length && !fresh) { await ir.loadIndex(true); hits = ir.filesFor({ irNumber: payload.irNumber, rev: payload.rev }).filter(f => /\.pdf$/i.test(f.name)); }
     if (!hits.length) return null;
     const lib = await ir.loadPdfJs();
     for (const f of hits) {
-      const r = await api('ir_get', [f.id]);
-      const bytes = ir.b64bytes(r.b64);
+      const bytes = await download(f, payload.onProg);
       try {
         const doc = await lib.getDocument({ data: bytes.slice() }).promise;
         const pg = await doc.getPage(1);
         const items = (await pg.getTextContent()).items, vh = pg.getViewport({ scale: 1 }).height;
         const txt = items.map(i => i.str).join(' ');
         const an = items.find(i => /^SUPERVISION/.test(String(i.str).trim()));
+        try { doc.destroy(); } catch (e) {}
         if (/Section\s*C/i.test(txt)) return { name: f.name, bytes: bytes, id: f.id, txt: txt, anchor: an ? { x: an.transform[4], base: vh - an.transform[5] } : null };
       } catch (e) { console.warn('form check', f.name, e); }
     }
     return { notForm: true };
   }
 
+  // ---- warm-up: while the engineer writes the comment, the form is downloaded, checked and the libraries and fonts are loaded,
+  // so the Close button only has to draw and upload ----
+  let warm = null;                                  // { key, p: Promise<form> }
+  function prewarm(item) {
+    const key = String(item && item.irNumber || ''); if (!key) return;
+    if (warm && warm.key === key) return;
+    const entry = { key, p: null };
+    entry.p = (async () => {
+      const [form] = await Promise.all([findForm({ irNumber: item.irNumber, rev: item.rev }, false), loadLibs(true).catch(() => null)]);
+      if (form && !form.notForm && window.PDFLib) { try { form.doc = await window.PDFLib.PDFDocument.load(form.bytes, { ignoreEncryption: true }); } catch (e) { form.doc = null; } }
+      return form;
+    })();
+    entry.p.catch(() => { if (warm === entry) warm = null; });
+    warm = entry;
+  }
+  function takeWarm(payload) {
+    const w = warm; if (!w || w.key !== String(payload.irNumber || '')) return null;
+    warm = null; return w.p;
+  }
+
+  // small status line at the bottom while the form is being filled and saved (no waiting in the dark)
+  let pill = null, pillT = 0;
+  function status(msg, ms) {
+    try {
+      if (!pill) { pill = document.createElement('div'); pill.style.cssText = 'position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:9999;max-width:88vw;padding:9px 16px;border-radius:22px;background:#12233f;color:#fff;font:600 13px/1.3 system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.3);border:1px solid #c9a227;direction:auto'; document.body.appendChild(pill); }
+      clearTimeout(pillT);
+      if (!msg) { pill.style.display = 'none'; return; }
+      pill.textContent = msg; pill.style.display = ''; if (ms) pillT = setTimeout(() => { pill.style.display = 'none'; }, ms);
+    } catch (e) {}
+  }
+
   async function fill(form, p) {
     const hasAr = AR_RE.test(String(p.rawNotes || ''));
     const L = await loadLibs(hasAr);
     const { PDFDocument, rgb, LineCapStyle } = window.PDFLib;
-    const doc = await PDFDocument.load(form.bytes, { ignoreEncryption: true });
+    const doc = form.doc || await PDFDocument.load(form.bytes, { ignoreEncryption: true });
+    form.doc = null;
     doc.registerFontkit(window.fontkit);
     const page = doc.getPage(0), { width: pw, height: H } = page.getSize();
     const G = pickProfile(pw, H, form.name, form.txt);
@@ -202,6 +258,7 @@
       const has = Shk.ir.filesFor(it).some(f => /\.pdf$/i.test(f.name));
       l.querySelector('input').checked = tickDefault();
       l.hidden = !has;
+      if (has && l.querySelector('input').checked) prewarm(it);
     } catch (e) { /* no index: the tick stays hidden and a close behaves as before */ }
   }
   const baseOpen = window.openModal;
@@ -212,23 +269,54 @@
     choice[String(it.irNumber || '')] = l.querySelector('input').checked;
   }, true);
 
+  // save the filled form in Closed. Direct to Drive (new script); if that is not possible and the file is up to 14 MB, through the server as before
+  async function save(co, day, name, out, origId, onProg) {
+    let url = null;
+    try { const r = await api('ir_putStart', [co, day, name, out.length, location.origin]); url = r && r.url; } catch (e) { if (e && e.net) throw e; }
+    if (url) {
+      try {
+        const d = await new Promise((ok, bad) => {
+          const x = new XMLHttpRequest(); x.open('PUT', url, true); x.setRequestHeader('Content-Type', 'application/pdf');
+          x.upload.onprogress = e => { try { if (e.lengthComputable) onProg(e.loaded / e.total); } catch (z) {} };
+          x.onerror = x.ontimeout = x.onabort = () => bad(new Error('direct upload failed'));
+          x.onload = () => { let o = null; try { o = JSON.parse(x.responseText); } catch (e) {} (x.status >= 200 && x.status < 300 && o && o.id) ? ok(o) : bad(new Error('direct upload refused (' + x.status + ')')); };
+          x.send(new Blob([out], { type: 'application/pdf' }));
+        });
+        status(t('Finishing on Drive…', 'بيخلّص على الدرايف…'));
+        await api('ir_putDone', [d.id, co, day, name, origId || '']);
+        return;
+      } catch (e) { console.warn('direct save', e); if (e && e.net) throw e; }
+    }
+    if (out.length > 14 * 1024 * 1024) throw new Error(t('the filled file is over 14 MB and needs the new script (IrFiles.gs) to be saved', 'الملف بعد التعبئة أكبر من 14 ميجا ومحتاج السكريبت الجديد (IrFiles.gs) عشان يتحفظ'));
+    status(t('Saving on Drive…', 'بيحفظ على الدرايف…'));
+    await api('ir_saveClosed', [co, day, name, toB64(out), origId || '']);
+  }
+
   async function run(p) {
     if (!p.irNumber || !p.code) return;
     if (choice[String(p.irNumber)] === false) { delete choice[String(p.irNumber)]; return note(t('Closed in the sheet only. The IR file stays in Open on Drive.', 'اتقفل في الشيت بس. ملف الـ IR فضل في Open على الدرايف.')); }
     delete choice[String(p.irNumber)];
     try {
-      const form = await findForm(p);
-      if (!form) return note(t('No IR file was uploaded for this request, so the form was not filled.', 'مفيش ملف IR مرفوع للطلب ده، فالفورم ماتملاش.'));
-      if (form.notForm) return note(t('The IR file is not a CIR form (no Section C), so it was not filled.', 'ملف الـ IR مش فورم CIR (مفيش Section C)، فماتملاش.'));
+      const w = takeWarm(p);
+      status(t('Preparing the IR form…', 'بيجهّز فورم الـ IR…'));
+      let form = null;
+      if (w) { try { form = await w; } catch (e) { form = null; } }
+      if (!form) form = await findForm(Object.assign({}, p, { onProg: f => status(t('Downloading the IR form… ', 'بينزّل فورم الـ IR… ') + Math.round(f * 100) + '%') }), false);
+      if (!form) { status(''); return note(t('No IR file was uploaded for this request, so the form was not filled.', 'مفيش ملف IR مرفوع للطلب ده، فالفورم ماتملاش.')); }
+      if (form.notForm) { status(''); return note(t('The IR file is not a CIR form (no Section C), so it was not filled.', 'ملف الـ IR مش فورم CIR (مفيش Section C)، فماتملاش.')); }
+      status(t('Filling the form…', 'بيملا الفورم…'));
       const out = await fill(form, p);
       const m = (String(p.irNumber || '') + ' ' + String(p.description || '')).toUpperCase().match(/(?:^|[^A-Z])(SH|SQ|AT)-(?:CIR|MIR)/);
       const pk = window.Shk.ir.projectKey({ irNumber: p.irNumber, description: p.description });
       const co = (m && m[1]) || (pk && pk !== 'OTHER' ? pk : 'OTHER');
-      await api('ir_saveClosed', [co, String(p.date || '').slice(0, 10), form.name, toB64(out), form.id || '']);
+      status(t('Sending to Drive… 0%', 'بيرفع على الدرايف… 0%'));
+      await save(co, String(p.date || '').slice(0, 10), form.name, out, form.id, f => status(t('Sending to Drive… ', 'بيرفع على الدرايف… ') + Math.round(f * 100) + '%'));
+      status('');
       note(t('✓ IR form filled and saved in Closed on Drive.', '✓ فورم الـ IR اتملا واتحفظ في Closed على الدرايف.'));
     } catch (e) {
+      status('');
       note(t('The IR form could not be filled: ', 'فورم الـ IR ماتملاش: ') + (e && e.message || e));
     }
   }
-  Object.assign(window.Shk = window.Shk || {}, { irFill: { fill, findForm, run } });
+  Object.assign(window.Shk = window.Shk || {}, { irFill: { fill, findForm, run, prewarm } });
 })();
