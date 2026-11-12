@@ -1,8 +1,8 @@
 {
- "version": "1.0.37",
- "build": 37,
+ "version": "1.0.38",
+ "build": 38,
  "notes": [
-  "New: the Files and About sheets open in the middle of the screen instead of from the bottom."
+  "Fix (Android app): the Back button now goes back one step at a time (popup, request, previous screen) and only leaves the app from Home. The request card no longer gets cut off at the top on older phones."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
