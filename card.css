@@ -17,7 +17,7 @@ html[dir="rtl"] body { line-height: 1.65; }
 /* ---------- the request card ---------- */
 html body .modal-overlay {
   position: fixed !important; inset: 0 !important; z-index: 1100; height: auto !important; width: auto !important;
-  display: none; align-items: center !important; justify-content: center !important; padding: 16px;
+  display: none; flex-direction: column !important; align-items: center !important; justify-content: flex-start !important; overflow-y: auto !important; padding: 16px;
   background: rgba(4, 9, 26, .58) !important; border: 0 !important;
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
 }
@@ -26,13 +26,13 @@ html body .modal-overlay .panel-empty { display: none !important; }
 html body .modal-overlay:not(.active) .modal-box { display: none; }
 html body .modal-box {
   width: 100% !important; max-width: 580px !important; height: auto !important; max-height: calc(100vh - 32px) !important; max-height: calc(100dvh - 32px) !important;
-  overflow-y: auto !important; border-radius: 28px !important; padding: 22px 20px 18px !important;
+  overflow-y: auto !important; margin: auto !important; flex: none; border-radius: 28px !important; padding: 22px 20px 18px !important;
   background: var(--paper) !important; border: 1px solid var(--line) !important;
   box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .65); animation: cdIn .24s cubic-bezier(.2, .8, .2, 1) !important;
 }
 @media (max-width: 719px) {
-  html body .modal-overlay { align-items: flex-end !important; padding: 0; }
-  html body .modal-box { max-width: none !important; max-height: 93vh !important; max-height: 93dvh !important; border-radius: 28px 28px 0 0 !important; padding-bottom: calc(18px + env(safe-area-inset-bottom)) !important; animation: cdUp .3s cubic-bezier(.2, .8, .2, 1) !important; }
+  html body .modal-overlay { align-items: stretch !important; padding: 0; }
+  html body .modal-box { margin: auto 0 0 !important; max-width: none !important; max-height: 93vh !important; max-height: 93dvh !important; border-radius: 28px 28px 0 0 !important; padding-bottom: calc(18px + env(safe-area-inset-bottom)) !important; animation: cdUp .3s cubic-bezier(.2, .8, .2, 1) !important; }
 }
 @keyframes cdFade { from { opacity: 0 } to { opacity: 1 } }
 @keyframes cdIn { from { opacity: 0; transform: translateY(14px) scale(.985) } to { opacity: 1; transform: none } }
