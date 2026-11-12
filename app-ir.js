@@ -262,17 +262,18 @@
   });
   Object.assign(window.Shk = window.Shk || {}, { admIr: admIr });
 
-  // home: a quick button for admins
+  // home: quick buttons (everybody gets "IR folder", admins and DC also get "Upload IR").
+  // The home screen rebuilds its button row now and then, so the buttons are put back whenever they are missing.
+  function ensureQuick() {
+    try {
+      const q = $('dxQuick'); if (!q) return;
+      if (!q.querySelector('[data-ir="folders"]')) q.insertAdjacentHTML('beforeend', `<button type="button" data-ir="folders"><i>📁</i>${t('IR folder', 'فولدر IR')}</button>`);
+      if (isAdmin() && !q.querySelector('[data-ir="adminopen"]')) q.insertAdjacentHTML('beforeend', `<button type="button" data-ir="adminopen"><i>⬆</i>${t('Upload IR', 'ارفع IR')}</button>`);
+    } catch (e) { console.warn(e); }
+  }
   const baseRender = window.render;
   if (typeof baseRender === 'function') {
-    window.render = function () {
-      const r = baseRender.apply(this, arguments);
-      try {
-        const q = $('dxQuick');
-        if (q && !q.querySelector('[data-ir="folders"]')) q.insertAdjacentHTML('beforeend', `<button type="button" data-ir="folders"><i>📁</i>${t('IR folder', 'فولدر IR')}</button>`);
-        if (q && isAdmin() && !q.querySelector('[data-ir="adminopen"]')) q.insertAdjacentHTML('beforeend', `<button type="button" data-ir="adminopen"><i>⬆</i>${t('Upload IR', 'ارفع IR')}</button>`);
-      } catch (e) { console.warn(e); }
-      return r;
-    };
+    window.render = function () { const r = baseRender.apply(this, arguments); ensureQuick(); return r; };
   }
+  new MutationObserver(ensureQuick).observe(document.body, { childList: true, subtree: true });
 })();
