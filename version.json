@@ -1,8 +1,8 @@
 {
- "version": "1.0.38",
- "build": 38,
+ "version": "1.0.39",
+ "build": 39,
  "notes": [
-  "Fix (Android app): the Back button now goes back one step at a time (popup, request, previous screen) and only leaves the app from Home. The request card no longer gets cut off at the top on older phones."
+  "Fix: the request card always opens at its first line (the top is no longer cut off)."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
