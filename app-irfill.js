@@ -78,7 +78,7 @@
         const doc = await lib.getDocument({ data: bytes.slice() }).promise;
         const pg = await doc.getPage(1);
         const txt = (await pg.getTextContent()).items.map(i => i.str).join(' ');
-        if (/Section\s*C/i.test(txt)) return { name: f.name, bytes: bytes };
+        if (/Section\s*C/i.test(txt)) return { name: f.name, bytes: bytes, id: f.id };
       } catch (e) { console.warn('form check', f.name, e); }
     }
     return { notForm: true };
@@ -137,8 +137,45 @@
     busy = busy.then(() => run(p)).catch(e => console.warn('fill form', e));
   });
 
+  // ---- the small tick on the close card: ticked = the IR file on Drive is filled and moved to Closed; not ticked = closed in the sheet only ----
+  const TICK_KEY = 'shkIrDrive';
+  const tickDefault = () => { try { return localStorage.getItem(TICK_KEY) !== '0'; } catch (e) { return true; } };
+  const choice = {};                               // irNumber -> true/false, taken when the Close button is pressed
+  const curItem = () => { try { return typeof currentItem !== 'undefined' ? currentItem : null; } catch (e) { return null; } };
+  const tickEl = () => document.getElementById('irDriveTick');
+  function ensureTick() {
+    if (tickEl()) return tickEl();
+    const foot = document.querySelector('.modal-footer'), btn = document.getElementById('modalSaveBtn'); if (!foot || !btn) return null;
+    const l = document.createElement('label'); l.id = 'irDriveTick'; l.className = 'ir-tick'; l.hidden = true;
+    l.innerHTML = `<input type="checkbox"><span>${t('Also close the IR file on Drive (fill it and move it to Closed)', 'اقفل ملف الـ IR على الدرايف كمان (يتملا ويروح Closed)')}</span>`;
+    foot.insertBefore(l, btn);
+    l.querySelector('input').addEventListener('change', e => { try { localStorage.setItem(TICK_KEY, e.target.checked ? '1' : '0'); } catch (x) {} });
+    return l;
+  }
+  async function paintTick() {
+    const l = ensureTick(); if (!l) return;
+    l.hidden = true;
+    const it = curItem(); if (!it || !window.Shk || !Shk.ir) return;
+    try {
+      await Shk.ir.loadIndex(false);
+      if (curItem() !== it) return;
+      const has = Shk.ir.filesFor(it).some(f => /\.pdf$/i.test(f.name));
+      l.querySelector('input').checked = tickDefault();
+      l.hidden = !has;
+    } catch (e) { /* no index: the tick stays hidden and a close behaves as before */ }
+  }
+  const baseOpen = window.openModal;
+  if (typeof baseOpen === 'function') window.openModal = function () { const r = baseOpen.apply(this, arguments); setTimeout(paintTick, 0); return r; };
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('#modalSaveBtn'); if (!b) return;
+    const it = curItem(), l = tickEl(); if (!it || !l || l.hidden) return;
+    choice[String(it.irNumber || '')] = l.querySelector('input').checked;
+  }, true);
+
   async function run(p) {
     if (!p.irNumber || !p.code) return;
+    if (choice[String(p.irNumber)] === false) { delete choice[String(p.irNumber)]; return note(t('Closed in the sheet only. The IR file stays in Open on Drive.', 'اتقفل في الشيت بس. ملف الـ IR فضل في Open على الدرايف.')); }
+    delete choice[String(p.irNumber)];
     try {
       const form = await findForm(p);
       if (!form) return note(t('No IR file was uploaded for this request, so the form was not filled.', 'مفيش ملف IR مرفوع للطلب ده، فالفورم ماتملاش.'));
@@ -147,7 +184,7 @@
       const m = (String(p.irNumber || '') + ' ' + String(p.description || '')).toUpperCase().match(/(?:^|[^A-Z])(SH|SQ|AT)-(?:CIR|MIR)/);
       const pk = window.Shk.ir.projectKey({ irNumber: p.irNumber, description: p.description });
       const co = (m && m[1]) || (pk && pk !== 'OTHER' ? pk : 'OTHER');
-      await api('ir_saveClosed', [co, String(p.date || '').slice(0, 10), form.name, toB64(out)]);
+      await api('ir_saveClosed', [co, String(p.date || '').slice(0, 10), form.name, toB64(out), form.id || '']);
       note(t('✓ IR form filled and saved in Closed on Drive.', '✓ فورم الـ IR اتملا واتحفظ في Closed على الدرايف.'));
     } catch (e) {
       note(t('The IR form could not be filled: ', 'فورم الـ IR ماتملاش: ') + (e && e.message || e));

@@ -116,3 +116,9 @@ html body .ir-sheet { align-items: center !important; justify-content: center; p
 html body .ir-sheet.open { animation: cdFade .2s ease-out; }
 html body .ir-sheet-box { max-width: 520px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); border-radius: 28px; padding: 20px 20px 22px; box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .65); animation: cdIn .24s cubic-bezier(.2, .8, .2, 1); }
 html body .ir-sheet .ir-hint { display: block; margin-top: 10px; }
+
+/* the small tick on the close card */
+.ir-tick { display: flex; align-items: center; gap: 10px; font: 600 13px/1.4 var(--f-ui); color: var(--muted); padding: 2px 2px 6px; cursor: pointer; }
+.ir-tick[hidden] { display: none !important; }
+.ir-tick input { width: 20px; height: 20px; flex: none; accent-color: var(--gold, #f5b800); }
+body.role-viewer .ir-tick { display: none !important; }
