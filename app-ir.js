@@ -272,7 +272,7 @@
   const toB64 = f => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).replace(/^data:[^,]*,/, '')); r.onerror = () => bad(new Error('read')); r.readAsDataURL(f); });
 
   // fast upload: the phone sends the file straight to a one-time Drive link made by the server (the folders and names are still decided by the server)
-  const UP_PARALLEL = 3;
+  const UP_PARALLEL = 5, LINK_CHUNK = 15, DONE_CHUNK = 40;
   let fastOff = false;                    // set when the fast way fails once: the rest of the files use the old way
   function putToDrive(url, file, onProg) {
     return new Promise((ok, bad) => {
@@ -327,19 +327,39 @@
         st[i].phase = 'send'; paint();
         await PtahApp.call('admin_irUpload', [f.name, b64, co, day], (fr, done) => { st[i].sent = st[i].size * (done ? 0.95 : fr * 0.95); st[i].phase = done ? 'save' : 'send'; paint(); });
       };
+      // links for a whole chunk of files in ONE server call (fast); if the server is older, one call per file; if that fails too, the old way
+      const chunkP = {}, batchOk = { v: true }, pend = [], flushing = [];
+      const linkFor = async i => {
+        if (!batchOk.v) return null;
+        const c = Math.floor(i / LINK_CHUNK);
+        if (!chunkP[c]) {
+          const part = files.slice(c * LINK_CHUNK, (c + 1) * LINK_CHUNK);
+          chunkP[c] = PtahApp.call('admin_irUploadStartBatch', [part.map(f => [f.name, f.size]), co, day, location.origin]).catch(er => { if (er && er.net) throw er; batchOk.v = false; return null; });
+        }
+        const r = await chunkP[c];
+        return r && r[i - c * LINK_CHUNK] && r[i - c * LINK_CHUNK].url ? r[i - c * LINK_CHUNK].url : null;
+      };
+      const flush = (all) => {
+        while (pend.length >= (all ? 1 : DONE_CHUNK)) {
+          const part = pend.splice(0, DONE_CHUNK);
+          flushing.push(PtahApp.call('admin_irUploadDoneBatch', [part.map(x => [x.id, x.name]), co, day]).then(r => { (r.files || []).forEach((x, k) => { if (!x.ok) bad.push(part[k].name + ': ' + t('did not arrive on Drive', 'ماوصلش الدرايف')); }); }).catch(er => { bad.push(t('Could not confirm ', 'مقدرتش أأكد ') + part.length + t(' files: ', ' ملف: ') + (er.message || er)); }));
+        }
+      };
       const one = async i => {
         const f = files[i];
         try {
           if (!fastOff) {
-            let link = null;
-            try { link = await PtahApp.call('admin_irUploadStart', [f.name, f.size, co, day, location.origin]); } catch (er) { if (er && er.net) throw er; fastOff = true; }
-            if (link && link.url) {
+            let url = await linkFor(i), perFile = false;
+            if (!url && !batchOk.v) {                 // older server: one link per file
+              try { const l = await PtahApp.call('admin_irUploadStart', [f.name, f.size, co, day, location.origin]); url = l && l.url; perFile = !!url; } catch (er) { if (er && er.net) throw er; fastOff = true; }
+            }
+            if (url) {
               st[i].phase = 'send'; paint();
               let drive = null;
-              try { drive = await putToDrive(link.url, f, fr => { st[i].sent = st[i].size * fr * 0.95; paint(); }); } catch (er) { fastOff = true; }
+              try { drive = await putToDrive(url, f, fr => { st[i].sent = st[i].size * fr * 0.95; paint(); }); } catch (er) { if (perFile) fastOff = true; }
               if (drive && drive.id) {
-                st[i].phase = 'save'; st[i].sent = st[i].size * 0.95; paint();
-                await PtahApp.call('admin_irUploadDone', [drive.id, f.name, co, day]);
+                if (perFile) { st[i].phase = 'save'; st[i].sent = st[i].size * 0.95; paint(); await PtahApp.call('admin_irUploadDone', [drive.id, f.name, co, day]); }
+                else { pend.push({ id: drive.id, name: f.name }); flush(false); }
                 fast++; ok++; return;
               }
             }
@@ -350,6 +370,7 @@
       };
       let next = 0;
       await Promise.all(Array.from({ length: Math.min(UP_PARALLEL, files.length) }, async () => { while (next < files.length) await one(next++); }));
+      flush(true); await Promise.all(flushing);
       out.innerHTML = `✓ ${ok} ${t('uploaded', 'اترفع')}` + (bad.length ? `<br><span class="bad">${bad.map(esc).join('<br>')}</span>` : '') + (ok && !fast && fastOff ? `<br><small class="ir-hint">${t('Uploaded the slower way (fast upload not available yet).', 'اترفع بالطريقة البطيئة (الرفع السريع لسه مش شغال).')}</small>` : '');
       index = null; drawList();
     };
