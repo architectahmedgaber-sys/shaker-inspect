@@ -1,1 +1,1 @@
-New: faster IR upload from the app (straight to Drive, 3 files at a time). Needs the new IrFiles.gs in the Apps Script; without it the old way is used.
+New: IR upload even faster (links for the whole batch in one call, 5 files at once). Needs the newest IrFiles.gs; the older one still works but slower.
