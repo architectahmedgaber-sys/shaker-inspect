@@ -1582,11 +1582,12 @@
         document.getElementById('searchInput').value = "";
         currentQuery = "";
       } else {
-        view = s.view; depth = s.d; searchPushed = !!s.s && !s.m; modalPushed = false;
+        view = s.view; depth = s.d; searchPushed = !!s.s && !s.m; modalPushed = !!s.m && !!currentItem;
         document.getElementById('searchInput').value = s.q || "";
         currentQuery = (s.q || "").toLowerCase().trim();
       }
-      hidePanel();
+      // coming back to the entry of an open request (a sheet on top of it was closed): keep the request open
+      if (!modalPushed) hidePanel();
       render();
     });
 

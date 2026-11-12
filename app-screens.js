@@ -15,7 +15,7 @@
   }
   function closeScreen() { $('shkScreen').classList.remove('open'); $('shkScreen').innerHTML = ''; document.body.classList.remove('scr-open', 'scr-sheet'); }
   const body = () => $('scBody');
-  const loading = () => { body().innerHTML = '<div class="sc-load"><i></i><i></i><i></i></div>'; };
+  const loading = () => { body().scrollTop = 0; body().innerHTML = '<div class="sc-load"><i></i><i></i><i></i></div>'; };
   const fail = e => { body().innerHTML = `<div class="sc-empty">${esc(e.message || e)}</div>`; };
 
   // ================= ADMIN =================

@@ -53,7 +53,7 @@ body:not(.role-admin) #clEditBtn { display: none !important; }
 .acct-list button i { font-style: normal; color: var(--muted); font-size: 18px; }
 .acct-list button.gold { background: var(--accent); border-color: var(--accent); color: #0b2a5b; font-weight: 700; }
 .acct-list button.gold i { color: #0b2a5b; }
-.acct-box { max-height: 92vh; overflow: auto; }
+.acct-box { max-height: 92vh; max-height: 92dvh; overflow: auto; overscroll-behavior: contain; }
 .contact-btn { display: block; text-decoration: none; padding: 14px 16px; border-radius: var(--radius); margin-bottom: 10px; color: #fff; }
 .contact-btn b { display: block; font-size: 17px; } .contact-btn small { opacity: .85; }
 .contact-btn.wa { background: #1faa59; } .contact-btn.mail { background: var(--navy2, #1b4a9e); }

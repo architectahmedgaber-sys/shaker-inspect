@@ -2,12 +2,21 @@
    Layers = full-screen pages, popups, scanner, Handover tracker (and its inner levels). Company / list / request
    levels already use history in index.html; this file adds the rest. Back exits only from the home screen. */
 (function () {
-  const SEL = '#hoWrap.open, #shkScreen.open, .acct-overlay.open, .tour-overlay.open, .ed-overlay.open, #vxScan, #vxDraw, .sx-page.open';
-  const CLOSERS = '[data-sx="x"],[data-vx="qrclose"],[data-vx="scanclose"],[data-dr="cancel"],[data-mg="x"],#dxSigX,.acct-close';
+  const SEL = '#hoWrap.open, #shkScreen.open, .acct-overlay.open, .tour-overlay.open, .ed-overlay.open, #vxScan, #vxDraw, .sx-page.open, .ir-sheet.open';
+  const CLOSERS = '[data-sx="x"],[data-irx],[data-vx="qrclose"],[data-vx="scanclose"],[data-dr="cancel"],[data-mg="x"],#dxSigX,.acct-close';
   let order = [];          // open layers, bottom to top
   let trDepth = 0;         // inner levels of the Handover tracker (reported by the iframe)
   let pushed = 0;          // history entries we added
   let ignore = 0;          // popstates caused by our own history.go()
+  // every history entry written by the main page (open request, company, list, search) carries our layer level,
+  // so Back from a request opened on top of a page closes only the request, never the page under it
+  ['pushState', 'replaceState'].forEach(k => {
+    const o = history[k];
+    history[k] = function (st, t, u) {
+      if (st && typeof st === 'object' && st.shkL === undefined) st = Object.assign({}, st, { shkL: pushed });
+      return o.call(this, st, t, u);
+    };
+  });
   const isHo = el => el && el.id === 'hoWrap';
   const total = () => order.length + (order.some(isHo) ? trDepth : 0);
 
@@ -65,5 +74,12 @@
     if (e.data.shk === 'exit') history.back();
   });
   new MutationObserver(() => sync()).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+
+  // a screen that opens (or switches tab) always starts at its beginning, never at the place the last one was left
+  const top0 = el => { try { el.scrollTop = 0; el.querySelectorAll('.acct-box,.tour-box,.sx-body,.sc-body,.modal-box,.ir-sheet-box').forEach(x => { x.scrollTop = 0; }); } catch (e) {} };
+  new MutationObserver(ms => ms.forEach(m => {
+    const el = m.target;
+    if (m.type === 'attributes' && el.classList && el.classList.contains('open') && /overlay|ir-sheet/.test(el.className)) top0(el);
+  })).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
   window.Shk = window.Shk || {}; Shk.navBack = () => history.back();
 })();
