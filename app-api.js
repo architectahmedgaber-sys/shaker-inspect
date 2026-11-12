@@ -57,7 +57,7 @@
     });
   }
   // ---------- offline: the last answer of each "read" call is kept on the phone ----------
-  const READS = { getDailyActions: 1, getInspectors: 1, getChecklist: 1, getChecklistByCode: 1, getSectionList: 1, daily_bootstrap: 1 };
+  const READS = { getDailyActions: 1, getInspectors: 1, getChecklist: 1, getChecklistByCode: 1, getSectionList: 1, daily_bootstrap: 1, extras_bootstrap: 1 };
   const ckey = job => 'shkC:' + job.fn + ':' + JSON.stringify(job.args || []).slice(0, 400);
   function cachePut(job, v) {
     if (!READS[job.fn]) return;
@@ -68,7 +68,33 @@
   }
   function cacheGet(job) { try { return JSON.parse(localStorage.getItem(ckey(job)) || 'null'); } catch (e) { return null; } }
 
+  // ---------- one call on opening: list + inspector + bootstraps come in a single answer (server: app_init) ----------
+  // Needs the new Api.gs/Daily.gs; with an older server the first try fails once and the old separate calls are used.
+  const INIT_PIECE = { getInspectors: 'inspectors', getDailyActions: 'actions', daily_bootstrap: 'boot', extras_bootstrap: 'extras' };
+  let noInit = false, initP = null, initAt = 0, initDone = true;
+  function getInit(fresh) {
+    if (initP && (!initDone || Date.now() - initAt < (fresh ? 1500 : 20000))) return initP;   // a refresh always gets new data
+    initDone = false;
+    initP = post('app_init', [], session && session.token).then(o => { initDone = true; initAt = Date.now(); return o; }, e => { initDone = true; initP = null; throw e; });
+    return initP;
+  }
   async function send(job) {
+    const piece = !PREFIX && !noInit && INIT_PIECE[job.fn];
+    if (piece) {
+      try {
+        const o = await getInit(job.fn === 'getDailyActions' || job.fn === 'getInspectors');
+        if (o && o.ok && o.result && o.result[piece] !== undefined) {
+          cachePut(job, o.result[piece]);
+          if (job.fn === 'getDailyActions') window.SHK_OFFLINE_SINCE = 0;
+          return job.resolve(o.result[piece]);
+        }
+        if (o && !o.ok && /Unknown function/i.test(o.error || '')) noInit = true;   // old server
+        initP = null;
+      } catch (e) { initP = null; }            // no signal or other trouble: the normal path below handles it (offline copy, errors, sign-in)
+    }
+    return sendOne(job);
+  }
+  async function sendOne(job) {
     try {
       let o;
       try { o = await post(job.fn, job.args, session && session.token, job.onUp); }
@@ -298,7 +324,10 @@
   // put a "read" answer in the phone cache by hand (e.g. checklists fetched in bulk)
   function cacheSet(fn, args, v) { cachePut({ fn: PREFIX + fn, args: args }, v); }
 
-  window.PtahApp = { engineer: () => session ? session.engineer : '', email: () => session ? session.email : '',
+  // the last saved answer of a read call (for painting the screen at once while the new one loads)
+  function peek(fn, args) { const h = cacheGet({ fn: PREFIX + fn, args: args || [] }); return h ? h.v : null; }
+
+  window.PtahApp = { peek, engineer: () => session ? session.engineer : '', email: () => session ? session.email : '',
                      role, openAccount, closeAccount, signOut, install, call, callRaw, cacheSet, refreshRole: applyRole };
   window.Shk = window.Shk || {};
 })();
