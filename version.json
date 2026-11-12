@@ -1,8 +1,8 @@
 {
- "version": "1.0.41",
- "build": 41,
+ "version": "1.0.42",
+ "build": 42,
  "notes": [
-  "New: closing a request now fills the IR form for Square (SQ) and Alexandria (AT) as well as El-Shorouk (SH). The comment stays inside its box and a very long one is shortened on the form only."
+  "New: a progress bar when uploading IR files (sending %, then saving on Drive)."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
