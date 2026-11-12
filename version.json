@@ -1,8 +1,8 @@
 {
- "version": "1.0.34",
- "build": 34,
+ "version": "1.0.35",
+ "build": 35,
  "notes": [
-  "New: Villas moved into More, the project information card moved into More > About, and the last tab is now called More."
+  "New: simpler home screen, plus a Files tab that opens the Drive folders (Open and Closed by company and day). Calendar, Re-inspection, Daily report, Villas, Scan and Upload IR are in More."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
