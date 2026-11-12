@@ -1,8 +1,8 @@
 {
- "version": "1.0.43",
- "build": 43,
+ "version": "1.0.44",
+ "build": 44,
  "notes": [
-  "New: an IR file bigger than 12 MB opens on Google Drive instead of failing inside the app."
+  "New: zoom for the open IR file (+ / - buttons and pinch). Fix: the file name bar of the viewer is back to normal."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
