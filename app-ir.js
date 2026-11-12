@@ -202,6 +202,7 @@
       box.innerHTML = `<div class="ir-sheet-h"><b>${t('IR files on Drive', 'ملفات الـ IR على الدرايف')}</b><button type="button" data-irx="1" class="ir-lnk">✕</button></div>` +
         (r.root ? `<a class="ir-go" href="${esc(r.root)}" target="_blank" rel="noopener">📁 ${t('All companies', 'كل الشركات')}</a>` : '') +
         (cos.length ? cos.map(c => `<div class="ir-co"><a class="ir-go" href="${esc(c.url)}" target="_blank" rel="noopener">📁 ${esc(c.name)}</a>
+          ${c.closedUrl ? `<a class="ir-go ir-closed" href="${esc(c.closedUrl)}" target="_blank" rel="noopener">✅ ${t('Closed (filled forms)', 'اللي اتقفل (الفورم مملية)')}</a><div class="ir-days">${(c.closed || []).map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('')}</div>` : ''}
           <div class="ir-days">${c.days.length ? c.days.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('') : `<small class="ir-hint">${t('No days yet.', 'مفيش أيام لسه.')}</small>`}</div></div>`).join('') : `<div class="ir-load">${t('No files uploaded yet.', 'لسه مفيش ملفات مرفوعة.')}</div>`) +
         `<small class="ir-hint">${t('If Drive asks for access, sign in with the same Google account you use in the app.', 'لو الدرايف طلب إذن، ادخل بنفس حساب جوجل اللي بتستخدمه في الأبليكيشن.')}</small>`;
     } catch (e) { sh.querySelector('.ir-sheet-box').innerHTML += `<div class="ir-load bad">${esc(e.message || e)}</div>`; }
@@ -261,6 +262,8 @@
     const q = ev.target.closest && ev.target.closest('[data-ir="adminopen"]'); if (q) { if (window.closeModal && document.querySelector('.modal-overlay.open')) try { closeModal(); } catch (e) {} Shk.openAdmin('ir'); }
   });
   Object.assign(window.Shk = window.Shk || {}, { admIr: admIr });
+
+  Object.assign(window.Shk, { ir: { loadIndex, filesFor, loadPdfJs, b64bytes, projectKey: getProjectKey, openFolders } });
 
   // home: quick buttons (everybody gets "IR folder", admins and DC also get "Upload IR").
   // The home screen rebuilds its button row now and then, so the buttons are put back whenever they are missing.
