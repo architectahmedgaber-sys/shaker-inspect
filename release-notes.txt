@@ -1,1 +1,1 @@
-New: simpler home screen, plus a Files tab that opens the Drive folders (Open and Closed by company and day). Calendar, Re-inspection, Daily report, Villas, Scan and Upload IR are in More.
+New: a calmer web version with a slim tab bar on the left (Home, Requests, Files, Inbox, More) and one centred column.
