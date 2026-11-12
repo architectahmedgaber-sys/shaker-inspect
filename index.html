@@ -1277,14 +1277,27 @@
         document.getElementById('gridContainer').innerHTML = "";
       }
       if(typeof google !== 'undefined' && google.script) {
+          // show the last list saved on this phone at once; the fresh one replaces it when it arrives
+          let paintedJson = '';
           google.script.run
             .withSuccessHandler(renderInspectors)
             .withFailureHandler(err => console.warn('getInspectors failed', err))
             .getInspectors();
           google.script.run
-            .withSuccessHandler(items => { setRefreshing(false); renderGrid(items); })
-            .withFailureHandler(showLoadError)
+            .withSuccessHandler(items => {
+              setRefreshing(false);
+              if (paintedJson && JSON.stringify(items || []) === paintedJson) { paintedJson = ''; return; }   // same as the saved copy: leave the screen as it is
+              paintedJson = ''; renderGrid(items);
+            })
+            .withFailureHandler(err => { if (paintedJson) { setRefreshing(false); paintedJson = ''; return; } showLoadError(err); })
             .getDailyActions();
+          try {
+            const saved = firstLoad && window.PtahApp && PtahApp.peek && PtahApp.peek('getDailyActions', []);
+            if (saved && saved.length) {
+              const insp = PtahApp.peek('getInspectors', []); if (insp) renderInspectors(insp);
+              paintedJson = JSON.stringify(saved); renderGrid(saved);
+            }
+          } catch (e) { paintedJson = ''; }
       } else {
           // Fallback for local testing
           renderInspectors(['Ahmed Gaber', 'Mohamed AbdelAziz', 'Well', 'Karim']);
