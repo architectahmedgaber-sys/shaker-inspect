@@ -23,9 +23,11 @@
   const ADMIN_TABS = [['today', 'Today'], ['acc', 'ACC upload'], ['ir', 'IR files'], ['users', 'Users'], ['perf', 'Performance'], ['closes', 'Undo'], ['trash', 'Trash'], ['log', 'Log'], ['settings', 'Settings']];
 
   function openAdmin(tab) {
-    if (PtahApp.role() !== 'Admin') return;
+    const rl = PtahApp.role(); if (rl !== 'Admin' && rl !== 'DC') return;
+    const tabsFor = rl === 'DC' ? ADMIN_TABS.filter(t => t[0] === 'ir' || t[0] === 'acc') : ADMIN_TABS;
+    if (rl === 'DC' && !tabsFor.some(t => t[0] === tab)) tab = 'ir';
     mode = 'admin'; closeHandover();
-    frame('Admin', ADMIN_TABS.map(([k, l]) => `<button type="button" data-tab="${k}">${l}</button>`).join(''));
+    frame(rl === 'DC' ? 'Documents' : 'Admin', tabsFor.map(([k, l]) => `<button type="button" data-tab="${k}">${l}</button>`).join(''));
     gotoTab(typeof tab === 'string' && ADMIN_TABS.some(t => t[0] === tab) ? tab : adminTab);
   }
   function gotoTab(k) {
@@ -54,7 +56,7 @@
     api('admin_users').then(rows => {
       const pend = rows.filter(u => u.status === 'pending');
       const others = rows.filter(u => u.status !== 'pending');
-      const roleSel = (id, cur) => `<select id="${id}" class="sc-in">${['Engineer', 'Viewer', 'Admin'].map(r => `<option${r === cur ? ' selected' : ''}>${r}</option>`).join('')}</select>`;
+      const roleSel = (id, cur) => `<select id="${id}" class="sc-in">${['Engineer', 'Viewer', 'DC', 'Admin'].map(r => `<option${r === cur ? ' selected' : ''}>${r}</option>`).join('')}</select>`;
       body().innerHTML = `
         <h3 class="sc-h">Waiting for approval ${pend.length ? `<span class="count">${pend.length}</span>` : ''}</h3>
         ${pend.length ? pend.map((u, i) => `<div class="card pend" data-email="${esc(u.email)}">
@@ -82,7 +84,7 @@
     const rows = JSON.parse(body().dataset.users || '[]'), u = rows.filter(r => r.email === email)[0]; if (!u) return;
     const m = document.createElement('div'); m.className = 'acct-overlay open'; m.id = 'manageSheet';
     m.innerHTML = `<div class="acct-box"><b style="font-size:18px">${esc(u.engineer)}</b><small style="display:block;color:var(--muted);word-break:break-all">${esc(u.email)}</small>
-      <label class="lab">Role<select id="mgRole" class="sc-in">${['Engineer', 'Viewer', 'Admin'].map(r => `<option${r === u.role ? ' selected' : ''}>${r}</option>`).join('')}</select></label>
+      <label class="lab">Role<select id="mgRole" class="sc-in">${['Engineer', 'Viewer', 'DC', 'Admin'].map(r => `<option${r === u.role ? ' selected' : ''}>${r}</option>`).join('')}</select></label>
       <div class="acct-list" style="margin-top:12px">
         <button type="button" data-mg="role"><span>Save role</span><i>›</i></button>
         <button type="button" data-mg="${u.status === 'blocked' ? 'on' : 'off'}"><span>${u.status === 'blocked' ? 'Turn the account back on' : 'Turn the account off'}</span><i>›</i></button>
@@ -210,7 +212,7 @@
 
   // ================= FIRST-RUN GUIDE =================
   function slides() {
-    const view = PtahApp.role() === 'Viewer';
+    const view = (PtahApp.role() === 'Viewer' || PtahApp.role() === 'DC');
     return [
       { ic: '👋', t: 'Welcome to Shaker Inspect', p: 'Five tabs at the bottom: Home, Requests, Villas, Inbox and Me. That is all you need.' },
       view ? { ic: '👁️', t: 'Look around, view only', p: 'See the requests, villas, photos and comments. Closing requests is for engineers.' }
