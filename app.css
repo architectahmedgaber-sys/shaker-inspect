@@ -418,3 +418,14 @@ html[dir="rtl"] .cl-tx { text-align: left; }
 .ir-days { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .ir-days a { padding: 6px 10px; border-radius: 999px; background: rgba(128,128,128,.18); color: inherit; text-decoration: none; font-size: 13px; }
 .ir-sec { margin: 14px 0 0; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+
+/* polish button (close screen) */
+.pl-row { margin: 4px 0 10px; }
+.pl-btn { font-weight: 700; }
+.pl-hint { display: inline-block; margin-inline-start: 8px; color: var(--ink-2, #667); font-size: 12.5px; }
+.pl-hint.bad { color: var(--rej, #e5484d); }
+.pl-box { margin-top: 8px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line-strong, #ccd); background: var(--card, #fff); }
+.pl-lbl { font-size: 12px; font-weight: 700; opacity: .75; margin-bottom: 4px; }
+.pl-txt { font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
+.pl-act { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.pl-use { background: var(--accent, #1a56db); color: #fff; border-color: transparent; }
