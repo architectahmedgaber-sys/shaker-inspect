@@ -1,6 +1,6 @@
 {
- "version": "1.0.49",
- "build": 49,
+ "version": "1.0.50",
+ "build": 50,
  "notes": [
   "New: faster opening. The list shows at once from the last copy on the phone, and 4 server calls became 1. Needs the newest Api.gs, Code.gs and Daily.gs for the full speed; the older ones still work."
  ],
