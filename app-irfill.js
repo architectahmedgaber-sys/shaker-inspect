@@ -105,11 +105,11 @@
     if (cur) lines.push(cur);
     return lines;
   }
-  // draws one line; an Arabic paragraph is right-aligned, an English one left-aligned
-  function drawLine(page, line, fonts, size, x0, x1, baseY, rtl, color) {
+  // draws one line (centred in the box when "center" is set)
+  function drawLine(page, line, fonts, size, x0, x1, baseY, rtl, color, center) {
     let runs = runsOf(line);
     const total = lineWidth(line, fonts, size);
-    let x = rtl ? x1 - total : x0;
+    let x = center ? (x0 + x1) / 2 - total / 2 : rtl ? x1 - total : x0;
     if (rtl) runs = runs.reverse();
     runs.forEach(r => {
       const ar = r.ar && fonts.ar, f = ar ? fonts.ar : fonts.lat, sz = ar ? size * AR_SCALE : size;
@@ -230,9 +230,11 @@
       while (last && lineWidth(last + '...', fonts, size) > cmW) last = last.slice(0, -1);
       lines[maxLines - 1] = last.replace(/\s+$/, '') + '...';
     }
+    // the block of lines is centred in the box, both ways (a one-line comment sits in the middle, not at the top)
+    const blockH = lines.length * size * leadK, startTop = G.cm.top + 1 + Math.max(0, (cmH - blockH) / 2);
     lines.forEach((ln, i) => {
-      const top = G.cm.top + 1.5 + i * size * leadK;
-      drawLine(page, ln, fonts, size, G.cm.x0 + PAD, G.cm.x1 - PAD, H - top - size * (hasAr ? 1.0 : 0.88), rtl, red);
+      const top = startTop + i * size * leadK;
+      drawLine(page, ln, fonts, size, G.cm.x0 + PAD, G.cm.x1 - PAD, H - top - size * (hasAr ? 1.0 : 0.88), rtl, red, true);
     });
     if (cut) note(t('The comment was too long for the box on the form and was shortened there. The full text is in the sheet.', 'الكومنت أطول من البوكس في الفورم فاتقصّ هناك. النص الكامل موجود في الشيت.'));
 
@@ -249,7 +251,7 @@
     const d = longDate(p.date);
     if (d) {
       const dx = G.date.x != null ? G.date.x : (G.date.l + G.date.r) / 2 - F.widthOfTextAtSize(d, 9.5) / 2;
-      page.drawText(d, { x: dx, y: yTop(G.date.top, 9.5), size: 9.5, font: F, color: red });
+      page.drawText(d, { x: dx, y: yTop((G.cm.top + G.cm.bot) / 2 - 9.5 * 0.5, 9.5), size: 9.5, font: F, color: red });
     }
 
     // status tick: two short strokes drawn round the middle of the box
