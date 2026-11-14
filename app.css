@@ -429,3 +429,16 @@ html[dir="rtl"] .cl-tx { text-align: left; }
 .pl-txt { font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
 .pl-act { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .pl-use { background: var(--accent, #1a56db); color: #fff; border-color: transparent; }
+
+/* ---- refresh button inside screens (app-refresh.js) ---- */
+.rf-btn { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--navy-d, #0b2a5b); font-size: 22px; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+html[data-theme="dark"] .rf-btn { color: var(--gold, #d9b45a); }
+.rf-btn:disabled { opacity: .6; cursor: default; }
+.rf-spin { animation: rf-turn .8s linear infinite; }
+@keyframes rf-turn { to { transform: rotate(360deg); } }
+.sx-right { align-items: center; gap: 2px; }
+.sc-rt { display: flex; align-items: center; gap: 4px; }
+.sc-rt .sc-back { flex: none; }
+.rf-ho { position: absolute; right: 12px; bottom: 14px; z-index: 5; width: 44px; height: 44px; background: var(--navy, #0b2a5b); color: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
+html[data-theme="dark"] .rf-ho { color: #fff; }
+.ir-sheet-h span { display: inline-flex; align-items: center; gap: 2px; }

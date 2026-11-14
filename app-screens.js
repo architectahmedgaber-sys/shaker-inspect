@@ -192,7 +192,7 @@
     let w = $('hoWrap');
     if (!w) {
       w = document.createElement('div'); w.id = 'hoWrap'; w.className = 'ho-wrap';
-      w.innerHTML = '<iframe id="hoFrame" title="Handover tracker" src="tracker.html?embed=1"></iframe>';
+      w.innerHTML = '<iframe id="hoFrame" title="Handover tracker" src="tracker.html?embed=1"></iframe><button type="button" class="rf-btn rf-ho" data-rf-ho aria-label="Refresh" title="Refresh">⟳</button>';
       document.body.appendChild(w);
     }
     w.classList.add('open'); document.body.classList.add('scr-ho');
