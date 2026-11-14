@@ -1,1 +1,1 @@
-New: faster opening. The list shows at once from the last copy on the phone, and 4 server calls became 1. Needs the newest Api.gs, Code.gs and Daily.gs for the full speed; the older ones still work.
+New: a refresh button (⟳) inside every screen (Requests, Inbox, comments, photos, IR files, Calendar, Re-inspection, Daily report, Villas, Handover and more). It reloads only that screen from the sheet, not the whole app. Nothing to paste in Apps Script.

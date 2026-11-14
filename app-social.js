@@ -177,7 +177,9 @@
     pg.el.appendChild(bar);
     const list = pg.body.querySelector('#sxCmList');
     const paint = rows => { list.innerHTML = rows.length ? rows.map(c => cmHtml(c)).join('') : '<div class="sx-empty">No comments yet. Be the first.</div>'; pg.main.scrollTop = pg.main.scrollHeight; };
-    api('comments_list2', [o.ir, o.photo || '']).then(paint).catch(e => { list.innerHTML = `<div class="sx-empty">${esc(e.message)}</div>`; });
+    const loadCm = () => api('comments_list2', [o.ir, o.photo || '']).then(paint).catch(e => { list.innerHTML = `<div class="sx-empty">${esc(e.message)}</div>`; });
+    loadCm();
+    if (window.Shk.rf) Shk.rf.attach(pg.right, loadCm);
     if (o.photo) api('photo_get', [o.photo]).then(src => { const h = pg.body.querySelector('#sxPhoto'); if (h) h.innerHTML = `<img src="${src}" alt="">`; }).catch(e => { const h = pg.body.querySelector('#sxPhoto'); if (h) h.innerHTML = `<div class="sx-empty">${esc(e.message)}</div>`; });
     const ta = bar.querySelector('textarea'), send = bar.querySelector('.sx-send');
     if (ta) {
@@ -196,11 +198,13 @@
   function openPhotos(item) {
     const pg = page('Photos', { small: shortIr(item.irNumber), big: true });
     pg.body.innerHTML = '<div class="sx-grid"><i class="sx-sk"></i><i class="sx-sk"></i><i class="sx-sk"></i></div>';
-    api('photos_list', [item.irNumber]).then(list => {
+    const loadPh = () => api('photos_list', [item.irNumber]).then(list => {
       if (!list.length) { pg.body.innerHTML = '<div class="sx-empty big">No photos were saved with this request yet.</div>'; return; }
       pg.body.innerHTML = `<p class="sx-sub">Tap a photo to see it full size and comment on it. Use @ to mention a colleague.</p><div class="sx-grid">${list.map(p => `<button type="button" class="sx-ph" data-id="${esc(p.id)}" data-rev="${esc(p.rev)}">${p.thumb ? `<img src="${p.thumb}" alt="">` : '<i class="sx-sk"></i>'}<span>Rev ${esc(p.rev)} · ${p.n}</span>${p.comments ? `<b>💬 ${p.comments}</b>` : ''}</button>`).join('')}</div>`;
       pg.body.querySelectorAll('.sx-ph').forEach(b => b.onclick = () => openThread({ ir: item.irNumber, rev: b.dataset.rev, photo: b.dataset.id, title: 'Photo', sub: item.irNumber }));
     }).catch(e => { pg.body.innerHTML = `<div class="sx-empty big">${esc(e.message)}</div>`; });
+    loadPh();
+    if (window.Shk.rf) Shk.rf.attach(pg.right, loadPh);
   }
   document.addEventListener('click', e => {
     const b = e.target.closest && e.target.closest('#sxPhBtn'); if (!b) return;
@@ -220,7 +224,9 @@
       box.innerHTML = rows.map(n => `<button type="button" class="sx-row${n.read ? '' : ' unread'}" data-id="${esc(n.id)}">${av(n.fromEmail, n.from, 42)}<span class="sx-rt"><b>${esc(n.from)} ${n.type === 'mention' ? 'mentioned you' : 'commented'}</b><small>${esc(shortIr(n.ir))}${n.photo ? ' · photo' : ''}</small><em dir="auto">${fmt(n.text)}</em></span><time>${esc(ago(n.t))}</time><i class="sx-dot"></i></button>`).join('');
       box.querySelectorAll('.sx-row').forEach((b, i) => b.onclick = () => openFromInbox(rows[i], b));
     };
-    api('inbox_list').then(draw).catch(e => { pg.body.innerHTML = `<div class="sx-empty big">${esc(e.message)}</div>`; });
+    const load = () => api('inbox_list').then(draw).catch(e => { pg.body.innerHTML = `<div class="sx-empty big">${esc(e.message)}</div>`; });
+    load();
+    if (window.Shk.rf) Shk.rf.attach(pg.right, load);
     pg.el.querySelector('#sxReadAll').onclick = () => api('inbox_read', ['all']).then(n => { setUnread(n); pg.body.querySelectorAll('.unread').forEach(x => x.classList.remove('unread')); }).catch(e => note(e.message));
   }
   function openFromInbox(n, row) {
@@ -275,6 +281,7 @@
     draw();
     if (focus) setTimeout(() => input.focus(), 350);
     pg.redraw = draw; pg.el._pg = pg;
+    if (window.Shk.rf) Shk.rf.attach(pg.right, async () => { await Shk.rf.items(); draw(); });
     return pg;
   }
   function render2() { const p = document.querySelector('.sx-page[data-tab="requests"]'); if (p && p._pg) p._pg.redraw(); }

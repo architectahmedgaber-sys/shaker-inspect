@@ -244,8 +244,9 @@
   async function openFolders(prefer) {
     let sh = $('irSheet');
     if (!sh) { sh = document.createElement('div'); sh.id = 'irSheet'; sh.className = 'ir-sheet'; document.body.appendChild(sh);
-      sh.addEventListener('click', e => { if (e.target === sh || e.target.closest('[data-irx]')) sh.classList.remove('open'); }); }
-    sh.innerHTML = `<div class="ir-sheet-box"><div class="ir-sheet-h"><b>${t('IR files on Drive', 'ملفات الـ IR على الدرايف')}</b><button type="button" data-irx="1" class="ir-lnk">✕</button></div><div class="ir-load">${t('Loading…', 'بيحمّل…')}</div></div>`;
+      sh.addEventListener('click', e => { if (e.target.closest('[data-irrf]')) return openFolders(sh._prefer); if (e.target === sh || e.target.closest('[data-irx]')) sh.classList.remove('open'); }); }
+    sh._prefer = prefer;
+    sh.innerHTML = `<div class="ir-sheet-box"><div class="ir-sheet-h"><b>${t('IR files on Drive', 'ملفات الـ IR على الدرايف')}</b><span><button type="button" data-irrf="1" class="ir-lnk" aria-label="Refresh" title="Refresh">⟳</button><button type="button" data-irx="1" class="ir-lnk">✕</button></span></div><div class="ir-load">${t('Loading…', 'بيحمّل…')}</div></div>`;
     sh.classList.add('open');
     try {
       const r = (await api('ir_links')) || {};
@@ -256,7 +257,7 @@
           (cos.length ? cos.map(c => `<div class="ir-co"><a class="ir-go" href="${esc(c.url)}" target="_blank" rel="noopener">📁 ${esc(c.name)}</a>
             <div class="ir-days">${c.days.length ? c.days.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('') : `<small class="ir-hint">${t('No days yet.', 'مفيش أيام لسه.')}</small>`}</div></div>`).join('') : `<small class="ir-hint">${t('Nothing here yet.', 'مفيش حاجة هنا لسه.')}</small>`);
       };
-      box.innerHTML = `<div class="ir-sheet-h"><b>${t('IR files on Drive', 'ملفات الـ IR على الدرايف')}</b><button type="button" data-irx="1" class="ir-lnk">✕</button></div>` +
+      box.innerHTML = `<div class="ir-sheet-h"><b>${t('IR files on Drive', 'ملفات الـ IR على الدرايف')}</b><span><button type="button" data-irrf="1" class="ir-lnk" aria-label="Refresh" title="Refresh">⟳</button><button type="button" data-irx="1" class="ir-lnk">✕</button></span></div>` +
         sect(t('Open', 'Open (لسه متقفلتش)'), r.openUrl, r.open) + sect(t('Closed', 'Closed (الفورم مملية)'), r.closedUrl, r.closed) +
         `<small class="ir-hint">${t('If Drive asks for access, sign in with the same Google account you use in the app.', 'لو الدرايف طلب إذن، ادخل بنفس حساب جوجل اللي بتستخدمه في الأبليكيشن.')}</small>`;
     } catch (e) { sh.querySelector('.ir-sheet-box').innerHTML += `<div class="ir-load bad">${esc(e.message || e)}</div>`; }

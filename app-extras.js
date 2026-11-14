@@ -234,9 +234,9 @@
   function screen(title, html, name, right) {
     Shk.closeAll && Shk.closeAll();
     const s = $('shkScreen');
-    s.innerHTML = `<header class="sc-head"><button type="button" class="sc-back" data-act="close" aria-label="Back">‹</button><h2>${esc(title)}</h2>${right || '<span></span>'}</header><main class="sc-body" id="scBody">${html}</main>`;
+    s.innerHTML = `<header class="sc-head"><button type="button" class="sc-back" data-act="close" aria-label="Back">‹</button><h2>${esc(title)}</h2><span class="sc-rt">${right || ''}<button type="button" class="sc-back" data-act="rf" aria-label="Refresh" title="Refresh">⟳</button></span></header><main class="sc-body" id="scBody">${html}</main>`;
     s.classList.add('open'); document.body.classList.add('scr-open');
-    Shk.dxScreen = name;
+    Shk.dxScreen = name; Shk.dxRe = null;
   }
   const body = () => $('scBody');
   const onScreen = n => Shk.dxScreen === n && !!$('scBody') && $('shkScreen').classList.contains('open');
@@ -248,7 +248,7 @@
   let villas = null, vFilter = 'all', vCon = '', vQ = '';
   const vState = v => v.late ? 'late' : v.cd ? 'cd' : v.open ? 'open' : v.closed ? 'done' : 'none';
   function openVillas() {
-    screen('Villa board', loading(), 'villas', `<button type="button" class="sc-back" data-vx="scan" aria-label="Scan QR">⌗</button>`);
+    screen('Villa board', loading(), 'villas', `<button type="button" class="sc-back" data-vx="scan" aria-label="Scan QR">⌗</button>`); Shk.dxRe = openVillas;
     api('extras_villas').then(v => { villas = v || []; if (onScreen('villas')) drawVillas(); }).catch(e => { if (onScreen('villas')) body().innerHTML = failHtml(e); });
   }
   function drawVillas() {
@@ -273,7 +273,7 @@
   let curVilla = '';
   function openVilla(n) {
     curVilla = String(n);
-    screen('Villa ' + n, loading(), 'villa', `<button type="button" class="sc-back" data-vx="qr" aria-label="QR code">⌗</button>`);
+    screen('Villa ' + n, loading(), 'villa', `<button type="button" class="sc-back" data-vx="qr" aria-label="QR code">⌗</button>`); Shk.dxRe = () => openVilla(n);
     api('extras_villa', [curVilla]).then(d => { if (onScreen('villa') && curVilla === d.villa) drawVilla(d); }).catch(e => { if (onScreen('villa')) body().innerHTML = failHtml(e); });
   }
   function drawVilla(d) {
@@ -309,7 +309,7 @@
 
   // ---------------- one request (shared link) ----------------
   function openRequest(ir) {
-    screen('Request ' + shortIr(ir), loading(), 'req');
+    screen('Request ' + shortIr(ir), loading(), 'req'); Shk.dxRe = () => openRequest(ir);
     api('extras_request', [ir]).then(d => {
       if (!onScreen('req')) return;
       const openIt = allItems.find(i => i.irNumber === ir);
@@ -453,7 +453,7 @@
   const monthName = m => { const [y, mo] = m.split('-').map(Number); return new Date(y, mo - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); };
   function openBoard() {
     lbMonth = lbMonth || monthOf(new Date());
-    screen('Leaderboard', loading(), 'board');
+    screen('Leaderboard', loading(), 'board'); Shk.dxRe = openBoard;
     drawBoard();
   }
   function drawBoard() {

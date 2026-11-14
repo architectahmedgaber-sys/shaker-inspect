@@ -602,9 +602,9 @@
   function screen(title, html, name) {
     Shk.closeAll && Shk.closeAll();
     const s = $('shkScreen');
-    s.innerHTML = `<header class="sc-head"><button type="button" class="sc-back" data-act="close" aria-label="Back">‹</button><h2>${esc(title)}</h2><span></span></header><main class="sc-body" id="scBody">${html}</main>`;
+    s.innerHTML = `<header class="sc-head"><button type="button" class="sc-back" data-act="close" aria-label="Back">‹</button><h2>${esc(title)}</h2><button type="button" class="sc-back" data-act="rf" aria-label="Refresh" title="Refresh">⟳</button></header><main class="sc-body" id="scBody">${html}</main>`;
     s.classList.add('open'); document.body.classList.add('scr-open');
-    Shk.dxScreen = name;
+    Shk.dxScreen = name; Shk.dxRe = null;
   }
   const body = () => $('scBody');
   const onScreen = n => Shk.dxScreen === n && !!$('scBody') && $('shkScreen').classList.contains('open');
@@ -613,7 +613,7 @@
 
   // ---- calendar of open requests by due date ----
   let calM = null, calSel = '', calWeek = false;
-  function openCalendar() { const n = new Date(); calM = calM || new Date(n.getFullYear(), n.getMonth(), 1); calSel = calSel || todayIso(); screen('Calendar', '', 'cal'); drawCal(); }
+  function openCalendar() { const n = new Date(); calM = calM || new Date(n.getFullYear(), n.getMonth(), 1); calSel = calSel || todayIso(); screen('Calendar', '', 'cal'); Shk.dxRe = openCalendar; drawCal(); }
   function drawCal() {
     const by = {}, none = [];
     allItems.forEach(it => { if (it.dueDate) (by[it.dueDate] = by[it.dueDate] || []).push(it); else none.push(it); });
@@ -650,7 +650,7 @@
   let reMine = null;
   function openRe() {
     if (reMine == null) reMine = PtahApp.role() === 'Engineer';
-    screen('Re-inspection', '<div class="sc-load"><i></i><i></i><i></i></div>', 're');
+    screen('Re-inspection', '<div class="sc-load"><i></i><i></i><i></i></div>', 're'); Shk.dxRe = openRe;
     drawRe();
     api('reinspect_list').then(r => { boot.reinspect = r; if (onScreen('re')) drawRe(); render(); }).catch(e => { if (!boot.reinspect.waiting.length) body().innerHTML = `<div class="sc-empty">${esc(e.message)}</div>`; });
   }
@@ -672,7 +672,7 @@
   let repDay = '';
   function openReport() {
     repDay = repDay || todayIso();
-    screen('Daily report', '', 'rep'); drawReport();
+    screen('Daily report', '', 'rep'); Shk.dxRe = openReport; drawReport();
   }
   function drawReport() {
     const internal = PtahApp.role() !== 'Viewer';
@@ -700,7 +700,7 @@
   }
 
   // ---- closes waiting to upload ----
-  function openPending() { screen('Waiting to upload', '', 'pending'); drawPending(); }
+  function openPending() { screen('Waiting to upload', '', 'pending'); Shk.dxRe = openPending; drawPending(); }
   function drawPending() {
     const lost = ls.get('shkLost', []);
     body().innerHTML = `
@@ -715,7 +715,7 @@
 
   // ---- admin: timed jobs ----
   function openJobs() {
-    screen('Daily jobs', '<div class="sc-load"><i></i><i></i><i></i></div>', 'jobs');
+    screen('Daily jobs', '<div class="sc-load"><i></i><i></i><i></i></div>', 'jobs'); Shk.dxRe = openJobs;
     api('admin_jobs').then(j => {
       const ok = v => v ? '<em class="okk">on</em>' : '<em class="late">not set up</em>';
       const when = s => s ? new Date(s).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'never';
