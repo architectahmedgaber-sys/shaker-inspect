@@ -13,8 +13,10 @@
   const LIB = {
     pdfLib: 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js',
     fontkit: 'https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js',
-    reg: 'https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSansCondensed.ttf',
-    arReg: 'https://cdn.jsdelivr.net/npm/@expo-google-fonts/cairo@0.4.2/400Regular/Cairo_400Regular.ttf'
+    // Carlito = the open twin of Calibri (same letter widths), the font the CIR forms themselves are typed in;
+    // Tajawal is a clean, formal Arabic face (dots of ج خ kept correct) (Latin words inside an Arabic comment are drawn with Carlito)
+    reg: 'https://cdn.jsdelivr.net/npm/@fontsource/carlito@5.3.0/files/carlito-latin-400-normal.woff',
+    arReg: 'https://cdn.jsdelivr.net/npm/@expo-google-fonts/tajawal@0.4.1/400Regular/Tajawal_400Regular.ttf'
   };
   const AR_RE = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
 
@@ -24,7 +26,7 @@
   const RED = [0.859, 0.204, 0.145];
   const PROFILES = {
     SH: { name: 'SH', w: 595.32, h: 841.92, anchor: { x: 34.0, top: 513.2 },
-      cm: { x0: 130.3, x1: 379.0, top: 533.4, bot: 591.5 }, cover: false,
+      cm: { x0: 130.3, x1: 379.0, top: 533.4, bot: 591.5 }, cover: true,
       sig: { l: 381.8, r: 442.5, t: 532.4, b: 593.0 }, date: { x: 465.6, top: 540.2 },
       tick: { cx: { 'approved': 41.2, 'approved as noted': 119.3, 'revise & resubmit': 219.0, 'rejected': 338.3 }, cy: 698.455, s: 8.4, th: 1.05 } },
     SQ: { name: 'SQ', w: 612, h: 792, anchor: { x: 54.8, top: 449.4 },
@@ -73,15 +75,47 @@
     const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return '';
     return MONTHS[+m[2] - 1] + ' ' + (+m[3]) + ', ' + m[1];
   }
-  // words of a comment wrapped to a width; every line is measured with the font that will draw it
-  function wrap(text, font, size, width) {
+  // ---- text with mixed Arabic / English ----
+  // A line is cut into runs: Arabic runs are drawn with the Arabic font, everything else (English words, numbers, spaces) with the
+  // Latin font. In an Arabic comment the runs are placed right to left, but an English phrase inside it keeps its own left-to-right order.
+  const AR_SCALE = 1.1;
+  function runsOf(line) {
+    const parts = String(line).split(/([؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]+(?: +[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]+)*)/).filter(x => x !== '');
+    const out = [];
+    parts.forEach(x => {
+      if (AR_RE.test(x)) return out.push({ t: x, ar: true });
+      const m = x.match(/^( *)(.*?)( *)$/);                 // spaces round an English phrase are their own pieces, so they stay between the right words when the line is flipped
+      if (m[1]) out.push({ t: m[1], ar: false });
+      if (m[2]) out.push({ t: m[2], ar: false });
+      if (m[3]) out.push({ t: m[3], ar: false });
+    });
+    return out;
+  }
+  const rtlText = text => { const m = String(text).match(/[A-Za-z؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/); return !!(m && AR_RE.test(m[0])); };
+  function lineWidth(line, fonts, size) {
+    return runsOf(line).reduce((a, r) => a + (r.ar && fonts.ar ? fonts.ar.widthOfTextAtSize(r.t, size * AR_SCALE) : fonts.lat.widthOfTextAtSize(r.t, size)), 0);
+  }
+  // words of a comment wrapped to a width; every line is measured with the fonts that will draw it
+  function wrap(text, fonts, size, width) {
     const words = text.split(' '), lines = []; let cur = '';
     for (const w of words) {
       const tryL = cur ? cur + ' ' + w : w;
-      if (!cur || font.widthOfTextAtSize(tryL, size) <= width) cur = tryL; else { lines.push(cur); cur = w; }
+      if (!cur || lineWidth(tryL, fonts, size) <= width) cur = tryL; else { lines.push(cur); cur = w; }
     }
     if (cur) lines.push(cur);
     return lines;
+  }
+  // draws one line; an Arabic paragraph is right-aligned, an English one left-aligned
+  function drawLine(page, line, fonts, size, x0, x1, baseY, rtl, color) {
+    let runs = runsOf(line);
+    const total = lineWidth(line, fonts, size);
+    let x = rtl ? x1 - total : x0;
+    if (rtl) runs = runs.reverse();
+    runs.forEach(r => {
+      const ar = r.ar && fonts.ar, f = ar ? fonts.ar : fonts.lat, sz = ar ? size * AR_SCALE : size;
+      page.drawText(r.t, { x, y: baseY, size: sz, font: f, color });
+      x += f.widthOfTextAtSize(r.t, sz);
+    });
   }
 
   // ---- download of the IR file: big files come in pieces (up to 4 at once) so a 50 MB scan is not one giant call ----
@@ -180,29 +214,31 @@
     // some forms print dotted lines for writing in the comment cell: cover them so the typed text reads cleanly
     if (G.cover) page.drawRectangle({ x: G.cm.x0 - 0.4, y: H - G.cm.bot - 0.4, width: G.cm.x1 - G.cm.x0 + 0.8, height: G.cm.bot - G.cm.top + 0.8, color: rgb(1, 1, 1), borderWidth: 0 });
 
-    // comment, verbatim, shrunk from 10 pt (down to 5.5 pt) until it fits the cell; if it still does not fit the last line ends with "..."
+    // comment, verbatim, top-aligned with a little air round it, 9.5 pt shrunk (down to 6 pt) until it fits the cell;
+    // if it still does not fit the last line ends with "..."
     const text = String(p.rawNotes || '').split(/\s+/).filter(Boolean).join(' ');
-    const cmF = hasAr ? FA : F, cmW = G.cm.x1 - G.cm.x0 - 4, cmH = G.cm.bot - G.cm.top;
-    let size = 10, lines = wrap(text, cmF, size, cmW);
-    while (lines.length * size > cmH && size > 5.5) { size -= 0.25; lines = wrap(text, cmF, size, cmW); }
+    const fonts = { lat: F, ar: FA }, rtl = hasAr && rtlText(text);
+    const PAD = 2.5, cmW = G.cm.x1 - G.cm.x0 - 2 * PAD, cmH = G.cm.bot - G.cm.top - 2;
+    const leadK = hasAr ? 1.4 : 1.18;
+    let size = 9.5, lines = wrap(text, fonts, size, cmW);
+    while (lines.length * size * leadK > cmH && size > 6) { size -= 0.25; lines = wrap(text, fonts, size, cmW); }
     let cut = false;
-    const maxLines = Math.max(1, Math.floor(cmH / size));
+    const maxLines = Math.max(1, Math.floor(cmH / (size * leadK)));
     if (lines.length > maxLines) {
       cut = true; lines = lines.slice(0, maxLines);
       let last = lines[maxLines - 1];
-      while (last && cmF.widthOfTextAtSize(last + '...', size) > cmW) last = last.slice(0, -1);
+      while (last && lineWidth(last + '...', fonts, size) > cmW) last = last.slice(0, -1);
       lines[maxLines - 1] = last.replace(/\s+$/, '') + '...';
     }
     lines.forEach((ln, i) => {
-      const rtl = hasAr && AR_RE.test(ln);
-      const w = cmF.widthOfTextAtSize(ln, size);
-      page.drawText(ln, { x: rtl ? G.cm.x1 - 2 - w : G.cm.x0 + 2, y: yTop(G.cm.top + i * size, size), size, font: cmF, color: red });
+      const top = G.cm.top + 1.5 + i * size * leadK;
+      drawLine(page, ln, fonts, size, G.cm.x0 + PAD, G.cm.x1 - PAD, H - top - size * (hasAr ? 1.0 : 0.88), rtl, red);
     });
     if (cut) note(t('The comment was too long for the box on the form and was shortened there. The full text is in the sheet.', 'الكومنت أطول من البوكس في الفورم فاتقصّ هناك. النص الكامل موجود في الشيت.'));
 
     // engineer name, two lines, centred in the signature cell (the same for everybody for now)
     const sig = sigLines(p.inspector);
-    let ssz = 11;
+    let ssz = 9.5;
     const maxW = (G.sig.r - G.sig.l) - 4;
     while (sig.length && Math.max(...sig.map(l => F.widthOfTextAtSize(l, ssz))) > maxW && ssz > 7) ssz -= 0.25;
     const lead = ssz * 1.15, cx = (G.sig.l + G.sig.r) / 2;
@@ -212,8 +248,8 @@
     // date (SH: fixed spot; the other forms: centred in the date cell)
     const d = longDate(p.date);
     if (d) {
-      const dx = G.date.x != null ? G.date.x : (G.date.l + G.date.r) / 2 - F.widthOfTextAtSize(d, 10) / 2;
-      page.drawText(d, { x: dx, y: yTop(G.date.top, 10), size: 10, font: F, color: red });
+      const dx = G.date.x != null ? G.date.x : (G.date.l + G.date.r) / 2 - F.widthOfTextAtSize(d, 9.5) / 2;
+      page.drawText(d, { x: dx, y: yTop(G.date.top, 9.5), size: 9.5, font: F, color: red });
     }
 
     // status tick: two short strokes drawn round the middle of the box
