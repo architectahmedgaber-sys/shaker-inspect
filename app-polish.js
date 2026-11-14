@@ -15,7 +15,7 @@
     const ta = $('modalNotes'); if (!ta || $('plRow')) return;
     const host = ta.closest('.form-row') || ta.parentNode;
     host.insertAdjacentHTML('afterend', `<div class="pl-row" id="plRow">
-      <button type="button" class="pill-btn pl-btn" id="plBtn">✨ ${t('Polish the comment', 'رَوِّق الكومنت')}</button>
+      <button type="button" class="pill-btn pl-btn" id="plBtn">✨ ${t('Professional wording', 'صياغة احترافية')}</button>
       <small class="pl-hint" id="plHint"></small>
       <div class="pl-box" id="plBox" hidden></div></div>`);
     $('plBtn').onclick = run;
