@@ -1,8 +1,8 @@
 {
- "version": "1.0.52",
- "build": 52,
+ "version": "1.0.53",
+ "build": 53,
  "notes": [
-  "New: a refresh button (⟳) inside every screen (Requests, Inbox, comments, photos, IR files, Calendar, Re-inspection, Daily report, Villas, Handover and more). It reloads only that screen from the sheet, not the whole app. Nothing to paste in Apps Script."
+  "New: the comment, name and date the app writes on the original CIR/IR form now use a professional font that matches the form (Calibri look for English, Tajawal for Arabic), with cleaner size, spacing and wrapping inside the box. English words inside an Arabic comment no longer come out reversed. Nothing to paste in Apps Script."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
