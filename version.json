@@ -1,6 +1,6 @@
 {
- "version": "1.0.54",
- "build": 54,
+ "version": "1.0.55",
+ "build": 55,
  "notes": [
   "New: the comment, name and date the app writes on the original CIR/IR form now use a professional font that matches the form (Calibri look for English, Tajawal for Arabic), with cleaner size, spacing and wrapping inside the box. English words inside an Arabic comment no longer come out reversed. Nothing to paste in Apps Script."
  ],
