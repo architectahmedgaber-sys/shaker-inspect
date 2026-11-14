@@ -28,15 +28,15 @@
     SH: { name: 'SH', w: 595.32, h: 841.92, anchor: { x: 34.0, top: 513.2 },
       cm: { x0: 130.3, x1: 379.0, top: 533.4, bot: 591.5 }, cover: true,
       sig: { l: 381.8, r: 442.5, t: 532.4, b: 593.0 }, date: { x: 465.6, top: 540.2 },
-      tick: { cx: { 'approved': 41.2, 'approved as noted': 119.3, 'revise & resubmit': 219.0, 'rejected': 338.3 }, cy: 698.455, s: 8.4, th: 1.05 } },
+      tick: { cx: { 'approved': 41.0, 'approved as noted': 119.12, 'revise & resubmit': 218.88, 'rejected': 335.88 }, cy: 694.56, s: 7.4, th: 1.05 } },
     SQ: { name: 'SQ', w: 612, h: 792, anchor: { x: 54.8, top: 449.4 },
       cm: { x0: 143.4, x1: 335.2, top: 479.6, bot: 518.8 }, cover: true,
       sig: { l: 335.9, r: 428.7, t: 479.0, b: 519.2 }, date: { l: 429.4, r: 560.4, top: 486.0 },
-      tick: { cx: { 'approved': 63.66, 'approved as noted': 161.12, 'revise & resubmit': 257.75, 'rejected': 346.09 }, cy: 586.72, s: 4.6, th: 0.8 } },
+      tick: { cx: { 'approved': 63.56, 'approved as noted': 161.06, 'revise & resubmit': 257.69, 'rejected': 346.06 }, cy: 586.69, s: 4.6, th: 0.8 } },
     AT: { name: 'AT', w: 612, h: 792, anchor: { x: 35.9, top: 480.0 },
       cm: { x0: 99.6, x1: 279.6, top: 503.0, bot: 541.9 }, cover: true,
       sig: { l: 282.6, r: 381.0, t: 502.3, b: 542.8 }, date: { l: 384.2, r: 565.8, top: 509.0 },
-      tick: { cx: { 'approved': 44.45, 'approved as noted': 102.05, 'revise & resubmit': 205.6, 'rejected': 300.3 }, cy: 611.95, s: 6.0, th: 0.9 } }
+      tick: { cx: { 'approved': 43.56, 'approved as noted': 101.44, 'revise & resubmit': 204.69, 'rejected': 299.69 }, cy: 611.94, s: 6.0, th: 0.9 } }
   };
   // which profile a form is: by page size, then by the company code in the file name / request number, then by its own words
   function pickProfile(pw, ph, name, txt) {
@@ -254,7 +254,7 @@
       page.drawText(d, { x: dx, y: yTop((G.cm.top + G.cm.bot) / 2 - 9.5 * 0.5, 9.5), size: 9.5, font: F, color: red });
     }
 
-    // status tick: two short strokes drawn round the middle of the box
+    // status tick: two short strokes, centred on the middle of the box (centres measured from the real forms)
     const key = STATUS[String(p.code || '').toUpperCase()];
     if (!key) throw new Error('unknown code ' + p.code);
     const T = G.tick, tcx = T.cx[key], s = T.s;
