@@ -27,8 +27,9 @@
     const tag = it => it.overdue ? '<i class="c-tag bad">' + esc(ageText(it)) + '</i>' : isLate(it) ? '<i class="c-tag bad">' + esc(ageText(it)) + '</i>' : '<i class="c-tag">' + esc(ageText(it)) + '</i>';
     el.innerHTML = `
       <div class="c-head">
-        <div class="hero-hi"><div><small>${esc(greet())}</small><h2>${esc(name || 'Welcome')}</h2></div>
-          <button type="button" class="hero-av" onclick="PtahApp.openAccount()" title="Account">${esc(initials(window.PtahApp && PtahApp.engineer()))}</button></div>
+        <div class="hero-hi"><div><small>${esc(greet())}</small><h2>${esc(name || 'Welcome')}</h2><span class="live-ts" data-live-ts></span></div>
+          <div class="hero-tools"><button type="button" class="rf-btn rf-hero" data-live-rf aria-label="Refresh" title="Refresh: read the latest from the sheet and Drive">⟳</button>
+          <button type="button" class="hero-av" onclick="PtahApp.openAccount()" title="Account">${esc(initials(window.PtahApp && PtahApp.engineer()))}</button></div></div>
         ${PtahApp.role() === 'Viewer' ? '<div class="hero-view">View only · you can look at everything but not close requests</div>' : ''}
         <div class="c-big"><b data-n="${items.length}">${items.length}</b><span>${items.length === 1 ? 'request waiting' : 'requests waiting'}</span></div>
         <div class="hero-stats">

@@ -558,6 +558,7 @@
     setTimeout(remind, 5000);
     return r;
   };
+  Shk.dxBoot = () => { lastBoot = Date.now(); loadBoot(); };   // used by the auto-refresh (app-live.js)
   function loadBoot() {
     api('daily_bootstrap').then(b => {
       boot = Object.assign(boot, b || {});
