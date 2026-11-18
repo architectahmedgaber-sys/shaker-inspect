@@ -442,3 +442,12 @@ html[data-theme="dark"] .rf-btn { color: var(--gold, #d9b45a); }
 .rf-ho { position: absolute; right: 12px; bottom: 14px; z-index: 5; width: 44px; height: 44px; background: var(--navy, #0b2a5b); color: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
 html[data-theme="dark"] .rf-ho { color: #fff; }
 .ir-sheet-h span { display: inline-flex; align-items: center; gap: 2px; }
+
+/* Home: Refresh button + "Updated 10:32" (app-live.js) */
+.hero-tools { display: flex; align-items: center; gap: 8px; flex: none; }
+.rf-hero { width: 40px; height: 40px; margin-top: 4px; font-size: 22px; background: rgba(255,255,255,.14); color: #fff !important; border: 1px solid rgba(255,255,255,.28); }
+.rf-hero:active { background: rgba(255,255,255,.26); }
+.live-ts { display: block; margin-top: 2px; font-size: 11.5px; font-weight: 600; color: rgba(255,255,255,.62); min-height: 14px; }
+.live-ts:empty { display: none; }
+/* the top-bar Refresh button of the request lists (hidden on Home, where the hero has its own) */
+body:not(.at-home) #refreshBtn { display: inline-flex !important; }
