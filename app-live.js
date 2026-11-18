@@ -1,12 +1,12 @@
 /* Shaker Inspect: the app keeps itself up to date.
-   - While the app is on screen it asks the server "did anything change?" (app_ping, a tiny answer) every ~25 seconds.
+   - While the app is on screen it asks the server "did anything change?" (app_ping, a tiny answer) every ~10 seconds.
      Only when the sheet or the Drive files changed does it load the list again, so a quiet minute costs almost nothing.
    - It also checks the moment the app comes back (switch to the app, screen on, signal back) and after your own close.
    - A Refresh button (Home, top right) reads the latest from the sheet and Drive on demand.
    - An open request, sign-in or editor is never redrawn under your hands: the update waits until it is closed.
    Loaded last. Needs Live.gs + the new Api.gs on the server; with an older server only the Refresh button and "on return" refresh work. */
 (function () {
-  const STEP = 25000, SLOW = 90000, IDLE_MS = 5 * 60000;
+  const STEP = 10000, SLOW = 45000, IDLE_MS = 5 * 60000;
   const $ = id => document.getElementById(id);
   let last = null;                  // the answer we last applied: { s, d }
   let timer = null, pinging = false, refreshing = false, noPing = false, appliedAt = 0, lastTouch = Date.now(), hiddenAt = 0;
@@ -81,7 +81,7 @@
   function schedule() {
     clearTimeout(timer);
     const idle = Date.now() - lastTouch > IDLE_MS;
-    timer = setTimeout(async () => { await check(); schedule(); }, (idle ? SLOW : STEP) + Math.random() * 3000);
+    timer = setTimeout(async () => { await check(); schedule(); }, (idle ? SLOW : STEP) + Math.random() * 2000);
   }
   ['pointerdown', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, () => { lastTouch = Date.now(); }, { passive: true, capture: true }));
   function resumed() {
