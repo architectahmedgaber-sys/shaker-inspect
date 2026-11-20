@@ -84,10 +84,10 @@
   }
 
   // ---------------------------------------------------------------- the admin tab
-  let rep = null, plan = null, busy = false;
+  let rep = null, plan = null, busy = false, curOpt = {};   // curOpt: { map: columns picked by hand, since: ... }
   function admAcc() {
     const b = $('scBody'); if (!b) return;
-    rep = null; plan = null; busy = false;     // opening the page always starts clean
+    rep = null; plan = null; busy = false; curOpt = {};     // opening the page always starts clean
     b.innerHTML = `<div id="accBox"></div>${SIGN}`;
     drawStart();
   }
@@ -148,14 +148,49 @@
   async function check(file, opt) {
     if (busy) return; busy = true;
     try {
-      const kb = Math.max(1, Math.round((file.size || 0) / 1024));
-      working('Got ' + file.name + ' (' + kb + ' KB). Reading it...');
-      if (!opt) rep = await readFile(file);
+      if (file) working('Got ' + file.name + ' (' + Math.max(1, Math.round((file.size || 0) / 1024)) + ' KB). Reading it...');
+      else working('Checking the columns you picked...');
+      if (file) { rep = await readFile(file); curOpt = {}; }
+      if (opt) curOpt = Object.assign({}, curOpt, opt);
       step('Read ' + rep.rows.length + ' rows. Sending them to the server to check against the sheet...');
-      plan = await api('admin_accCheck', [rep, opt || {}]);
-      plan.kind === 'daily' ? drawDaily() : drawTracker();
+      plan = await api('admin_accCheck', [rep, curOpt]);
+      plan.kind === 'map' ? drawMap() : plan.kind === 'daily' ? drawDaily() : drawTracker();
     } catch (e) { drawStart(esc(e.message || e)); }
     busy = false;
+  }
+
+  // ---------------------------------------------------------------- columns the file lacks: pick them by hand
+  const colNote = (p, daily) => {
+    const ig = p.ignored || [], bl = p.blank || [];
+    return (bl.length ? `<div class="acc-msg">Not in this file, left empty: ${bl.map(esc).join(', ')}.</div>` : '') +
+      (!daily && ig.length ? `<div class="acc-msg">Extra columns in the file, ignored: ${ig.map(esc).join(', ')}.</div>` : '') +
+      (p.dups && p.dups.length ? `<div class="acc-msg">These column names appear twice in the file (the first one is used): ${p.dups.map(esc).join(', ')}.</div>` : '');
+  };
+  function drawMap() {
+    const p = plan;
+    host().innerHTML = `
+      <h3 class="sc-h">Pick the missing columns</h3>
+      <div class="card">
+        <p class="small" style="margin:0"><b>${esc(p.file)}</b></p>
+        <p class="small">The app could not find ${p.missing.length === 1 ? 'this column' : 'these columns'} by name, so nothing was written. Choose which column of your file is the right one, then continue.</p>
+        ${p.missing.map(m => `<label class="small" style="display:block;margin:8px 0">${esc(m.name)}<br>
+          <select data-accmap="${esc(m.name)}" style="width:100%;padding:10px;border-radius:10px">
+            <option value="">Choose a column...</option>
+            ${p.columns.map(c => `<option value="${c.pos}"${c.pos === m.guess ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}
+          </select></label>`).join('')}
+        <div class="acc-msg bad" id="accMapErr" style="display:none">Choose a column for every line.</div>
+        <div class="btnrow">
+          <button type="button" data-acc="again">Choose another file</button>
+          <button type="button" class="b-ok" data-acc="usemap">Continue</button>
+        </div>
+      </div>`;
+  }
+  function useMap() {
+    const map = Object.assign({}, curOpt.map || {});
+    let ok = true;
+    document.querySelectorAll('[data-accmap]').forEach(s => { if (s.value === '') ok = false; else map[s.dataset.accmap] = Number(s.value); });
+    if (!ok) { const e = $('accMapErr'); if (e) e.style.display = 'block'; return; }
+    check(null, { map: map });
   }
 
   // ---------------------------------------------------------------- DailyAction preview + save
@@ -172,7 +207,11 @@
         </div>
         ${ok ? `<p class="small">Goes to rows <b>${p.startRow}-${p.endRow}</b>, right after row ${p.lastOldRow}.</p>` : ''}
         <p class="small" style="margin:4px 0 0">Pending: ${p.newRequests} new · ${p.resubmissions} new revision${p.stillOpen ? ` · ${p.stillOpen} already listed, still without a code` : ''}.</p>
-        ${p.sameOrder ? '' : '<div class="acc-msg">The columns in this export are in a different order. They were matched by name.</div>'}
+        ${p.sameOrder || (p.ignored || []).length ? '' : '<div class="acc-msg">The columns in this export are in a different order. They were matched by name.</div>'}
+        ${colNote(p, true)}
+        ${(p.ignored || []).length && ok ? `<div class="acc-msg">The file has ${p.ignored.length === 1 ? 'a column' : 'columns'} that DailyAction does not have. They are ignored unless you tick them to be added as new columns at the right of the tab:
+          ${p.ignored.map(n => `<label style="display:block;margin:6px 0"><input type="checkbox" data-accadd="${esc(n)}"> ${esc(n)}</label>`).join('')}</div>` : ''}
+        ${(p.added || []).length ? `<div class="acc-msg">New column${p.added.length === 1 ? '' : 's'} to be added: ${p.added.map(esc).join(', ')}.</div>` : ''}
         ${p.noLink ? `<div class="acc-msg">${p.noLink} rows have no ACC link on Number in the file. They are written as plain text.</div>` : ''}
         ${p.already ? `<div class="acc-msg bad">This report is already in DailyAction (rows ${p.already.from}-${p.already.to}). Did you mean today's export? Nothing will be written.</div>` : ''}
         <div class="btnrow">
@@ -185,9 +224,10 @@
   }
   async function saveDaily(btn) {
     if (busy) return; busy = true; btn.disabled = true;
+    const add = Array.from(document.querySelectorAll('[data-accadd]')).filter(x => x.checked).map(x => x.dataset.accadd);   // read before the page is redrawn
     working('Adding ' + plan.rows + ' rows to DailyAction...');
     try {
-      const r = await api('admin_accSaveDaily', [rep, plan.startRow]);
+      const r = await api('admin_accSaveDaily', [rep, plan.startRow, Object.assign({}, curOpt, { addCols: add })]);
       host().innerHTML = `
         <h3 class="sc-h">Done · DailyAction</h3>
         <div class="card acc-done">
@@ -224,7 +264,8 @@
           <div class="kpi"><b>${p.updated}</b><span>updated</span></div>
         </div>
         <p class="small">Only the requests updated in ACC since ${esc(p.since || 'the start')} are sent. Then the totals in the tracker must equal the export, company by company.</p>
-        ${p.sameOrder ? '' : '<div class="acc-msg">The columns in this export are in a different order. They were matched by name.</div>'}
+        ${p.sameOrder || (p.ignored || []).length ? '' : '<div class="acc-msg">The columns in this export are in a different order. They were matched by name.</div>'}
+        ${colNote(p, false)}
         ${p.stops.map(s => `<div class="acc-msg bad">${esc(s)} Nothing will be sent.</div>`).join('')}
         <div class="btnrow">
           <button type="button" data-acc="again">Choose another file</button>
@@ -276,7 +317,7 @@
         second = true;
         const d = new Date(plan.since + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 60);
         step('The totals differ. Sending 60 more days of changes...');
-        const p2 = await api('admin_accCheck', [rep, { since: d.toISOString().slice(0, 10) }]);
+        const p2 = await api('admin_accCheck', [rep, Object.assign({}, curOpt, { since: d.toISOString().slice(0, 10) })]);
         if (p2.send.length) { sent.n += await push(p2.send, 'Sending'); st = await settle(from); }
       }
       drawTrackerDone(st, sent.n, lastRej, second);
@@ -315,6 +356,7 @@
     const k = a.dataset.acc;
     if (k === 'open') { if (window.closeModal && document.querySelector('.modal-overlay.open')) closeModal(); return Shk.openAdmin('acc'); }
     if (k === 'again') return admAcc();
+    if (k === 'usemap') return useMap();
     if (k === 'savedaily') return saveDaily(a);
     if (k === 'undo') return undoDaily(a);
     if (k === 'sendtracker') return sendTracker(a);
