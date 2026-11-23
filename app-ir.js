@@ -249,6 +249,35 @@
     return ok;
   }
 
+  // share a Drive folder link: phone share sheet when there is one (WhatsApp is in it), or straight to WhatsApp, or copy
+  async function shareFolder(url, day, wa) {
+    const text = t('IR files closed', 'ملفات الـ IR اللي اتقفلت') + (day ? ' · ' + day : '');
+    if (wa) { window.open('https://wa.me/?text=' + encodeURIComponent(text + '\n' + url), '_blank', 'noopener'); return true; }
+    if (navigator.share) { try { await navigator.share({ title: text, text: text, url: url }); return true; } catch (e) { if (e && e.name === 'AbortError') return false; } }
+    return copyLink(url);
+  }
+  // pick the newest closing-day folder of this user (Admin, DC and engineers alike) and offer: copy, share, WhatsApp, open
+  async function shareLatest() {
+    let sh = $('irShareSheet');
+    if (!sh) { sh = document.createElement('div'); sh.id = 'irShareSheet'; sh.className = 'ir-sheet'; document.body.appendChild(sh);
+      sh.addEventListener('click', e => { if (e.target === sh || e.target.closest('[data-irx]')) sh.classList.remove('open'); }); }
+    sh.innerHTML = `<div class="ir-sheet-box"><div class="ir-sheet-h"><b>${t('Share closed files folder', 'شارك فولدر الملفات المقفولة')}</b><span><button type="button" data-irx="1" class="ir-lnk">✕</button></span></div><div class="ir-load">${t('Loading…', 'بيحمّل…')}</div></div>`;
+    sh.classList.add('open');
+    const box = sh.querySelector('.ir-sheet-box');
+    try {
+      const r = (await api('ir_links')) || {};
+      const all = (r.mine || []).filter(m => m.latest).sort((a, b) => a.latest.day < b.latest.day ? 1 : -1);
+      if (!all.length) { box.innerHTML += `<small class="ir-hint">${t('Nothing closed from the app yet. After you close a request, the folder of that day shows up here.', 'لسه ماقفلتش حاجة من الأبليكيشن. بعد ما تقفل طلب، فولدر اليوم هيظهر هنا.')}</small>`; box.querySelector('.ir-load').remove(); return; }
+      box.querySelector('.ir-load').remove();
+      box.insertAdjacentHTML('beforeend', all.map(m => `<div class="ir-co"><b>${esc(m.name)} · ${esc(m.latest.day)}</b>
+        <div class="ir-share-row"><button type="button" class="ir-big" data-ircopy="${esc(m.latest.url)}">📋 ${t('Copy link', 'انسخ اللينك')}</button>
+        <button type="button" class="ir-big" data-irshare="${esc(m.latest.url)}" data-irday="${esc(m.latest.day)}">📤 ${t('Share', 'شارك')}</button>
+        <button type="button" class="ir-big" data-irwa="${esc(m.latest.url)}" data-irday="${esc(m.latest.day)}">💬 WhatsApp</button>
+        <a class="ir-big" href="${esc(m.latest.url)}" target="_blank" rel="noopener">📁 ${t('Open', 'افتح')}</a></div></div>`).join('') +
+        `<small class="ir-hint">${t('The link opens only for people who have access to your folder.', 'اللينك بيفتح بس لمن عنده صلاحية على فولدرك.')}</small>`);
+    } catch (e) { box.querySelector('.ir-load').outerHTML = `<div class="ir-load bad">${esc(e.message || e)}</div>`; }
+  }
+
   // ---------------------------------------------------------------- Drive folders sheet (everybody)
   async function openFolders(prefer) {
     let sh = $('irSheet');
@@ -272,7 +301,7 @@
       };
       const mine = r.mine || [];
       const mineHtml = `<h4 class="ir-sec">${t('My closed files', 'ملفاتي المقفولة')}</h4>` + (mine.length ? mine.map(m => `<div class="ir-co"><a class="ir-go" href="${esc(m.url)}" target="_blank" rel="noopener">📁 ${t('Open my folder', 'افتح فولدري')} · ${esc(m.name)}</a>` +
-        (m.latest ? `<button type="button" class="ir-lnk" data-ircopy="${esc(m.latest.url)}">${t('Copy link', 'انسخ اللينك')} · ${esc(m.latest.day)}</button>` : '') +
+        (m.latest ? `<div class="ir-share-row"><button type="button" class="ir-big" data-ircopy="${esc(m.latest.url)}">📋 ${t('Copy link', 'انسخ اللينك')} · ${esc(m.latest.day)}</button><button type="button" class="ir-big" data-irshare="${esc(m.latest.url)}" data-irday="${esc(m.latest.day)}">📤 ${t('Share', 'شارك')}</button><button type="button" class="ir-big" data-irwa="${esc(m.latest.url)}" data-irday="${esc(m.latest.day)}">💬 WhatsApp</button></div>` : '') +
         (m.days.length ? `<div class="ir-days">${m.days.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('')}</div>` : '') + `</div>`).join('') :
         `<small class="ir-hint">${t('Nothing closed from the app yet. Your folder shows up here after you close your first request.', 'لسه ماقفلتش حاجة من الأبليكيشن. فولدرك هيظهر هنا بعد أول طلب تقفله.')}</small>`);
       box.innerHTML = `<div class="ir-sheet-h"><b>${t('IR files on Drive', 'ملفات الـ IR على الدرايف')}</b><span><button type="button" data-irrf="1" class="ir-lnk" aria-label="Refresh" title="Refresh">⟳</button><button type="button" data-irx="1" class="ir-lnk">✕</button></span></div>` +
@@ -335,7 +364,7 @@
       ${(PtahApp.role() === 'Admin' || PtahApp.role() === 'DC') ? `<div class="card" id="irMig"><b>${t('Closed folders', 'فولدرات Closed')}</b>
         <p class="small" style="margin:6px 0 8px">${t('One-time move of the old closed files to Closed / Company / Engineer / Date. Press Review first: nothing moves until you approve the list.', 'نقل مرة واحدة للملفات المقفولة القديمة إلى Closed / الشركة / المهندس / التاريخ. اضغط Review الأول: مفيش حاجة بتتنقل غير لما توافق على القايمة.')}</p>
         <div class="btnrow"><button type="button" class="ir-lnk" data-irmig="plan">${t('Review', 'Review')}</button></div><div id="irMigOut" class="small" style="margin-top:8px"></div></div>` : ''}
-      <div id="irReorg"></div><div id="irList"><div class="sc-load"><i></i><i></i><i></i></div></div><p class="shk-sign">architected by Ptah</p>`;
+      <div id="irSortBar"></div><div id="irReorg"></div><div id="irList"><div class="sc-load"><i></i><i></i><i></i></div></div><p class="shk-sign">architected by Ptah</p>`;
     const gate = () => { const ok = !!$('irCo').value && !!$('irDay').value; $('irPickLab').classList.toggle('off', !ok); $('irPick').disabled = !ok; try { lsSet('shkIrCo', $('irCo').value); lsSet('shkIrDisc', $('irDisc').value); } catch (e) {} $('irDiscLab').style.display = $('irCo').value === 'AUTO' ? '' : 'none'; };
     $('irCo').onchange = $('irDay').onchange = $('irDisc').onchange = gate; gate();
     $('irPick').onchange = async e => {
@@ -401,7 +430,7 @@
       out.innerHTML = `✓ ${ok} ${t('uploaded', 'اترفع')}` + (bad.length ? `<br><span class="bad">${bad.map(esc).join('<br>')}</span>` : '') + (ok && !fast && fastOff ? `<br><small class="ir-hint">${t('Uploaded the slower way (fast upload not available yet).', 'اترفع بالطريقة البطيئة (الرفع السريع لسه مش شغال).')}</small>` : '');
       if (auto && ok) out.innerHTML += `<div class="ir-sum"><b>✓ ${ok - unsorted.length} ${t('sorted', 'اتصنفوا')}</b>${guessed.length ? ` <small>(${guessed.length} ${t('with the discipline you chose', 'بالتخصص اللي اخترته')}: ${esc((DISCS.find(d => d[0] === dflt) || [0, dflt])[1].split(' · ')[0])})</small>` : ''}${unsorted.length ? `<br><b class="bad">⚠ ${unsorted.length} ${t('need your choice (no company or no CIR/MIR in the name)', 'محتاجين اختيارك (مفيش شركة أو CIR/MIR في الاسم)')}</b><br><button type="button" class="ir-lnk" data-irfixall="1">${t('Fix them all', 'صلّحهم كلهم')}</button>` : ''}</div>`;
       window.__irJustUnsorted = unsorted.slice();
-      index = null; drawList();
+      index = null; await drawList(); if (unsorted.length) fixAll();
     };
     drawList(); drawReorg();
   }
@@ -440,6 +469,7 @@
       index = null;
     } catch (e) { out.innerHTML = `<span class="bad">${esc(e.message || e)}</span><br><small class="ir-hint">${t('Press Review and approve again to continue.', 'اضغط Review ووافق تاني عشان تكمل.')}</small>`; }
   }
+  let bulkAll = false;
   async function drawList() {
     const el = $('irList'); if (!el) return;
     try {
@@ -451,13 +481,19 @@
           const un = r.files.filter(f => f.co === 'UNSORTED'), rest = r.files.filter(f => f.co !== 'UNSORTED');
           const row = f => `<div class="row" data-irrow="${esc(f.id)}"><span dir="auto">${esc(f.name)}<small class="ir-path">${esc(pathOf(f))}</small></span><span class="mono">${fmtSize(f.size)} <button type="button" class="ir-lnk" data-irfix="${esc(f.id)}" title="${t('Change company / discipline / type', 'غيّر الشركة / التخصص / النوع')}">✎</button> <button type="button" class="ir-lnk" data-irdel="${esc(f.id)}">✕</button></span></div>`;
           const urow = f => `<div class="row" data-irrow="${esc(f.id)}"><label class="ir-ck"><input type="checkbox" data-irck="${esc(f.id)}"> <span dir="auto">${esc(f.name)}</span></label><span class="mono">${fmtSize(f.size)} <button type="button" class="ir-lnk" data-irfix="${esc(f.id)}" title="${t('Change company / discipline / type', 'غيّر الشركة / التخصص / النوع')}">✎</button> <button type="button" class="ir-lnk" data-irdel="${esc(f.id)}">✕</button></span></div>`;
-          return (un.length ? `<h4 class="ir-sec">⚠ Unsorted (${un.length})</h4><div class="card ir-bulk" id="irBulk"><div class="ir-sel"><label>${t('Search in names', 'دوّر في الأسماء')}<input class="sc-in" id="irBF" placeholder="SQ"></label><label class="ir-all"><span>&nbsp;</span><button type="button" class="ir-lnk" data-irall="1">${t('Select all shown', 'حدد المعروض كله')}</button></label></div>
+          const needs = r.files.filter(f => f.co === 'UNSORTED' || (f.co && (!f.disc || !f.type)));
+          const needSet = new Set(needs.map(f => f.id));
+          const shown = bulkAll ? r.files : needs, others = r.files.filter(f => !shown.includes(f));
+          window.__irNeed = needs.length;
+          const bar = $('irSortBar');
+          if (bar) bar.innerHTML = `<div class="card ir-sortbar"><button type="button" class="ir-big${needs.length ? ' warn' : ''}" data-irsort="1">🗂 ${t('Fix unsorted files', 'صلّح الملفات غير المصنّفة')}${needs.length ? ` <span class="ir-badge">${needs.length}</span>` : ''}</button><small class="ir-hint">${needs.length ? t('Tick many files and set company / discipline / CIR-MIR / day once.', 'حدد ملفات كتير وظبّط الشركة / التخصص / CIR-MIR / اليوم مرة واحدة.') : t('All files are sorted ✓. You can still mark any files by choosing "Show all files".', 'كل الملفات متصنفة ✓. تقدر برضه تحدد أي ملفات بزرار "اعرض كل الملفات".')}</small></div>`;
+          return `<h4 class="ir-sec" id="irBulkH">${needs.length ? '⚠ ' : ''}${t('Mark many files at once', 'تحديد ملفات كتير مرة واحدة')} · ${t('need sorting', 'محتاج تصنيف')} (${needs.length})</h4><div class="card ir-bulk" id="irBulk"><div class="ir-sel"><label>${t('Search in names', 'دوّر في الأسماء')}<input class="sc-in" id="irBF" placeholder="SQ"></label><label class="ir-all"><span>&nbsp;</span><button type="button" class="ir-lnk" data-irall="1">${t('Select all shown', 'حدد المعروض كله')}</button></label><label class="ir-all"><span>&nbsp;</span><button type="button" class="ir-lnk" data-irmode="1">${bulkAll ? t('Show only files that need sorting', 'اعرض المحتاجة تصنيف بس') : t('Show all files', 'اعرض كل الملفات')}</button></label></div>
             <div class="ir-fix ir-sel"><label>${t('Company', 'الشركة')}<select class="sc-in" id="irBCo"><option value="">–</option>${COMPANIES.filter(c => c[0] !== 'OTHER').map(c => `<option value="${c[0]}">${esc(c[1])}</option>`).join('')}</select></label>
             <label>${t('Discipline', 'التخصص')}<select class="sc-in" id="irBDisc">${discOpts(lsGet('shkIrDisc') || 'ARC')}</select></label>
             <label>CIR / MIR<select class="sc-in" id="irBType"><option value="CIR">CIR</option><option value="MIR">MIR</option></select></label>
             <label>${t('Day', 'اليوم')}<input type="date" class="sc-in" id="irBDay" value="${today()}"></label></div>
-            <div class="btnrow"><button type="button" class="ir-lnk" data-irbulk="1" id="irBGo">${t('Apply to selected', 'طبّق على المحدد')} (0)</button> <span class="small" id="irBMsg"></span></div></div><div class="card-list" id="irBList">${un.map(urow).join('')}</div>` : '') +
-            `<div class="card-list">${rest.length ? rest.map(row).join('') : un.length ? '' : `<div class="sc-empty">${t('No files yet.', 'مفيش ملفات لسه.')}</div>`}</div>`;
+            <div class="btnrow"><button type="button" class="ir-lnk" data-irbulk="1" id="irBGo">${t('Apply to selected', 'طبّق على المحدد')} (0)</button> <span class="small" id="irBMsg"></span></div></div><div class="card-list" id="irBList">${shown.length ? shown.map(urow).join('') : `<div class="sc-empty">${t('Nothing needs sorting ✓', 'مفيش حاجة محتاجة تصنيف ✓')}</div>`}</div>` +
+            `<div class="card-list">${others.length ? others.map(row).join('') : (r.files.length ? '' : `<div class="sc-empty">${t('No files yet.', 'مفيش ملفات لسه.')}</div>`)}</div>`;
         })();
     } catch (e) { el.innerHTML = `<div class="sc-empty">${esc(e.message || e)}</div>`; }
   }
@@ -479,6 +515,7 @@
   // after an upload: tick the files that were not recognised and scroll to them
   function fixAll() {
     const names = window.__irJustUnsorted || [], box = $('irBulk'); if (!box) return;
+    if (bulkAll) { bulkAll = false; return drawList().then(fixAll); }
     bulkRows().forEach(r => { r.querySelector('[data-irck]').checked = names.length ? names.includes(r.querySelector('span[dir]').textContent) : true; });
     bulkSync(); box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -545,6 +582,11 @@
     const fa = ev.target.closest && ev.target.closest('[data-irfixall]'); if (fa) return fixAll();
     const sa = ev.target.closest && ev.target.closest('[data-irall]'); if (sa) { bulkRows().forEach(r => { if (r.style.display !== 'none') r.querySelector('[data-irck]').checked = true; }); return bulkSync(); }
     const bk = ev.target.closest && ev.target.closest('[data-irbulk]'); if (bk) return bulkApply(bk);
+    const so = ev.target.closest && ev.target.closest('[data-irsort]'); if (so) { window.__irJustUnsorted = []; return fixAll(); }
+    const md = ev.target.closest && ev.target.closest('[data-irmode]'); if (md) { bulkAll = !bulkAll; return drawList(); }
+    const sh = ev.target.closest && ev.target.closest('[data-irshare]'); if (sh) return shareFolder(sh.dataset.irshare, sh.dataset.irday || '');
+    const wa = ev.target.closest && ev.target.closest('[data-irwa]'); if (wa) return shareFolder(wa.dataset.irwa, wa.dataset.irday || '', true);
+    const sl = ev.target.closest && ev.target.closest('[data-irsharelast]'); if (sl) return shareLatest();
     const fg = ev.target.closest && ev.target.closest('[data-irfixgo]'); if (fg) {
       const w = fg.closest('.ir-fix'), msg = w.querySelector('[data-fmsg]'); fg.disabled = true; msg.textContent = '…';
       try {
@@ -563,7 +605,7 @@
   });
   Object.assign(window.Shk = window.Shk || {}, { admIr: admIr });
 
-  Object.assign(window.Shk, { ir: { loadIndex, filesFor, loadPdfJs, b64bytes, projectKey: getProjectKey, openFolders, paintUp, copyLink } });
+  Object.assign(window.Shk, { ir: { loadIndex, filesFor, loadPdfJs, b64bytes, projectKey: getProjectKey, openFolders, paintUp, copyLink, shareFolder, shareLatest } });
 
   // home: quick buttons (everybody gets "IR folder", admins and DC also get "Upload IR").
   // The home screen rebuilds its button row now and then, so the buttons are put back whenever they are missing.
@@ -571,6 +613,7 @@
     try {
       const q = $('dxQuick'); if (!q) return;
       if (!q.querySelector('[data-ir="folders"]')) q.insertAdjacentHTML('beforeend', `<button type="button" data-ir="folders"><i>📁</i>${t('IR folder', 'فولدر IR')}</button>`);
+      if (!q.querySelector('[data-irsharelast]')) q.insertAdjacentHTML('beforeend', `<button type="button" data-irsharelast="1"><i>🔗</i>${t('Share closed folder', 'شارك فولدر المقفول')}</button>`);
       if (isAdmin() && !q.querySelector('[data-ir="adminopen"]')) q.insertAdjacentHTML('beforeend', `<button type="button" data-ir="adminopen"><i>⬆</i>${t('Upload IR', 'ارفع IR')}</button>`);
     } catch (e) { console.warn(e); }
   }
