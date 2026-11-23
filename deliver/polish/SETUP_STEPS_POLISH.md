@@ -1,13 +1,11 @@
-# Polish button (owner only) - setup
+# Professional wording button (Engineers + Admins, each with their own key)
 
-Only the owner account (architectahmedgaber@gmail.com) sees the "✨ Polish the comment" button in the close screen. The server refuses anyone else.
+No Apps Script change is needed. Polish.gs / the ANTHROPIC_API_KEY script property from the old version are no longer used (you can delete them; leaving them is harmless).
 
-1. Make an API key at console.anthropic.com (API keys). Do not paste it anywhere except step 2.
-2. Apps Script (INSPECTION project) > Project Settings (gear) > Script Properties > Add: `ANTHROPIC_API_KEY` = the key. Save.
-3. Editor: add a script file named **Polish** and paste `Polish.gs`. Replace **Api.gs** with the new one (one line added so the app can call Polish).
-4. Pick `polishSelfTest` in the editor, Run, accept permissions (it needs "connect to an external service"), then View > Logs: you should see a JSON with an English sentence. It writes one line in the _Log tab.
-5. Deploy > Manage deployments > pencil > Version: New version > Deploy (same URL).
-6. In the app: More > Check for updates (web) or reinstall the APK. Open a request, write a short comment, pick a code, press the button, then "Use it" or "Keep mine".
+Each person who wants the button:
+1. Make an API key at console.anthropic.com (own account, own billing).
+2. In the app, open a request to close it, write a comment, pick the code, press "✨ صياغة احترافية". First time it asks for the key: paste it, Save.
+3. Press the button again. Check the result, then "استخدمه" or "سيب كلامي".
 
-Optional script properties: `POLISH_ENABLED=false` (switch off), `POLISH_MODEL` (default claude-haiku-5-5; use claude-sonnet-5-5 for stronger wording), `POLISH_DAILY_LIMIT` (default 150), `POLISH_EMAILS` (extra emails, comma separated).
-The original and the polished text are both saved in the _Log tab (Action = polish). If anything fails the comment stays as typed.
+The key is encrypted on that device only (AES-GCM, in the browser/app storage) and is never sent to the sheet, Apps Script or GitHub. "Remove my key" under the result deletes it. A rejected key is deleted automatically and asked again.
+Without a key nothing changes. Viewers and DC do not see the button. The model is claude-haiku-5-5 (set in app-polish.js). Polishes are no longer written in the _Log tab.
