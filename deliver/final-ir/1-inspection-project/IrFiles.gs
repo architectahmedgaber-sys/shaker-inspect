@@ -88,21 +88,36 @@ function irClosedDir_(root, co, day, me, create) {
   return e && irSub_(e, day, create);
 }
 
-// Reads a file name in any order: company (SH / SQ / AT) and CIR / MIR can be anywhere as separate pieces; the discipline (ARC, STR ...) is optional.
-// Works for CP2C-CN-SH-CIR-ARC-14688 and also PEG-1202-CP2D-CN-SQ-CIR-6217 (no discipline: defDisc is used, default ARC).
-// Returns { co, type, disc, no, discGuessed } or null when the name has no company or no CIR/MIR.
 const IR_DEFAULT_DISC = 'ARC';
+// SMART SORTING MEMORY: rules the admin saved, kept in the script property IR_RULES as { disc: { SQ: 'ARC' }, co: { PEG: 'SQ' } }
+//   disc: company -> discipline used when the file name has none (Square files with no discipline = ARC)
+//   co:   a word inside the file name -> company, used when the name has no SH / SQ / AT
+function irRules_() {
+  if (irRules_.c) return irRules_.c;
+  let r = {};
+  try { r = JSON.parse(PropertiesService.getScriptProperties().getProperty('IR_RULES') || '{}') || {}; } catch (e) {}
+  irRules_.c = { disc: r.disc || {}, co: r.co || {} };
+  return irRules_.c;
+}
+function irRulesSave_(r) { irRules_.c = null; PropertiesService.getScriptProperties().setProperty('IR_RULES', JSON.stringify({ disc: r.disc || {}, co: r.co || {} })); }
+// Reads a file name in any order: company (SH / SQ / AT) and CIR / MIR can be anywhere as separate pieces; the discipline (ARC, STR ...) is optional.
+// Works for CP2C-CN-SH-CIR-ARC-14688 and also PEG-1202-CP2D-CN-SQ-CIR-6217 (no discipline: the saved rule of that company, else defDisc, default ARC).
+// Returns { co, type, disc, no, discGuessed, ruled } or null when the name has no company or no CIR/MIR.
 function irParse_(name, defDisc) {
   const tk = String(name || '').replace(/\.[A-Za-z0-9]+$/, '').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean).map(t => IR_DISC_ALIAS[t] || t);
-  const co = tk.filter(t => IR_COMPANIES[t] && t !== 'OTHER')[0];
+  const rules = irRules_();
+  let co = tk.filter(t => IR_COMPANIES[t] && t !== 'OTHER')[0], ruledCo = false;
+  if (!co) { const hit = tk.filter(t => rules.co[t] && IR_COMPANIES[rules.co[t]] && rules.co[t] !== 'OTHER')[0]; if (hit) { co = rules.co[hit]; ruledCo = true; } }
   const ti = tk.findIndex(t => IR_TYPES[t]);
   if (!co || ti < 0) return null;
   let disc = tk.filter(t => IR_DISCS[t])[0];
   if (!disc && /^[A-Z]{2,5}$/.test(tk[ti + 1] || '') && !IR_COMPANIES[tk[ti + 1]] && !IR_TYPES[tk[ti + 1]]) disc = tk[ti + 1];   // unknown code right after CIR/MIR: its own folder
   const nums = tk.filter(t => /^\d{3,}$/.test(t));
   const guessed = !disc;
+  let ruled = ruledCo;
+  if (!disc && rules.disc[co]) { const d = irAlias_(String(rules.disc[co]).replace(/[^A-Za-z0-9]/g, '').slice(0, 5)); if (d.length >= 2) { disc = d; ruled = true; } }
   if (!disc) { const d = irAlias_(String(defDisc || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 5)); disc = d.length >= 2 ? d : IR_DEFAULT_DISC; }
-  return { co: co, type: tk[ti], disc: disc, no: nums.length ? nums[nums.length - 1] : '', discGuessed: guessed };
+  return { co: co, type: tk[ti], disc: disc, no: nums.length ? nums[nums.length - 1] : '', discGuessed: guessed, ruled: ruled };
 }
 function irDiscName_(code) { return IR_DISCS[code] || code; }
 function irDiscKey_(folderName) { const k = Object.keys(IR_DISCS).filter(c => IR_DISCS[c] === folderName)[0]; return k || String(folderName).split(' - ')[0]; }
@@ -506,7 +521,7 @@ const IR_ADMIN_FUNCS_ = {
       CacheService.getScriptCache().remove('ir_index3');
       const label = auto ? irPathLabel_(info, day) : IR_COMPANIES[co] + ' / ' + day;
       apiLog_(me, 'IR file', 'Open / ' + label + ' / ' + name + (replaced ? ' (replaced)' : ''));
-      return { id: file.getId(), name: name, replaced: replaced, sorted: auto ? !!info : true, guessed: !!(info && info.discGuessed), path: label };
+      return { id: file.getId(), name: name, replaced: replaced, sorted: auto ? !!info : true, guessed: !!(info && info.discGuessed && !info.ruled), ruled: !!(info && info.ruled), path: label };
     } finally { lock.releaseLock(); }
   },
 
@@ -711,7 +726,7 @@ const IR_ADMIN_FUNCS_ = {
           if (okOrigin) headers.Origin = origin;
           reqs.push({ url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id', method: 'post', contentType: 'application/json; charset=UTF-8',
             headers: headers, muteHttpExceptions: true, payload: JSON.stringify({ name: name, parents: [folders[label]], mimeType: mime }) });
-          meta.push({ name: name, sorted: !!info, guessed: !!(info && info.discGuessed), path: label });
+          meta.push({ name: name, sorted: !!info, guessed: !!(info && info.discGuessed && !info.ruled), ruled: !!(info && info.ruled), path: label });
         } catch (e) { meta.push({ error: String(e.message || e) }); }
       });
     } finally { lock.releaseLock(); }
@@ -722,7 +737,7 @@ const IR_ADMIN_FUNCS_ = {
       if (m.exists) return { exists: true, name: m.name, sorted: m.sorted, path: m.path };
       const r = res[k++];
       const h = r.getAllHeaders(), url = h.Location || h.location;
-      return r.getResponseCode() === 200 && url ? { url: String(url), name: m.name, sorted: m.sorted, guessed: m.guessed, path: m.path } : { error: 'Drive did not start the upload (' + r.getResponseCode() + ').' };
+      return r.getResponseCode() === 200 && url ? { url: String(url), name: m.name, sorted: m.sorted, guessed: m.guessed, ruled: m.ruled, path: m.path } : { error: 'Drive did not start the upload (' + r.getResponseCode() + ').' };
     });
   },
 
@@ -847,6 +862,27 @@ const IR_ADMIN_FUNCS_ = {
     try { CacheService.getScriptCache().remove('ir_index3'); } catch (e) {}
     apiLog_(me, 'IR files re-organised', moved + ' moved' + (un ? ', ' + un + ' to Unsorted' : '') + (bad.length ? ', ' + bad.length + ' skipped' : ''));
     return { moved: moved, unsorted: un, bad: bad };
+  },
+
+  // SMART SORTING MEMORY. admin_irRules -> { disc: {SQ:'ARC'}, co: {WORD:'SQ'} }.  admin_irRuleSet a=[kind 'disc'|'co', key, value]; value '' removes it; kind 'all' with value '' resets everything.
+  admin_irRules: () => irRules_(),
+  admin_irRuleSet: (me, a) => {
+    const kind = String(a[0] || ''), key = String(a[1] || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12), val = String(a[2] || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+    const lock = LockService.getScriptLock(); lock.waitLock(20000);
+    try {
+      const r = JSON.parse(JSON.stringify(irRules_()));
+      if (kind === 'all') { r.disc = {}; r.co = {}; }
+      else if (kind === 'disc') {
+        if (!IR_COMPANIES[key] || key === 'OTHER') throw new Error('Pick the company.');
+        if (!val) delete r.disc[key]; else { if (val.length < 2) throw new Error('Write the discipline (like ARC or STR).'); r.disc[key] = irAlias_(val); }
+      } else if (kind === 'co') {
+        if (key.length < 2 || IR_TYPES[key] || IR_COMPANIES[key]) throw new Error('Write a word from the file name.');
+        if (!val) delete r.co[key]; else { if (!IR_COMPANIES[val] || val === 'OTHER') throw new Error('Pick the company.'); r.co[key] = val; }
+      } else throw new Error('Bad rule.');
+      irRulesSave_(r);
+      apiLog_(me, 'IR sort rule', kind + ' ' + key + (val ? ' > ' + val : ' removed'));
+      return irRules_();
+    } finally { lock.releaseLock(); }
   },
 
   admin_irList: () => ({ files: irList_(), companies: IR_COMPANIES, folderUrl: (irRoot_(false) || { getUrl: () => '' }).getUrl() }),

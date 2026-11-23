@@ -38,3 +38,8 @@
 - الأبليكيشن بقى يرفع 3 ملفات مرة واحدة، ومكالمات السيرفر ورا بعض، ولو النت قطع بيعيد المحاولة لوحده.
 - في الآخر ملخص: اترفع X · موجودين من قبل Y · فشلوا Z، وزرار **جرّب الملفات اللي فشلت تاني**. لو قفلت الصفحة اختار نفس الملفات تاني وهيتخطى اللي اتحمل.
 - السرعة: بيبدأ بـ 5 ملفات مع بعض (زي الأول)، وبينزل لحد 2 بس لو ظهرت أخطاء، ويرجع يطلع لحد 6 لو كله تمام. روابط الدفعة الجاية بتتجهز وانت بترفع اللي قبلها.
+
+## Drag and drop + sorting memory (new)
+- Paste the new `IrFiles.gs` in the inspection project, then Deploy > Manage deployments > pencil > New version (same URL). The app part works without it, but the sorting memory card stays hidden until the server is updated.
+- Admin > IR files: drag files or a whole folder onto the dotted box (or use "Choose a folder"). Same speed as before.
+- "Sorting memory" card: rules like "Square files with no discipline = Architectural" and "name has PEG = Square". After an upload the app offers to remember your choice. Edit, delete or reset them there.
