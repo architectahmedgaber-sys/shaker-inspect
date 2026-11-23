@@ -475,3 +475,15 @@ body:not(.at-home) #refreshBtn { display: inline-flex !important; }
 .ir-badge { display: inline-block; min-width: 22px; padding: 1px 7px; border-radius: 999px; background: #c9a227; color: #12233f; font-size: 12px; text-align: center; }
 .ir-share-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .ir-sheet [data-ircopy].ir-big { margin-top: 0; }
+
+/* IR upload: drop zone and sorting memory */
+.ir-drop { border: 2px dashed var(--line, #9bb0d3); border-radius: 14px; padding: 14px; text-align: center; transition: background .15s, border-color .15s; }
+.ir-drop.over { background: rgba(212,175,55,.14); border-color: var(--accent); }
+.ir-drop.off { opacity: .55; }
+.ir-drop-t { font-weight: 700; margin-bottom: 8px; }
+.ir-drop .btnrow { justify-content: center; }
+.ir-pick.alt { background: transparent; border: 1.5px solid var(--accent); color: inherit; }
+.ir-remrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+.ir-remrow > span { flex: 1 1 180px; }
+.ir-remrow .sc-in { flex: 0 1 180px; }
+.ir-rules summary { cursor: pointer; }

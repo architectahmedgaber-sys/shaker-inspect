@@ -39,6 +39,14 @@
     box.insertBefore(codes, foot); box.insertBefore(notesR, foot); box.insertBefore(wrap, foot);
     codes.classList.add('cd-codes'); notesR.classList.add('cd-notes');
     const lab = codes.querySelector('.pills-label'); if (lab) lab.textContent = t('Decision', 'القرار');
+    // one tap: "Close as A" picks Approved and presses the normal Close button, so the inspector, checklist and Drive-tick rules all still apply (and Undo stays for 20 s)
+    const qa = document.createElement('button'); qa.type = 'button'; qa.id = 'cdQuickA'; qa.className = 'cd-quick';
+    qa.innerHTML = `✓ ${t('Close as A · Approved', 'اقفل A · معتمد')}`;
+    qa.onclick = () => { const btn = $('modalSaveBtn'); if (!btn || btn.disabled) return; if (typeof window.selectCode === 'function') window.selectCode('A'); btn.click(); };
+    codes.appendChild(qa);
+    // the Close button always says which code it will close with
+    const closeBtn = $('modalSaveBtn');
+    if (closeBtn) { const lab = () => { const c = (typeof selectedCode !== 'undefined' && selectedCode) || ''; closeBtn.dataset.code = c; }; ['A', 'B', 'C', 'D'].forEach(c => { const e = $('code-' + c); if (e) e.addEventListener('click', () => setTimeout(lab, 0)); }); lab(); }
 
     // the checklist row shows its progress and hides when this request has no checklist
     const prog = $('clProg');
