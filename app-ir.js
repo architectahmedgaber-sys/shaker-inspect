@@ -322,7 +322,7 @@
   const toB64 = f => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).replace(/^data:[^,]*,/, '')); r.onerror = () => bad(new Error('read')); r.readAsDataURL(f); });
 
   // fast upload: the phone sends the file straight to a one-time Drive link made by the server (the folders and names are still decided by the server)
-  const UP_PARALLEL = 3, LINK_CHUNK = 10, DONE_CHUNK = 20;
+  const UP_PARALLEL = 5, UP_MAX = 6, UP_MIN = 2, LINK_CHUNK = 15, DONE_CHUNK = 40;   // start at 5 files at once (as before), slow down only when errors show up
   let fastOff = false;                    // set when the fast way fails once: the rest of the files use the old way
   function putToDrive(url, file, onProg) {
     return new Promise((ok, bad) => {
@@ -419,6 +419,7 @@
             .then(rs => { if (auto) (rs || []).forEach((x, k) => { if (x && x.sorted === false) sess.unsorted.push(part[k].name); else if (x && x.guessed) sess.guessed.push(part[k].name); }); return rs; })
             .catch(er => { if (er && er.net) { delete chunkP[c]; throw er; } batchOk.v = false; return null; });   // no connection: ask again for the next file of the chunk
         }
+        if (((c + 1) * LINK_CHUNK) < files.length && !chunkP[c + 1]) linkFor((c + 1) * LINK_CHUNK).catch(() => {});   // links of the next chunk are made while this one uploads
         const r = await chunkP[c];
         return r && r[i - c * LINK_CHUNK] ? r[i - c * LINK_CHUNK] : null;
       };
@@ -458,8 +459,16 @@
         } catch (er) { failed.push({ f: f, msg: (er && er.message) || String(er) }); }
         finally { st[i].sent = st[i].size; st[i].phase = 'done'; finished++; paint(); }
       };
-      let next = 0;
-      await Promise.all(Array.from({ length: Math.min(UP_PARALLEL, files.length) }, async () => { while (next < files.length) await one(next++); }));
+      // adaptive: start at 5 at once; every error takes one slot away (down to 2), 25 good files in a row give one back (up to 6)
+      let next = 0, limit = UP_PARALLEL, active = 0, good = 0, nFail = 0;
+      const tune = () => { if (failed.length > nFail) { nFail = failed.length; good = 0; limit = Math.max(UP_MIN, limit - 1); } else if (++good >= 25) { good = 0; limit = Math.min(UP_MAX, limit + 1); } };
+      await Promise.all(Array.from({ length: Math.min(UP_MAX, files.length) }, async () => {
+        while (next < files.length) {
+          if (active >= limit) { await pause(150); continue; }
+          const i = next++; active++;
+          try { await one(i); } finally { active--; tune(); }
+        }
+      }));
       flush(true); await Promise.all(flushing);
       sess.failed = failed;
       const names = failed.map(x => x.f.name + ': ' + x.msg);
