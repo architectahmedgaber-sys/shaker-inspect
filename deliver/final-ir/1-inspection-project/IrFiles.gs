@@ -256,7 +256,8 @@ function irMigSig_(moves) {
 
 // who must have access, who loses it (computed again at the end, so the list shown is what happens)
 function irMigAccess_(scan, engNames) {
-  const root = irRoot_(false), admins = irAdminEmails_(), owner = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
+  const root = irRoot_(false), admins = irAdminEmails_(), owner = '';
+  try { owner = String(root && root.getOwner() && root.getOwner().getEmail() || '').toLowerCase(); } catch (e) {}   // the folder owner (no extra permission needed)
   const have = {}, revoke = [], grant = [];
   if (root) {
     root.getViewers().concat(root.getEditors()).forEach(u => { const e = String(u.getEmail() || '').toLowerCase(); if (e) have[e] = true; });
