@@ -256,7 +256,8 @@ function irMigSig_(moves) {
 
 // who must have access, who loses it (computed again at the end, so the list shown is what happens)
 function irMigAccess_(scan, engNames) {
-  const root = irRoot_(false), admins = irAdminEmails_(), owner = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
+  const root = irRoot_(false), admins = irAdminEmails_(), owner = '';
+  try { owner = String(root && root.getOwner() && root.getOwner().getEmail() || '').toLowerCase(); } catch (e) {}   // the folder owner (no extra permission needed)
   const have = {}, revoke = [], grant = [];
   if (root) {
     root.getViewers().concat(root.getEditors()).forEach(u => { const e = String(u.getEmail() || '').toLowerCase(); if (e) have[e] = true; });
@@ -599,7 +600,7 @@ const IR_ADMIN_FUNCS_ = {
 
   // MOVE OLD CLOSED FILES, step 1: only LOOKS and gives the list to review. Nothing is changed. Admin only.
   admin_irMigratePlan: (me) => {
-    if (me.role !== 'Admin') throw new Error('Admins only.');
+    if (!irIsFull_(me)) throw new Error('Admins and DCs only.');
     const scan = irMigScan_(), acc = irMigAccess_(scan, irMigEngNames_(scan));
     const groups = {};
     scan.moves.forEach(m => { const k = m.co + '|' + m.eng + '|' + m.day; groups[k] = (groups[k] || 0) + 1; });
@@ -613,7 +614,7 @@ const IR_ADMIN_FUNCS_ = {
   // MOVE OLD CLOSED FILES, step 2 (a=[sig from the review, continuing?]): moves the files in small rounds (the app calls again until left is 0).
   // The first call refuses if the list changed since the review. When nothing is left it sets the access shown in the review and removes the empty old folders.
   admin_irMigrateRun: (me, a) => {
-    if (me.role !== 'Admin') throw new Error('Admins only.');
+    if (!irIsFull_(me)) throw new Error('Admins and DCs only.');
     const sig = String(a[0] || ''), cont = !!a[1];
     const lock = LockService.getScriptLock(); lock.waitLock(30000);
     try {
