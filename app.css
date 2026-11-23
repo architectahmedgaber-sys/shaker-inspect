@@ -451,3 +451,8 @@ html[data-theme="dark"] .rf-ho { color: #fff; }
 .live-ts:empty { display: none; }
 /* the top-bar Refresh button of the request lists (hidden on Home, where the hero has its own) */
 body:not(.at-home) #refreshBtn { display: inline-flex !important; }
+/* IR auto sort: inline fix form under a file row */
+[data-irrow] { flex-wrap: wrap; }
+.ir-fix { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.ir-fix label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.ir-fix .sc-in { min-width: 0; max-width: 150px; }
