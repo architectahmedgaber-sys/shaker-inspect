@@ -20,12 +20,12 @@
 
   // ================= ADMIN =================
   let adminTab = 'today', logQ = '', mode = 'admin';
-  const ADMIN_TABS = [['today', 'Today'], ['acc', 'ACC upload'], ['ir', 'IR files'], ['users', 'Users'], ['perf', 'Performance'], ['closes', 'Undo'], ['trash', 'Trash'], ['log', 'Log'], ['settings', 'Settings']];
+  const ADMIN_TABS = [['today', 'Today'], ['dc', 'Files today'], ['acc', 'ACC upload'], ['ir', 'IR files'], ['users', 'Users'], ['perf', 'Performance'], ['closes', 'Undo'], ['trash', 'Trash'], ['log', 'Log'], ['settings', 'Settings']];
 
   function openAdmin(tab) {
     const rl = PtahApp.role(); if (rl !== 'Admin' && rl !== 'DC') return;
-    const tabsFor = rl === 'DC' ? ADMIN_TABS.filter(t => t[0] === 'ir' || t[0] === 'acc') : ADMIN_TABS;
-    if (rl === 'DC' && !tabsFor.some(t => t[0] === tab)) tab = 'ir';
+    const tabsFor = rl === 'DC' ? ADMIN_TABS.filter(t => t[0] === 'dc' || t[0] === 'ir' || t[0] === 'acc') : ADMIN_TABS;
+    if (rl === 'DC' && !tabsFor.some(t => t[0] === tab)) tab = 'dc';
     mode = 'admin'; closeHandover();
     frame(rl === 'DC' ? 'Documents' : 'Admin', tabsFor.map(([k, l]) => `<button type="button" data-tab="${k}">${l}</button>`).join(''));
     gotoTab(typeof tab === 'string' && ADMIN_TABS.some(t => t[0] === tab) ? tab : adminTab);
@@ -34,7 +34,7 @@
     adminTab = k;
     document.querySelectorAll('#scTabs button').forEach(b => { b.classList.toggle('on', b.dataset.tab === k); if (b.dataset.tab === k) b.scrollIntoView({ inline: 'center', block: 'nearest' }); });
     loading();
-    ({ today: tToday, users: tUsers, perf: tPerf, log: tLog, settings: tSettings, closes: () => Shk.admCloses(), trash: () => Shk.admTrash(), acc: () => Shk.admAcc(), ir: () => Shk.admIr() })[k]();
+    ({ today: tToday, users: tUsers, perf: tPerf, log: tLog, settings: tSettings, closes: () => Shk.admCloses(), trash: () => Shk.admTrash(), acc: () => Shk.admAcc(), ir: () => Shk.admIr(), dc: () => Shk.admDcToday() })[k]();
   }
 
   function tToday() {

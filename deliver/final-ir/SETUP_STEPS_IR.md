@@ -43,3 +43,7 @@
 - Paste the new `IrFiles.gs` in the inspection project, then Deploy > Manage deployments > pencil > New version (same URL). The app part works without it, but the sorting memory card stays hidden until the server is updated.
 - Admin > IR files: drag files or a whole folder onto the dotted box (or use "Choose a folder"). Same speed as before.
 - "Sorting memory" card: rules like "Square files with no discipline = Architectural" and "name has PEG = Square". After an upload the app offers to remember your choice. Edit, delete or reset them there.
+## تحديث 2026-11-23: شاشة "Files today" + قفل بضغطة
+- الصق IrFiles.gs الجديد + New version (نفس اللينك): ده بيضيف `ir_today` اللي بيجيب اللي اتقفل النهارده. من غيره الشاشة بتشتغل بس قايمة المقفول بتقول إنها محتاجة السكريبت.
+- Admin/DC: تاب **Files today** (أول تاب للـ DC) وزرار "ملفات النهارده" في الرئيسية: اترفع النهارده، اتقفل النهارده (فولدر كل مهندس + نسخ/شارك/WhatsApp + شارك الكل في رسالة واحدة)، ولسه محتاج ترتيب.
+- الكارت: زرار أخضر **اقفل A · معتمد** تحت القرار بيختار A ويدوس Close العادي (نفس قواعد المفتش والـ checklist وتيك الدرايف، والـ Undo زي ما هو). وزرار Close بيكتب الكود اللي هيقفل بيه.

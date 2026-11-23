@@ -144,3 +144,10 @@ body.role-viewer .ir-tick { display: none !important; }
 /* tab bar: any number of tabs (Admin and DC get a sixth one); hidden ones take no room */
 .tabbar { grid-auto-flow: column; grid-auto-columns: 1fr; grid-template-columns: none !important; }
 html body .tabbar button[hidden] { display: none !important; }
+
+/* one-tap "Close as A" under the decision row */
+.cd-quick { display: block; width: 100%; margin: 10px 0 0; min-height: 48px; border: 0; border-radius: 14px; background: #1f9d55; color: #fff; font: 800 15px var(--f-ui); cursor: pointer; }
+.cd-quick:active { transform: scale(.98); }
+.cd-quick:disabled { opacity: .5; }
+body.role-viewer .cd-quick { display: none !important; }
+#modalSaveBtn[data-code]::after { content: " · " attr(data-code); }
