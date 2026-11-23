@@ -255,7 +255,7 @@
         const cos = (list || []).slice().sort((a, b) => (b.key === prefer) - (a.key === prefer));
         return `<h4 class="ir-sec">${title}</h4>` + (url ? `<a class="ir-go" href="${esc(url)}" target="_blank" rel="noopener">📁 ${title} · ${t('all companies', 'كل الشركات')}</a>` : '') +
           (cos.length ? cos.map(c => `<div class="ir-co"><a class="ir-go" href="${esc(c.url)}" target="_blank" rel="noopener">📁 ${esc(c.name)}</a>
-            <div class="ir-days">${c.days.length ? c.days.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('') : `<small class="ir-hint">${t('No days yet.', 'مفيش أيام لسه.')}</small>`}</div></div>`).join('') : `<small class="ir-hint">${t('Nothing here yet.', 'مفيش حاجة هنا لسه.')}</small>`);
+            ${(c.groups || []).map(g => `<div class="ir-days"><a class="ir-go" href="${esc(g.url)}" target="_blank" rel="noopener">${esc(g.disc)} · ${esc(g.type)}</a>${g.days.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('')}</div>`).join('')}<div class="ir-days">${c.days.length ? c.days.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('') : `<small class="ir-hint">${t('No days yet.', 'مفيش أيام لسه.')}</small>`}</div></div>`).join('') : `<small class="ir-hint">${t('Nothing here yet.', 'مفيش حاجة هنا لسه.')}</small>`);
       };
       box.innerHTML = `<div class="ir-sheet-h"><b>${t('IR files on Drive', 'ملفات الـ IR على الدرايف')}</b><span><button type="button" data-irrf="1" class="ir-lnk" aria-label="Refresh" title="Refresh">⟳</button><button type="button" data-irx="1" class="ir-lnk">✕</button></span></div>` +
         sect(t('Open', 'Open (لسه متقفلتش)'), r.openUrl, r.open) + sect(t('Closed', 'Closed (الفورم مملية)'), r.closedUrl, r.closed) +
@@ -268,7 +268,7 @@
   const lsGet = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
   const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
-  const pathOf = f => f.co ? ((COMPANIES.find(c => c[0] === f.co) || [0, f.co])[1]) + (f.day ? ' / ' + f.day : '') : t('(no company)', '(من غير شركة)');
+  const pathOf = f => f.co === 'UNSORTED' ? 'Unsorted' + (f.day ? ' / ' + f.day : '') : f.co ? ((COMPANIES.find(c => c[0] === f.co) || [0, f.co])[1]) + (f.disc ? ' / ' + f.disc : '') + (f.type ? ' / ' + f.type : '') + (f.day ? ' / ' + f.day : '') : t('(no company)', '(من غير شركة)');
   const fmtSize = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
   const toB64 = f => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).replace(/^data:[^,]*,/, '')); r.onerror = () => bad(new Error('read')); r.readAsDataURL(f); });
 
@@ -306,19 +306,19 @@
   async function admIr() {
     const b = $('scBody'); if (!b) return;
     b.innerHTML = `<h3 class="sc-h">${t('IR files', 'ملفات الـ IR')}</h3>
-      <div class="card"><p class="small" style="margin:0 0 8px">${t('Download the IR files from ACC (PDF or pictures) and choose them here, many at once. The app matches each file to its request by the IR number inside the file name. Attachments that have the same number in the name show up beside it.', 'نزّل ملفات الـ IR من ACC (PDF أو صور) واختارها هنا مرة واحدة. الأبليكيشن بيربط كل ملف بالطلب من رقم الـ IR في اسم الملف. المرفقات اللي فيها نفس الرقم في الاسم بتظهر جنبه.')}</p>
-        <div class="ir-sel"><label>${t('Company', 'الشركة')}<select id="irCo" class="sc-in"><option value="">${t('Choose the company…', 'اختار الشركة…')}</option>${COMPANIES.map(c => `<option value="${c[0]}"${lsGet('shkIrCo') === c[0] ? ' selected' : ''}>${esc(c[1])}</option>`).join('')}</select></label>
+      <div class="card"><p class="small" style="margin:0 0 8px">${t('Download the IR files from ACC (PDF or pictures) and choose them here, all companies together, many at once. The app reads each file name (like CP2C-CN-SH-CIR-ARC-14688) and files it by itself under company / discipline / CIR or MIR / day. A name it cannot read goes to Unsorted and you are told right after the upload. The app matches each file to its request by the IR number inside the file name. Attachments that have the same number in the name show up beside it.', 'نزّل ملفات الـ IR من ACC (PDF أو صور) واختارها هنا مرة واحدة من كل الشركات. الأبليكيشن بيقرا اسم كل ملف (زي CP2C-CN-SH-CIR-ARC-14688) ويحطه لوحده في الشركة / التخصص / CIR أو MIR / اليوم. الاسم اللي ما يعرفوش بيروح فولدر Unsorted وبينبهك بعد الرفع مباشرة. الأبليكيشن بيربط كل ملف بالطلب من رقم الـ IR في اسم الملف. المرفقات اللي فيها نفس الرقم في الاسم بتظهر جنبه.')}</p>
+        <div class="ir-sel"><label>${t('Company', 'الشركة')}<select id="irCo" class="sc-in"><option value="AUTO">${t('Auto: sort by file name', 'تلقائي: حسب اسم الملف')}</option>${COMPANIES.map(c => `<option value="${c[0]}"${lsGet('shkIrCo') === c[0] ? ' selected' : ''}>${esc(c[1])}</option>`).join('')}</select></label>
           <label>${t('Work of the day', 'شغل يوم')}<input type="date" id="irDay" class="sc-in" value="${today()}"></label></div>
         <div class="btnrow"><label class="ir-pick" id="irPickLab"><input type="file" id="irPick" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/*" multiple hidden>${t('Choose files', 'اختار الملفات')}</label></div>
         <div id="irUp" class="small" style="margin-top:8px"></div></div>
-      <div id="irList"><div class="sc-load"><i></i><i></i><i></i></div></div><p class="shk-sign">architected by Ptah</p>`;
+      <div id="irReorg"></div><div id="irList"><div class="sc-load"><i></i><i></i><i></i></div></div><p class="shk-sign">architected by Ptah</p>`;
     const gate = () => { const ok = !!$('irCo').value && !!$('irDay').value; $('irPickLab').classList.toggle('off', !ok); $('irPick').disabled = !ok; try { lsSet('shkIrCo', $('irCo').value); } catch (e) {} };
     $('irCo').onchange = $('irDay').onchange = gate; gate();
     $('irPick').onchange = async e => {
       const files = Array.from(e.target.files || []); e.target.value = '';
       const co = $('irCo').value, day = $('irDay').value;
       if (!co || !day) { $('irUp').textContent = t('Choose the company and the day first.', 'اختار الشركة واليوم الأول.'); return; }
-      const out = $('irUp'); let ok = 0, fast = 0, finished = 0; const bad = [];
+      const out = $('irUp'); let ok = 0, fast = 0, finished = 0; const bad = [], unsorted = []; const auto = co === 'AUTO';
       // up to 3 files at once; each one goes straight to Drive (fast) and falls back to the old way through the server
       const st = files.map(f => ({ name: f.name, size: f.size || 1, sent: 0, phase: 'wait' }));
       const paint = () => paintBatch(out, st, finished);
@@ -326,7 +326,8 @@
         st[i].phase = 'read'; paint();
         const b64 = await toB64(f);
         st[i].phase = 'send'; paint();
-        await PtahApp.call('admin_irUpload', [f.name, b64, co, day], (fr, done) => { st[i].sent = st[i].size * (done ? 0.95 : fr * 0.95); st[i].phase = done ? 'save' : 'send'; paint(); });
+        const rr = await PtahApp.call('admin_irUpload', [f.name, b64, co, day], (fr, done) => { st[i].sent = st[i].size * (done ? 0.95 : fr * 0.95); st[i].phase = done ? 'save' : 'send'; paint(); });
+        if (auto && rr && rr.sorted === false) unsorted.push(f.name);
       };
       // links for a whole chunk of files in ONE server call (fast); if the server is older, one call per file; if that fails too, the old way
       const chunkP = {}, batchOk = { v: true }, pend = [], flushing = [];
@@ -335,7 +336,7 @@
         const c = Math.floor(i / LINK_CHUNK);
         if (!chunkP[c]) {
           const part = files.slice(c * LINK_CHUNK, (c + 1) * LINK_CHUNK);
-          chunkP[c] = PtahApp.call('admin_irUploadStartBatch', [part.map(f => [f.name, f.size]), co, day, location.origin]).catch(er => { if (er && er.net) throw er; batchOk.v = false; return null; });
+          chunkP[c] = (auto ? PtahApp.call('admin_irUploadStartAuto', [part.map(f => [f.name, f.size]), day, location.origin]) : PtahApp.call('admin_irUploadStartBatch', [part.map(f => [f.name, f.size]), co, day, location.origin])).then(rs => { if (auto) (rs || []).forEach((x, k) => { if (x && x.sorted === false) unsorted.push(part[k].name); }); return rs; }).catch(er => { if (er && er.net) throw er; batchOk.v = false; return null; });
         }
         const r = await chunkP[c];
         return r && r[i - c * LINK_CHUNK] && r[i - c * LINK_CHUNK].url ? r[i - c * LINK_CHUNK].url : null;
@@ -343,7 +344,7 @@
       const flush = (all) => {
         while (pend.length >= (all ? 1 : DONE_CHUNK)) {
           const part = pend.splice(0, DONE_CHUNK);
-          flushing.push(PtahApp.call('admin_irUploadDoneBatch', [part.map(x => [x.id, x.name]), co, day]).then(r => { (r.files || []).forEach((x, k) => { if (!x.ok) bad.push(part[k].name + ': ' + t('did not arrive on Drive', 'ماوصلش الدرايف')); }); }).catch(er => { bad.push(t('Could not confirm ', 'مقدرتش أأكد ') + part.length + t(' files: ', ' ملف: ') + (er.message || er)); }));
+          flushing.push((auto ? PtahApp.call('admin_irUploadDoneAuto', [part.map(x => [x.id, x.name]), day]) : PtahApp.call('admin_irUploadDoneBatch', [part.map(x => [x.id, x.name]), co, day])).then(r => { (r.files || []).forEach((x, k) => { if (!x.ok) bad.push(part[k].name + ': ' + t('did not arrive on Drive', 'ماوصلش الدرايف')); }); }).catch(er => { bad.push(t('Could not confirm ', 'مقدرتش أأكد ') + part.length + t(' files: ', ' ملف: ') + (er.message || er)); }));
         }
       };
       const one = async i => {
@@ -351,7 +352,7 @@
         try {
           if (!fastOff) {
             let url = await linkFor(i), perFile = false;
-            if (!url && !batchOk.v) {                 // older server: one link per file
+            if (!url && !batchOk.v && !auto) {        // older server: one link per file
               try { const l = await PtahApp.call('admin_irUploadStart', [f.name, f.size, co, day, location.origin]); url = l && l.url; perFile = !!url; } catch (er) { if (er && er.net) throw er; fastOff = true; }
             }
             if (url) {
@@ -373,9 +374,10 @@
       await Promise.all(Array.from({ length: Math.min(UP_PARALLEL, files.length) }, async () => { while (next < files.length) await one(next++); }));
       flush(true); await Promise.all(flushing);
       out.innerHTML = `✓ ${ok} ${t('uploaded', 'اترفع')}` + (bad.length ? `<br><span class="bad">${bad.map(esc).join('<br>')}</span>` : '') + (ok && !fast && fastOff ? `<br><small class="ir-hint">${t('Uploaded the slower way (fast upload not available yet).', 'اترفع بالطريقة البطيئة (الرفع السريع لسه مش شغال).')}</small>` : '');
+      if (unsorted.length) out.innerHTML += `<div class="ir-warn" role="alert"><b>⚠ ${unsorted.length} ${t('file(s) went to Unsorted: the name was not recognised.', 'ملف راحوا Unsorted: الاسم مش معروف.')}</b><br>${unsorted.slice(0, 12).map(esc).join('<br>')}${unsorted.length > 12 ? '<br>…' : ''}<br><small>${t('Fix them below (Unsorted section): choose company, discipline and CIR / MIR.', 'صلّحهم تحت (قسم Unsorted): اختار الشركة والتخصص وCIR أو MIR.')}</small></div>`;
       index = null; drawList();
     };
-    drawList();
+    drawList(); drawReorg();
   }
   async function drawList() {
     const el = $('irList'); if (!el) return;
@@ -384,10 +386,68 @@
       const open = (typeof allItems !== 'undefined' && allItems) || [];
       const withFile = open.filter(i => filesFor(i).length).length;
       el.innerHTML = `<div class="kpis"><div class="kpi"><b>${r.files.length}</b><span>${t('Files', 'ملفات')}</span></div><div class="kpi ${open.length - withFile ? 'bad' : 'ok'}"><b>${withFile}/${open.length}</b><span>${t('Open requests with a file', 'طلبات مفتوحة لها ملف')}</span></div></div>` +
-        `<div class="card-list">${r.files.length ? r.files.map(f => `<div class="row"><span dir="auto">${esc(f.name)}<small class="ir-path">${esc(pathOf(f))}</small></span><span class="mono">${fmtSize(f.size)} <button type="button" class="ir-lnk" data-irdel="${esc(f.id)}">✕</button></span></div>`).join('') : `<div class="sc-empty">${t('No files yet.', 'مفيش ملفات لسه.')}</div>`}</div>`;
+        (() => {
+          const un = r.files.filter(f => f.co === 'UNSORTED'), rest = r.files.filter(f => f.co !== 'UNSORTED');
+          const row = f => `<div class="row" data-irrow="${esc(f.id)}"><span dir="auto">${esc(f.name)}<small class="ir-path">${esc(pathOf(f))}</small></span><span class="mono">${fmtSize(f.size)} <button type="button" class="ir-lnk" data-irfix="${esc(f.id)}" title="${t('Change company / discipline / type', 'غيّر الشركة / التخصص / النوع')}">✎</button> <button type="button" class="ir-lnk" data-irdel="${esc(f.id)}">✕</button></span></div>`;
+          return (un.length ? `<h4 class="ir-sec">⚠ Unsorted (${un.length})</h4><div class="card-list">${un.map(row).join('')}</div>` : '') +
+            `<div class="card-list">${rest.length ? rest.map(row).join('') : un.length ? '' : `<div class="sc-empty">${t('No files yet.', 'مفيش ملفات لسه.')}</div>`}</div>`;
+        })();
     } catch (e) { el.innerHTML = `<div class="sc-empty">${esc(e.message || e)}</div>`; }
   }
+  // fix / reassign one file (admin and DC only; the server checks again)
+  function fixForm(id) {
+    const row = document.querySelector('[data-irrow="' + id.replace(/"/g, '') + '"]'); if (!row) return;
+    const old = row.querySelector('.ir-fix'); if (old) return old.remove();
+    const f = (index || []).find(x => x.id === id) || {};
+    const pr = f.name ? (/-(SH|SQ|AT)-/i.exec(f.name) || [])[1] : '';
+    row.insertAdjacentHTML('beforeend', `<div class="ir-fix ir-sel" style="flex-basis:100%;margin-top:6px"><label>${t('Company', 'الشركة')}<select class="sc-in" data-fco>${COMPANIES.filter(c => c[0] !== 'OTHER').map(c => `<option value="${c[0]}"${(f.co === c[0] || (!f.co || f.co === 'UNSORTED') && pr && pr.toUpperCase() === c[0]) ? ' selected' : ''}>${esc(c[1])}</option>`).join('')}</select></label>
+      <label>${t('Discipline', 'التخصص')}<input class="sc-in" data-fdisc maxlength="5" placeholder="ARC / STR / MEC" value="${esc(f.disc || '')}"></label>
+      <label>CIR / MIR<select class="sc-in" data-ftype><option value="CIR"${f.type === 'CIR' ? ' selected' : ''}>CIR</option><option value="MIR"${f.type === 'MIR' ? ' selected' : ''}>MIR</option></select></label>
+      <label>${t('Day', 'اليوم')}<input type="date" class="sc-in" data-fday value="${esc(f.day || today())}"></label>
+      <button type="button" class="ir-lnk" data-irfixgo="${esc(id)}">${t('Save', 'احفظ')}</button> <span class="small" data-fmsg></span></div>`);
+  }
+  // one-time re-organisation of the old files: review first, nothing moves until approved
+  async function drawReorg() {
+    const el = $('irReorg'); if (!el) return;
+    el.innerHTML = `<div class="card"><p class="small" style="margin:0 0 8px">${t('Old files (uploaded before auto sort) can be moved into the new folders. You see the list first; nothing moves until you approve.', 'الملفات القديمة (قبل الترتيب التلقائي) ممكن تتنقل للفولدرات الجديدة. هتشوف القايمة الأول ومفيش حاجة بتتنقل غير لما توافق.')}</p><div class="btnrow"><button type="button" class="ir-lnk" data-irplan="1">${t('Review the move (changes nothing)', 'راجع النقل (مش بيغيّر حاجة)')}</button></div><div id="irPlan" class="small" style="margin-top:8px"></div></div>`;
+  }
+  async function showPlan() {
+    const box = $('irPlan'); if (!box) return;
+    box.textContent = t('Reading the folders…', 'بيقرا الفولدرات…');
+    try {
+      const r = await api('admin_irReorgPlan');
+      if (!r.total) { box.textContent = t('Nothing to move: all files are already in the new layout.', 'مفيش حاجة تتنقل: كل الملفات في الشكل الجديد.'); return; }
+      const g = {}; r.moves.forEach(m => { const k = m.from + '  →  ' + m.to.replace(/ \/ \d{4}-\d{2}-\d{2}$/, ''); g[k] = (g[k] || 0) + 1; });
+      box._ids = r.moves.map(m => m.id);
+      box.innerHTML = `<b>${r.total}${r.total >= 400 ? '+' : ''} ${t('files will move:', 'ملف هيتنقل:')}</b>` + (r.unsorted ? `<div class="ir-warn">⚠ ${r.unsorted} ${t('have a name the app cannot read: they go to Unsorted, then you fix them.', 'اسمهم مش معروف: هيروحوا Unsorted وبعدين تصلحهم.')}</div>` : '') +
+        `<div class="card-list">${Object.keys(g).map(k => `<div class="row"><span dir="ltr">${esc(k)}</span><span class="mono">${g[k]}</span></div>`).join('')}</div>` +
+        `<small>${t('Nothing is deleted. The day of each file stays the same.', 'مفيش حاجة بتتمسح. يوم كل ملف بيفضل زي ما هو.')}</small><div class="btnrow"><button type="button" class="ir-lnk" data-irapply="1">✓ ${t('Approve and move', 'موافق، انقل')}</button></div>`;
+    } catch (e) { box.textContent = e.message || e; }
+  }
+  async function applyPlan(btn) {
+    const box = $('irPlan'); const ids = (box && box._ids) || []; if (!ids.length) return;
+    btn.disabled = true; let moved = 0, un = 0; const bad = [];
+    try {
+      for (let i = 0; i < ids.length; i += 40) {
+        box.querySelector('.btnrow').innerHTML = `${t('Moving', 'بينقل')} ${Math.min(i + 40, ids.length)} / ${ids.length}…`;
+        const r = await api('admin_irReorgApply', [ids.slice(i, i + 40)]); moved += r.moved; un += r.unsorted; (r.bad || []).forEach(x => bad.push(x));
+      }
+      box.innerHTML = `✓ ${moved} ${t('moved', 'اتنقل')}` + (un ? ` · ${un} Unsorted` : '') + (bad.length ? `<br><span class="bad">${bad.length} ${t('skipped', 'اتخطى')}: ${bad.slice(0, 5).map(esc).join(', ')}</span>` : '');
+      index = null; drawList();
+    } catch (e) { box.innerHTML += `<br><span class="bad">${esc(e.message || e)}</span>`; }
+  }
   document.addEventListener('click', async ev => {
+    const pl = ev.target.closest && ev.target.closest('[data-irplan]'); if (pl) return showPlan();
+    const ap = ev.target.closest && ev.target.closest('[data-irapply]'); if (ap) return applyPlan(ap);
+    const fx = ev.target.closest && ev.target.closest('[data-irfix]'); if (fx) return fixForm(fx.dataset.irfix);
+    const fg = ev.target.closest && ev.target.closest('[data-irfixgo]'); if (fg) {
+      const w = fg.closest('.ir-fix'), msg = w.querySelector('[data-fmsg]'); fg.disabled = true; msg.textContent = '…';
+      try {
+        await api('admin_irMove', [fg.dataset.irfixgo, w.querySelector('[data-fco]').value, w.querySelector('[data-fdisc]').value, w.querySelector('[data-ftype]').value, w.querySelector('[data-fday]').value]);
+        index = null; drawList();
+      } catch (e) { fg.disabled = false; msg.textContent = e.message || e; }
+      return;
+    }
     const fo = ev.target.closest && ev.target.closest('#dxQuick [data-ir="folders"]'); if (fo) return openFolders();
     const d = ev.target.closest && ev.target.closest('[data-irdel]'); if (d) {
       d.disabled = true;
