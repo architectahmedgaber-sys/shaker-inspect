@@ -136,8 +136,7 @@ function irPathLabel_(info, day) { return info ? IR_COMPANIES[info.co] + ' / ' +
 // every file under the root (root files, company/files, company/day/files)
 function irList_() {
   const cache = CacheService.getScriptCache();
-  const hit = cache.get('ir_index3');
-  if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+  const cached = irCacheGet_(); if (cached) return cached;
   const root = irRoot_(false);
   const out = [];
   function files(folder, co, day, disc, type) {
@@ -179,8 +178,39 @@ function irList_() {
     scan(root);                          // files uploaded before the Open / Closed folders existed
   }
   out.sort((a, b) => a.name < b.name ? -1 : 1);
-  try { cache.put('ir_index3', JSON.stringify(out), 120); } catch (e) {}   // too big for the cache = just read again next time
+  irCachePut_(out);
   return out;
+}
+
+// The file list is kept in the server cache in 30 KB pieces (one cache value holds only 100 KB, so a long list was never cached before and
+// every Files screen scanned the whole Drive tree again). 'ir_index3' is the small marker: removing it forgets the list.
+const IR_INDEX_TTL = 600;
+function irCacheGet_() {
+  try {
+    const c = CacheService.getScriptCache(), meta = c.get('ir_index3'); if (!meta) return null;
+    const m = JSON.parse(meta); if (!m || !m.g || !m.n) return null;
+    const keys = []; for (let i = 0; i < m.n; i++) keys.push('ir_ix_' + m.g + '_' + i);
+    const got = c.getAll(keys); let s = '';
+    for (let i = 0; i < m.n; i++) { if (got[keys[i]] == null) return null; s += got[keys[i]]; }
+    return JSON.parse(s);
+  } catch (e) { return null; }
+}
+function irCachePut_(out) {
+  try {
+    const s = JSON.stringify(out), SZ = 30000, n = Math.ceil(s.length / SZ);
+    if (n < 1 || n > 90) return;                       // too big: just read again next time
+    const g = String(Date.now()) + Math.floor(Math.random() * 1000), all = {};
+    for (let i = 0; i < n; i++) all['ir_ix_' + g + '_' + i] = s.substr(i * SZ, SZ);
+    all['ir_index3'] = JSON.stringify({ g: g, n: n });
+    CacheService.getScriptCache().putAll(all, IR_INDEX_TTL);
+  } catch (e) {}
+}
+// every change of the IR folders calls this: forgets the file list and today's closed-folders answer
+function irDropIndex_() {
+  try {
+    const c = CacheService.getScriptCache();
+    c.remove('ir_index3'); c.remove('ir_today_' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'));
+  } catch (e) {}
 }
 
 function irSafeName_(n) {
@@ -401,7 +431,7 @@ const IR_FUNCS_ = {
           if (openF && !orig.isTrashed() && orig.getId() !== file.getId() && irInside_(orig, openF)) { orig.setTrashed(true); moved = true; }
         } catch (e) { console.warn('move original: ' + e); }
       }
-      try { CacheService.getScriptCache().remove('ir_index3'); } catch (e) {}
+      try { irDropIndex_(); } catch (e) {}
       apiLog_(me, 'IR form filled', 'Closed / ' + IR_COMPANIES[co] + ' / ' + irEngDir_(me) + ' / ' + day + ' / ' + name + (moved ? ' (original removed from Open)' : ''));
       return { id: file.getId(), url: folder.getUrl(), engUrl: eng.getUrl(), moved: moved };
     } finally { lock.releaseLock(); }
@@ -413,6 +443,7 @@ const IR_FUNCS_ = {
     if (!irIsFull_(me)) throw new Error('Admin or DC only.');
     const day = String((a && a[0]) || '');
     if (!IR_DAY_RE.test(day)) throw new Error('Bad day.');
+    try { const h = CacheService.getScriptCache().get('ir_today_' + day); if (h) return JSON.parse(h); } catch (e) {}
     const root = irRoot_(false), closed = root && irSub_(root, IR_CLOSED, false), groups = [];
     if (closed) Object.keys(IR_COMPANIES).forEach(k => {
       const c = irSub_(closed, IR_COMPANIES[k], false); if (!c) return;
@@ -426,7 +457,9 @@ const IR_FUNCS_ = {
       }
     });
     groups.sort((x, y) => x.coName < y.coName ? -1 : x.coName > y.coName ? 1 : x.eng.toLowerCase() < y.eng.toLowerCase() ? -1 : 1);
-    return { day: day, groups: groups };
+    const res = { day: day, groups: groups };
+    try { CacheService.getScriptCache().put('ir_today_' + day, JSON.stringify(res), 120); } catch (e) {}
+    return res;
   },
 
   // the file itself, as base64, only if it is inside the IR folder
@@ -501,7 +534,7 @@ const IR_FUNCS_ = {
         if (openF && !orig.isTrashed() && orig.getId() !== file.getId() && irInside_(orig, openF)) { orig.setTrashed(true); moved = true; }
       } catch (e) { console.warn('move original: ' + e); }
     }
-    try { CacheService.getScriptCache().remove('ir_index3'); } catch (e) {}
+    try { irDropIndex_(); } catch (e) {}
     apiLog_(me, 'IR form filled', 'Closed / ' + IR_COMPANIES[co] + ' / ' + irEngDir_(me) + ' / ' + day + ' / ' + name + (moved ? ' (original removed from Open)' : '') + ' (direct)');
     const engF = irEngFolder_(root, co, me, false);
     return { id: file.getId(), url: folder.getUrl(), engUrl: engF ? engF.getUrl() : folder.getUrl(), moved: moved };
@@ -540,7 +573,7 @@ const IR_ADMIN_FUNCS_ = {
       let replaced = false;
       while (old.hasNext()) { old.next().setTrashed(true); replaced = true; }
       const file = folder.createFile(Utilities.newBlob(bytes, IR_EXT[ext], name));
-      CacheService.getScriptCache().remove('ir_index3');
+      irDropIndex_();
       const label = auto ? irPathLabel_(info, day) : IR_COMPANIES[co] + ' / ' + day;
       apiLog_(me, 'IR file', 'Open / ' + label + ' / ' + name + (replaced ? ' (replaced)' : ''));
       return { id: file.getId(), name: name, replaced: replaced, sorted: auto ? !!info : true, guessed: !!(info && info.discGuessed && !info.ruled), ruled: !!(info && info.ruled), path: label };
@@ -592,7 +625,7 @@ const IR_ADMIN_FUNCS_ = {
     let replaced = false;
     const old = folder.getFilesByName(name);
     while (old.hasNext()) { const o = old.next(); if (o.getId() !== file.getId()) { o.setTrashed(true); replaced = true; } }
-    try { CacheService.getScriptCache().remove('ir_index3'); } catch (e) {}
+    try { irDropIndex_(); } catch (e) {}
     apiLog_(me, 'IR file', 'Open / ' + IR_COMPANIES[co] + ' / ' + day + ' / ' + name + (replaced ? ' (replaced)' : '') + ' (fast)');
     return { id: file.getId(), name: name, replaced: replaced };
   },
@@ -651,7 +684,7 @@ const IR_ADMIN_FUNCS_ = {
     let replaced = 0;
     const names = {}; Object.keys(mine).forEach(id => { if (seen[id]) names[mine[id]] = true; });
     olds.forEach(f => { if (names[f.getName()]) { f.setTrashed(true); replaced++; } });
-    try { CacheService.getScriptCache().remove('ir_index3'); } catch (e) {}
+    try { irDropIndex_(); } catch (e) {}
     const out = list.map(x => ({ id: String(x[0]), ok: !!seen[String(x[0])] }));
     apiLog_(me, 'IR files', 'Open / ' + IR_COMPANIES[co] + ' / ' + day + ' / ' + out.filter(o => o.ok).length + ' files (fast batch)' + (replaced ? ', ' + replaced + ' replaced' : ''));
     return { files: out, replaced: replaced };
@@ -717,7 +750,7 @@ const IR_ADMIN_FUNCS_ = {
         });
         finish = { granted: done.granted, revoked: done.revoked, shared: done.shared, unmatched: acc.unmatched };
       }
-      try { CacheService.getScriptCache().remove('ir_index3'); } catch (e) {}
+      try { irDropIndex_(); } catch (e) {}
       apiLog_(me, 'IR closed move', moved + ' moved, ' + failed.length + ' failed, ' + left + ' left' + (finish ? '; access: +' + finish.granted + ' admin/DC, -' + finish.revoked + ' removed, ' + finish.shared + ' engineer folders shared' : ''));
       return { moved: moved, left: left, failed: failed.slice(0, 30), failedN: failed.length, finish: finish };
     } finally { lock.releaseLock(); }
@@ -784,7 +817,7 @@ const IR_ADMIN_FUNCS_ = {
         out.push({ id: String(x[0]), ok: true, sorted: !!info, path: irPathLabel_(info, day) });
       } catch (e) { out.push({ id: String(x[0]), ok: false }); }
     });
-    try { CacheService.getScriptCache().remove('ir_index3'); } catch (e) {}
+    try { irDropIndex_(); } catch (e) {}
     apiLog_(me, 'IR files', 'Open / auto sort / ' + day + ' / ' + out.filter(o => o.ok).length + ' files' + (un ? ', ' + un + ' unsorted' : '') + (replaced ? ', ' + replaced + ' replaced' : ''));
     return { files: out, replaced: replaced };
   },
@@ -811,7 +844,7 @@ const IR_ADMIN_FUNCS_ = {
       const old = dest.getFilesByName(file.getName());
       while (old.hasNext()) { const o = old.next(); if (o.getId() !== file.getId()) o.setTrashed(true); }
       file.moveTo(dest);
-      try { CacheService.getScriptCache().remove('ir_index3'); } catch (e) {}
+      try { irDropIndex_(); } catch (e) {}
       apiLog_(me, 'IR file moved', file.getName() + ' > Open / ' + irPathLabel_(info, day));
       return { path: irPathLabel_(info, day) };
     } finally { lock.releaseLock(); }
@@ -881,7 +914,7 @@ const IR_ADMIN_FUNCS_ = {
         } catch (e) { bad.push(String(id)); }
       });
     } finally { lock.releaseLock(); }
-    try { CacheService.getScriptCache().remove('ir_index3'); } catch (e) {}
+    try { irDropIndex_(); } catch (e) {}
     apiLog_(me, 'IR files re-organised', moved + ' moved' + (un ? ', ' + un + ' to Unsorted' : '') + (bad.length ? ', ' + bad.length + ' skipped' : ''));
     return { moved: moved, unsorted: un, bad: bad };
   },
@@ -915,7 +948,7 @@ const IR_ADMIN_FUNCS_ = {
     const file = DriveApp.getFileById(String(a[0] || ''));
     if (!irInside_(file, root)) throw new Error('File not found.');
     file.setTrashed(true);
-    CacheService.getScriptCache().remove('ir_index3');
+    irDropIndex_();
     apiLog_(me, 'IR file removed', file.getName());
     return true;
   }

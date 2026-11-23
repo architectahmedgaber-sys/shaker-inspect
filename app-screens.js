@@ -14,7 +14,7 @@
     const live = (t => () => t === tabTok)(tabTok);
     const hit = aGet(fn, args);
     if (hit) { try { draw(hit); } catch (e) {} }
-    return api(fn, args).then(v => { aPut(fn, args, v); if (live()) { const sy = hit && body() ? body().scrollTop : 0; draw(v); if (sy) body().scrollTop = sy; } }).catch(e => { if (live() && !hit) fail(e); });
+    return api(fn, args).then(v => { const same = hit && JSON.stringify(hit) === JSON.stringify(v); aPut(fn, args, v); if (live() && !same) { const sy = hit && body() ? body().scrollTop : 0; draw(v); if (sy) body().scrollTop = sy; } }).catch(e => { if (live() && !hit) fail(e); });
   }
   const SIGN = '<p class="shk-sign">architected by Ptah</p>';
   const fmtT = t => { const d = new Date(t); return isNaN(d) ? esc(t) : d.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); };
@@ -46,7 +46,7 @@
   function gotoTab(k) {
     adminTab = k;
     document.querySelectorAll('#scTabs button').forEach(b => { b.classList.toggle('on', b.dataset.tab === k); if (b.dataset.tab === k) b.scrollIntoView({ inline: 'center', block: 'nearest' }); });
-    tabTok++; if (!(k === 'today' && aGet('admin_overview'))) loading();
+    tabTok++; if (!((k === 'today' && aGet('admin_overview', [])) || (k === 'users' && aGet('admin_users', [])) || (k === 'perf' && aGet('admin_perf', [30])))) loading();
     dispatching = true;
     try { ({ today: tToday, users: tUsers, perf: tPerf, log: tLog, settings: tSettings, closes: () => Shk.admCloses(), trash: () => Shk.admTrash(), acc: () => Shk.admAcc(), ir: () => Shk.admIr(), dc: () => Shk.admDcToday() })[k](); } finally { dispatching = false; }
   }
@@ -67,7 +67,7 @@
   }
 
   function tUsers() {
-    api('admin_users').then(rows => {
+    cachedTab('admin_users', [], rows => {
       const pend = rows.filter(u => u.status === 'pending');
       const others = rows.filter(u => u.status !== 'pending');
       const roleSel = (id, cur) => `<select id="${id}" class="sc-in">${['Engineer', 'Viewer', 'DC', 'Admin'].map(r => `<option${r === cur ? ' selected' : ''}>${r}</option>`).join('')}</select>`;
@@ -91,7 +91,7 @@
           <small class="hint">Use this for the current engineers so their old tabs are linked before sign-up opens.</small></div>${SIGN}`;
       body().dataset.users = JSON.stringify(rows);
       if (Shk.admUsersExtra) Shk.admUsersExtra(rows);
-    }).catch(fail);
+    });
   }
 
   function manageUser(email) {
@@ -120,7 +120,7 @@
 
   function tPerf(days) {
     days = days || 30;
-    api('admin_perf', [days]).then(o => {
+    cachedTab('admin_perf', [days], o => {
       const max = Math.max(1, ...o.series.map(s => s.n));
       const bars = o.series.map(s => `<i title="${s.d}: ${s.n}" style="height:${Math.round(s.n / max * 100)}%"></i>`).join('');
       body().innerHTML = `
@@ -136,7 +136,7 @@
         }).join('') : '<div class="sc-empty">No closes recorded in this period yet.</div>'}</div>
         <small class="hint">Engineer counts come from the closes made through the app.</small>${SIGN}`;
       if (Shk.admPerfExtra) Shk.admPerfExtra(days, o);
-    }).catch(fail);
+    });
   }
 
   function tLog() {
