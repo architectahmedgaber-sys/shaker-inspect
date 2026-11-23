@@ -1,8 +1,10 @@
 {
- "version": "1.0.66",
- "build": 66,
+ "version": "1.0.69",
+ "build": 69,
  "notes": [
-  "New: every Engineer and Admin can use the professional-wording button in the close screen with their OWN Anthropic API key (asked once, stored encrypted on the device only, billed to the person). No Apps Script change."
+  "New: quick search button on every screen (or press / on a laptop): type an IR number, villa number or company and open the request in one tap.",
+  "Faster: the app opens from the phone copy at once, and long lists draw their first rows immediately.",
+  "The web app now updates itself when a new version is released (no more More > Check for updates). No Apps Script change."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
