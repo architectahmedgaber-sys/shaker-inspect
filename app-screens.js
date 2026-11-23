@@ -3,6 +3,19 @@
   const $ = id => document.getElementById(id);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const api = (fn, args) => PtahApp.call(fn, args || []);
+  // Tab race guard: every tab switch gets a new number. An answer that comes back for an older tab is dropped, so the content always matches the tab that is highlighted.
+  window.Shk = window.Shk || {}; let tabTok = 0, dispatching = false;
+  Shk.tabLive = () => { if (!dispatching) return null; const t = tabTok; return () => t === tabTok; };
+  // Last answer of a heavy admin tab, kept per person on this phone, so the tab paints at once and refreshes behind it.
+  const akey = (fn, args) => 'shkA:' + (PtahApp.email() || '') + ':' + fn + ':' + JSON.stringify(args || []);
+  const aGet = (fn, args) => { try { const h = JSON.parse(localStorage.getItem(akey(fn, args)) || 'null'); return h ? h.v : null; } catch (e) { return null; } };
+  const aPut = (fn, args, v) => { try { localStorage.setItem(akey(fn, args), JSON.stringify({ t: Date.now(), v })); } catch (e) {} };
+  function cachedTab(fn, args, draw) {
+    const live = (t => () => t === tabTok)(tabTok);
+    const hit = aGet(fn, args);
+    if (hit) { try { draw(hit); } catch (e) {} }
+    return api(fn, args).then(v => { aPut(fn, args, v); if (live()) { const sy = hit && body() ? body().scrollTop : 0; draw(v); if (sy) body().scrollTop = sy; } }).catch(e => { if (live() && !hit) fail(e); });
+  }
   const SIGN = '<p class="shk-sign">architected by Ptah</p>';
   const fmtT = t => { const d = new Date(t); return isNaN(d) ? esc(t) : d.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); };
   const toast = m => { const t = $('toast'), x = $('toastMsg'); if (!t) return alert(m); x.textContent = m; $('toastBtn').style.display = 'none'; t.classList.add('show'); setTimeout(() => { t.classList.remove('show'); $('toastBtn').style.display = ''; }, 2600); };
@@ -13,7 +26,7 @@
       (tabsHtml ? `<nav class="sc-tabs" id="scTabs">${tabsHtml}</nav>` : '') + `<main class="sc-body" id="scBody">${bodyHtml || ''}</main>`;
     s.classList.add('open'); document.body.classList.add('scr-open'); document.body.classList.toggle('scr-sheet', mode === 'sheets');
   }
-  function closeScreen() { $('shkScreen').classList.remove('open'); $('shkScreen').innerHTML = ''; document.body.classList.remove('scr-open', 'scr-sheet'); }
+  function closeScreen() { tabTok++; $('shkScreen').classList.remove('open'); $('shkScreen').innerHTML = ''; document.body.classList.remove('scr-open', 'scr-sheet'); }
   const body = () => $('scBody');
   const loading = () => { body().scrollTop = 0; body().innerHTML = '<div class="sc-load"><i></i><i></i><i></i></div>'; };
   const fail = e => { body().innerHTML = `<div class="sc-empty">${esc(e.message || e)}</div>`; };
@@ -33,12 +46,13 @@
   function gotoTab(k) {
     adminTab = k;
     document.querySelectorAll('#scTabs button').forEach(b => { b.classList.toggle('on', b.dataset.tab === k); if (b.dataset.tab === k) b.scrollIntoView({ inline: 'center', block: 'nearest' }); });
-    loading();
-    ({ today: tToday, users: tUsers, perf: tPerf, log: tLog, settings: tSettings, closes: () => Shk.admCloses(), trash: () => Shk.admTrash(), acc: () => Shk.admAcc(), ir: () => Shk.admIr(), dc: () => Shk.admDcToday() })[k]();
+    tabTok++; if (!(k === 'today' && aGet('admin_overview'))) loading();
+    dispatching = true;
+    try { ({ today: tToday, users: tUsers, perf: tPerf, log: tLog, settings: tSettings, closes: () => Shk.admCloses(), trash: () => Shk.admTrash(), acc: () => Shk.admAcc(), ir: () => Shk.admIr(), dc: () => Shk.admDcToday() })[k](); } finally { dispatching = false; }
   }
 
   function tToday() {
-    api('admin_overview').then(o => {
+    cachedTab('admin_overview', [], o => {
       body().innerHTML = `
         <div class="kpis"><div class="kpi"><b>${o.open}</b><span>Open</span></div><div class="kpi ${o.late ? 'bad' : ''}"><b>${o.late}</b><span>Late</span></div><div class="kpi ok"><b>${o.closedToday}</b><span>Closed today</span></div></div>
         <h3 class="sc-h">By contractor</h3>
@@ -49,7 +63,7 @@
         <div class="card-list">${o.lateItems.length ? o.lateItems.map(i => `<div class="row col"><b class="mono">${esc(i.ir)} · Rev ${esc(i.rev)}</b><span>${esc(i.text)}</span><small>${esc(i.contractor)}${i.age != null ? ' · waiting ' + i.age + ' days' : ''}</small></div>`).join('') : '<div class="sc-empty">No late requests.</div>'}</div>
         <h3 class="sc-h">Latest closes</h3>
         <div class="card-list">${o.latest.length ? o.latest.map(l => `<div class="row col"><b>${esc(l.engineer)}</b><span class="mono small">${esc(l.detail)}</span><small>${fmtT(l.t)}</small></div>`).join('') : '<div class="sc-empty">No closes recorded yet.</div>'}</div>${SIGN}`;
-    }).catch(fail);
+    });
   }
 
   function tUsers() {

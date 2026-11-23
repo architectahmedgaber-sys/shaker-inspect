@@ -49,7 +49,9 @@
   }
 
   function call(fn, args, onUp) {
-    return new Promise((resolve, reject) => {
+    const live = window.Shk && Shk.tabLive ? Shk.tabLive() : null;   // an admin tab opened a call: if the user has moved to another tab meanwhile, drop the answer
+    return new Promise((res, rej) => {
+      const resolve = v => { if (!live || live()) res(v); }, reject = e => { if (!live || live()) rej(e); };
       const job = { fn: PREFIX + fn, args, resolve, reject, onUp };
       if (!session) { waiting.push(job); if (STANDALONE) location.replace('./'); else showLogin(); return; }
       if (session.status !== 'approved') { waiting.push(job); showStatus(); return; }
