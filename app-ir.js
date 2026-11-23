@@ -223,6 +223,7 @@
     if (k === 'st') { const st = getSt(); const i = b.dataset.i; if (st[i] === b.dataset.v) delete st[i]; else st[i] = b.dataset.v; setSt(st); return paintPrereq(); }
     if (k === 'codec') return applyCodeC();
     if (k === 'folders') return openFolders(cur && getProjectKey(cur));
+    if (k === 'dctoday') { if (window.closeModal) try { closeModal(); } catch (e) {} return Shk.openAdmin('dc'); }
     if (k === 'admin') { if (window.closeModal) try { closeModal(); } catch (e) {} return Shk.openAdmin('ir'); }
   }
 
@@ -747,7 +748,64 @@
     }
     const q = ev.target.closest && ev.target.closest('[data-ir="adminopen"]'); if (q) { if (window.closeModal && document.querySelector('.modal-overlay.open')) try { closeModal(); } catch (e) {} Shk.openAdmin('ir'); }
   });
-  Object.assign(window.Shk = window.Shk || {}, { admIr: admIr });
+
+  // ---------------------------------------------------------------- DC / Admin "Files today": uploaded, closed, still to sort - on one page
+  const dayStart = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  let todayGroups = [];
+  async function admDcToday() {
+    const b = $('scBody'); if (!b) return;
+    const day = today();
+    b.innerHTML = '<div class="sc-load"><i></i><i></i><i></i></div>';
+    const [ix, cl] = await Promise.all([
+      loadIndex(true).catch(e => ({ err: e })),
+      api('ir_today', [day]).catch(e => ({ err: e }))
+    ]);
+    if (!$('scBody') || $('scBody') !== b) return;
+    const files = Array.isArray(ix) ? ix : null;
+    const up = files ? files.filter(f => f.co && f.co !== 'UNSORTED' && f.t >= dayStart()) : [];
+    const uns = files ? files.filter(f => f.co === 'UNSORTED') : [];
+    const unsToday = uns.filter(f => f.t >= dayStart()).length;
+    const groups = cl && !cl.err ? (cl.groups || []) : null;
+    todayGroups = groups || [];
+    const nClosed = groups ? groups.reduce((a, g) => a + g.n, 0) : null;
+    const byCo = {}; up.forEach(f => { (byCo[f.co] = byCo[f.co] || []).push(f); });
+    const coName = k => (COMPANIES.find(c => c[0] === k) || [0, k])[1];
+    const kpi = (n, l, cls) => `<div class="kpi ${cls || ''}"><b>${n == null ? '–' : n}</b><span>${l}</span></div>`;
+    const closedHtml = groups ? (groups.length ? groups.map((g, i) => `<div class="ir-co"><b>${esc(g.coName)} · ${esc(g.eng)} · ${g.n}</b>
+        <div class="ir-share-row"><button type="button" class="ir-big" data-ircopy="${esc(g.url)}">📋 ${t('Copy link', 'انسخ اللينك')}</button>
+        <button type="button" class="ir-big" data-irshare="${esc(g.url)}" data-irday="${esc(day)}">📤 ${t('Share', 'شارك')}</button>
+        <button type="button" class="ir-big" data-irwa="${esc(g.url)}" data-irday="${esc(day)}">💬 WhatsApp</button>
+        <a class="ir-big" href="${esc(g.url)}" target="_blank" rel="noopener">📁 ${t('Open', 'افتح')}</a></div>
+        <small class="ir-hint">${g.names.slice(0, 6).map(esc).join(' · ')}${g.n > 6 ? ' …' : ''}</small></div>`).join('') +
+        `<div class="ir-share-row"><button type="button" class="ir-big" data-irtoday="share">📤 ${t('Share all closed folders of today', 'شارك كل فولدرات المقفول النهارده')}</button><button type="button" class="ir-big" data-irtoday="wa">💬 WhatsApp</button></div>`
+        : `<div class="sc-empty">${t('Nothing closed from the app yet today.', 'لسه مفيش حاجة اتقفلت من الأبليكيشن النهارده.')}</div>`)
+      : `<div class="sc-empty">${/Unknown function/i.test(String(cl && cl.err && cl.err.message)) ? t('This list needs the new IrFiles.gs (paste it and make a New version).', 'القايمة دي محتاجة IrFiles.gs الجديد (الصقه واعمل New version).') : esc((cl && cl.err && cl.err.message) || '')}</div>`;
+    const upHtml = files ? (Object.keys(byCo).length ? Object.keys(byCo).map(k => `<div class="row col"><b>${esc(coName(k))} · ${byCo[k].length}</b><small>${byCo[k].slice(0, 6).map(f => esc(f.name)).join(' · ')}${byCo[k].length > 6 ? ' …' : ''}</small></div>`).join('') : `<div class="sc-empty">${t('Nothing uploaded today.', 'مفيش حاجة اترفعت النهارده.')}</div>`) : `<div class="sc-empty">${esc((ix && ix.err && ix.err.message) || '')}</div>`;
+    const unsHtml = uns.length ? `<div class="row col"><b class="mono">${uns.length} ${t('files need a company and discipline', 'ملف محتاج شركة وتخصص')}${unsToday ? ' · ' + unsToday + ' ' + t('from today', 'من النهارده') : ''}</b>
+        <small>${uns.slice(0, 5).map(f => esc(f.name)).join(' · ')}${uns.length > 5 ? ' …' : ''}</small>
+        <button type="button" class="ir-big" data-ir="admin">✎ ${t('Sort them now', 'رتّبهم دلوقتي')}</button></div>` : `<div class="sc-empty">✓ ${t('Everything is sorted.', 'كله مترتب.')}</div>`;
+    b.innerHTML = `<div class="kpis">${kpi(files ? up.length : null, t('Uploaded today', 'اترفع النهارده'))}${kpi(nClosed, t('Closed today', 'اتقفل النهارده'), 'ok')}${kpi(files ? uns.length : null, t('To sort', 'محتاج ترتيب'), uns.length ? 'bad' : '')}</div>
+      <h3 class="sc-h">${t('Closed today', 'اتقفل النهارده')}</h3>${closedHtml}
+      <h3 class="sc-h">${t('Still to sort', 'لسه محتاج ترتيب')}</h3><div class="card-list">${unsHtml}</div>
+      <h3 class="sc-h">${t('Uploaded today', 'اترفع النهارده')}</h3><div class="card-list">${upHtml}</div>
+      <div class="btnrow"><button type="button" class="ir-lnk" data-irtoday="go">⬆ ${t('Upload IR files', 'ارفع ملفات IR')}</button><button type="button" class="ir-lnk" data-irtoday="re">⟳ ${t('Refresh', 'حدّث')}</button></div><p class="shk-sign">architected by Ptah</p>`;
+  }
+  // one message with the link of every folder closed today (phone share sheet, WhatsApp, or copy)
+  async function shareAllToday(wa) {
+    if (!todayGroups.length) return;
+    const text = t('IR files closed', 'ملفات الـ IR اللي اتقفلت') + ' · ' + today() + '\n' + todayGroups.map(g => g.coName + ' · ' + g.eng + ' (' + g.n + '): ' + g.url).join('\n');
+    if (wa) { window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener'); return; }
+    if (navigator.share) { try { await navigator.share({ title: t('IR files closed', 'ملفات الـ IR اللي اتقفلت'), text: text }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    copyLink(text);
+  }
+  document.addEventListener('click', ev => {
+    const x = ev.target.closest && ev.target.closest('[data-irtoday]'); if (!x) return;
+    const k = x.dataset.irtoday;
+    if (k === 'share' || k === 'wa') return shareAllToday(k === 'wa');
+    if (k === 'go') return Shk.openAdmin('ir');
+    if (k === 're') return admDcToday();
+  });
+  Object.assign(window.Shk = window.Shk || {}, { admIr: admIr, admDcToday: admDcToday });
 
   Object.assign(window.Shk, { ir: { loadIndex, filesFor, loadPdfJs, b64bytes, projectKey: getProjectKey, openFolders, paintUp, copyLink, shareFolder, shareLatest } });
 
@@ -758,6 +816,7 @@
       const q = $('dxQuick'); if (!q) return;
       if (!q.querySelector('[data-ir="folders"]')) q.insertAdjacentHTML('beforeend', `<button type="button" data-ir="folders"><i>📁</i>${t('IR folder', 'فولدر IR')}</button>`);
       if (!q.querySelector('[data-irsharelast]')) q.insertAdjacentHTML('beforeend', `<button type="button" data-irsharelast="1"><i>🔗</i>${t('Share closed folder', 'شارك فولدر المقفول')}</button>`);
+      if (isAdmin() && !q.querySelector('[data-ir="dctoday"]')) q.insertAdjacentHTML('beforeend', `<button type="button" data-ir="dctoday"><i>📋</i>${t('Files today', 'ملفات النهارده')}</button>`);
       if (isAdmin() && !q.querySelector('[data-ir="adminopen"]')) q.insertAdjacentHTML('beforeend', `<button type="button" data-ir="adminopen"><i>⬆</i>${t('Upload IR', 'ارفع IR')}</button>`);
     } catch (e) { console.warn(e); }
   }

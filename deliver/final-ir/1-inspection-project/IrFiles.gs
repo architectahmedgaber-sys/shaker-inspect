@@ -407,6 +407,28 @@ const IR_FUNCS_ = {
     } finally { lock.releaseLock(); }
   },
 
+  // DC / Admin "Today": what was closed from the app on one day (a=[day YYYY-MM-DD], the phone's own date).
+  // One row per company + engineer that has a folder for that day, with the link of that day's folder and the file names.
+  ir_today: (me, a) => {
+    if (!irIsFull_(me)) throw new Error('Admin or DC only.');
+    const day = String((a && a[0]) || '');
+    if (!IR_DAY_RE.test(day)) throw new Error('Bad day.');
+    const root = irRoot_(false), closed = root && irSub_(root, IR_CLOSED, false), groups = [];
+    if (closed) Object.keys(IR_COMPANIES).forEach(k => {
+      const c = irSub_(closed, IR_COMPANIES[k], false); if (!c) return;
+      const es = c.getFolders();
+      while (es.hasNext()) {
+        const e = es.next(); if (e.isTrashed() || IR_DAY_RE.test(e.getName())) continue;
+        const d = irSub_(e, day, false); if (!d) continue;
+        const names = [], fs = d.getFiles();
+        while (fs.hasNext() && names.length < 60) names.push(fs.next().getName());
+        if (names.length) groups.push({ co: k, coName: IR_COMPANIES[k], eng: e.getName(), url: d.getUrl(), n: names.length, names: names });
+      }
+    });
+    groups.sort((x, y) => x.coName < y.coName ? -1 : x.coName > y.coName ? 1 : x.eng.toLowerCase() < y.eng.toLowerCase() ? -1 : 1);
+    return { day: day, groups: groups };
+  },
+
   // the file itself, as base64, only if it is inside the IR folder
   // BIG FILES: one piece of a file (a=[file id, start byte, length]); the app asks for up to 4 pieces at once. Pieces come from the Drive API with a Range header.
   ir_getChunk: (me, a) => {
