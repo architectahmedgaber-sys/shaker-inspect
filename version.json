@@ -1,6 +1,6 @@
 {
- "version": "1.0.61",
- "build": 61,
+ "version": "1.0.62",
+ "build": 62,
  "notes": [
   "New: every Engineer and Admin can use the professional-wording button in the close screen with their OWN Anthropic API key (asked once, stored encrypted on the device only, billed to the person). No Apps Script change."
  ],
