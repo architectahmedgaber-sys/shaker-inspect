@@ -329,7 +329,7 @@
           <label>${t('Work of the day', 'شغل يوم')}<input type="date" id="irDay" class="sc-in" value="${today()}"></label></div>
         <div class="btnrow"><label class="ir-pick" id="irPickLab"><input type="file" id="irPick" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/*" multiple hidden>${t('Choose files', 'اختار الملفات')}</label></div>
         <div id="irUp" class="small" style="margin-top:8px"></div></div>
-      ${PtahApp.role() === 'Admin' ? `<div class="card" id="irMig"><b>${t('Closed folders', 'فولدرات Closed')}</b>
+      ${(PtahApp.role() === 'Admin' || PtahApp.role() === 'DC') ? `<div class="card" id="irMig"><b>${t('Closed folders', 'فولدرات Closed')}</b>
         <p class="small" style="margin:6px 0 8px">${t('One-time move of the old closed files to Closed / Company / Engineer / Date. Press Review first: nothing moves until you approve the list.', 'نقل مرة واحدة للملفات المقفولة القديمة إلى Closed / الشركة / المهندس / التاريخ. اضغط Review الأول: مفيش حاجة بتتنقل غير لما توافق على القايمة.')}</p>
         <div class="btnrow"><button type="button" class="ir-lnk" data-irmig="plan">${t('Review', 'Review')}</button></div><div id="irMigOut" class="small" style="margin-top:8px"></div></div>` : ''}
       <div id="irReorg"></div><div id="irList"><div class="sc-load"><i></i><i></i><i></i></div></div><p class="shk-sign">architected by Ptah</p>`;
