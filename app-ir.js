@@ -807,7 +807,7 @@
   });
   Object.assign(window.Shk = window.Shk || {}, { admIr: admIr, admDcToday: admDcToday });
 
-  Object.assign(window.Shk, { ir: { loadIndex, filesFor, loadPdfJs, b64bytes, projectKey: getProjectKey, openFolders, paintUp, copyLink, shareFolder, shareLatest } });
+  Object.assign(window.Shk, { ir: { loadIndex, peekIndex: () => index, filesFor, loadPdfJs, b64bytes, projectKey: getProjectKey, openFolders, paintUp, copyLink, shareFolder, shareLatest } });
 
   // home: quick buttons (everybody gets "IR folder", admins and DC also get "Upload IR").
   // The home screen rebuilds its button row now and then, so the buttons are put back whenever they are missing.
