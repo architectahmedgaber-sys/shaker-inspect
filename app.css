@@ -458,3 +458,8 @@ body:not(.at-home) #refreshBtn { display: inline-flex !important; }
 .ir-done a, .ir-done button { background: rgba(201,162,39,.18); color: #f3d77a; border: 1px solid #c9a227; border-radius: 999px; padding: 6px 12px; font: 600 13px system-ui, sans-serif; text-decoration: none; cursor: pointer; }
 .ir-done button[data-irdx] { margin-inline-start: auto; background: none; border-color: transparent; color: #fff; }
 .ir-sheet [data-ircopy] { display: inline-block; margin-top: 6px; }
+/* IR auto sort: inline fix form under a file row */
+[data-irrow] { flex-wrap: wrap; }
+.ir-fix { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.ir-fix label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.ir-fix .sc-in { min-width: 0; max-width: 150px; }
