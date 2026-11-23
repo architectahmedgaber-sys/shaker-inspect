@@ -340,9 +340,11 @@
       const esc = x => String(x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
       card.innerHTML = `<b>${t('✓ IR form filled and saved in Closed on Drive.', '✓ فورم الـ IR اتملا واتحفظ في Closed على الدرايف.')}</b>
         <span><a href="${esc(r.engUrl || r.url)}" target="_blank" rel="noopener">${t('Open my folder', 'افتح فولدري')}</a>
-        <button type="button" data-ircopy="${esc(r.url)}">${t('Copy link', 'انسخ اللينك')}</button>
+        <button type="button" data-ircopy="${esc(r.url)}">📋 ${t('Copy link', 'انسخ اللينك')}</button>
+        <button type="button" data-irshare="${esc(r.url)}">📤 ${t('Share', 'شارك')}</button>
+        <button type="button" data-irwa="${esc(r.url)}">💬 WhatsApp</button>
         <button type="button" data-irdx="1" aria-label="Close">✕</button></span>`;
-      card.style.display = ''; clearTimeout(cardT); cardT = setTimeout(() => { card.style.display = 'none'; }, 15000);
+      card.style.display = ''; clearTimeout(cardT); cardT = setTimeout(() => { card.style.display = 'none'; }, 45000);
       return true;
     } catch (e) { return false; }
   }
