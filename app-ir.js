@@ -282,6 +282,8 @@
   }
 
   // ---------------------------------------------------------------- admin screen: IR files
+  const DISCS = [['ARC', 'Architectural · معماري'], ['STR', 'Structural · إنشائي'], ['MEC', 'Mechanical · ميكانيكا'], ['ELE', 'Electrical · كهرباء'], ['PLU', 'Plumbing · سباكة'], ['HVAC', 'HVAC · تكييف'], ['FF', 'Fire Fighting · حريق'], ['CIV', 'Civil · مدني'], ['LAN', 'Landscape · لاندسكيب'], ['INT', 'Interior · ديكور']];
+  const discOpts = sel => DISCS.map(d => `<option value="${d[0]}"${d[0] === sel ? ' selected' : ''}>${esc(d[1])}</option>`).join('');
   const COMPANIES = [['SH', 'SH · EL-Shorouk'], ['SQ', 'SQ · Square'], ['AT', 'AT · Alexandria'], ['OTHER', 'Other']];
   const lsGet = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
@@ -326,20 +328,21 @@
     b.innerHTML = `<h3 class="sc-h">${t('IR files', 'ملفات الـ IR')}</h3>
       <div class="card"><p class="small" style="margin:0 0 8px">${t('Download the IR files from ACC (PDF or pictures) and choose them here, all companies together, many at once. The app reads each file name (like CP2C-CN-SH-CIR-ARC-14688) and files it by itself under company / discipline / CIR or MIR / day. A name it cannot read goes to Unsorted and you are told right after the upload. The app matches each file to its request by the IR number inside the file name. Attachments that have the same number in the name show up beside it.', 'نزّل ملفات الـ IR من ACC (PDF أو صور) واختارها هنا مرة واحدة من كل الشركات. الأبليكيشن بيقرا اسم كل ملف (زي CP2C-CN-SH-CIR-ARC-14688) ويحطه لوحده في الشركة / التخصص / CIR أو MIR / اليوم. الاسم اللي ما يعرفوش بيروح فولدر Unsorted وبينبهك بعد الرفع مباشرة. الأبليكيشن بيربط كل ملف بالطلب من رقم الـ IR في اسم الملف. المرفقات اللي فيها نفس الرقم في الاسم بتظهر جنبه.')}</p>
         <div class="ir-sel"><label>${t('Company', 'الشركة')}<select id="irCo" class="sc-in"><option value="AUTO">${t('Auto: sort by file name', 'تلقائي: حسب اسم الملف')}</option>${COMPANIES.map(c => `<option value="${c[0]}"${lsGet('shkIrCo') === c[0] ? ' selected' : ''}>${esc(c[1])}</option>`).join('')}</select></label>
-          <label>${t('Work of the day', 'شغل يوم')}<input type="date" id="irDay" class="sc-in" value="${today()}"></label></div>
+          <label>${t('Work of the day', 'شغل يوم')}<input type="date" id="irDay" class="sc-in" value="${today()}"></label>
+          <label id="irDiscLab">${t('Discipline for files with none in the name', 'التخصص للملفات اللي مفيهاش تخصص في الاسم')}<select id="irDisc" class="sc-in">${discOpts(lsGet('shkIrDisc') || 'ARC')}</select></label></div>
         <div class="btnrow"><label class="ir-pick" id="irPickLab"><input type="file" id="irPick" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/*" multiple hidden>${t('Choose files', 'اختار الملفات')}</label></div>
         <div id="irUp" class="small" style="margin-top:8px"></div></div>
       ${(PtahApp.role() === 'Admin' || PtahApp.role() === 'DC') ? `<div class="card" id="irMig"><b>${t('Closed folders', 'فولدرات Closed')}</b>
         <p class="small" style="margin:6px 0 8px">${t('One-time move of the old closed files to Closed / Company / Engineer / Date. Press Review first: nothing moves until you approve the list.', 'نقل مرة واحدة للملفات المقفولة القديمة إلى Closed / الشركة / المهندس / التاريخ. اضغط Review الأول: مفيش حاجة بتتنقل غير لما توافق على القايمة.')}</p>
         <div class="btnrow"><button type="button" class="ir-lnk" data-irmig="plan">${t('Review', 'Review')}</button></div><div id="irMigOut" class="small" style="margin-top:8px"></div></div>` : ''}
       <div id="irReorg"></div><div id="irList"><div class="sc-load"><i></i><i></i><i></i></div></div><p class="shk-sign">architected by Ptah</p>`;
-    const gate = () => { const ok = !!$('irCo').value && !!$('irDay').value; $('irPickLab').classList.toggle('off', !ok); $('irPick').disabled = !ok; try { lsSet('shkIrCo', $('irCo').value); } catch (e) {} };
-    $('irCo').onchange = $('irDay').onchange = gate; gate();
+    const gate = () => { const ok = !!$('irCo').value && !!$('irDay').value; $('irPickLab').classList.toggle('off', !ok); $('irPick').disabled = !ok; try { lsSet('shkIrCo', $('irCo').value); lsSet('shkIrDisc', $('irDisc').value); } catch (e) {} $('irDiscLab').style.display = $('irCo').value === 'AUTO' ? '' : 'none'; };
+    $('irCo').onchange = $('irDay').onchange = $('irDisc').onchange = gate; gate();
     $('irPick').onchange = async e => {
       const files = Array.from(e.target.files || []); e.target.value = '';
       const co = $('irCo').value, day = $('irDay').value;
       if (!co || !day) { $('irUp').textContent = t('Choose the company and the day first.', 'اختار الشركة واليوم الأول.'); return; }
-      const out = $('irUp'); let ok = 0, fast = 0, finished = 0; const bad = [], unsorted = []; const auto = co === 'AUTO';
+      const out = $('irUp'); let ok = 0, fast = 0, finished = 0; const bad = [], unsorted = []; const auto = co === 'AUTO', dflt = $('irDisc').value || 'ARC', guessed = [];
       // up to 3 files at once; each one goes straight to Drive (fast) and falls back to the old way through the server
       const st = files.map(f => ({ name: f.name, size: f.size || 1, sent: 0, phase: 'wait' }));
       const paint = () => paintBatch(out, st, finished);
@@ -347,8 +350,9 @@
         st[i].phase = 'read'; paint();
         const b64 = await toB64(f);
         st[i].phase = 'send'; paint();
-        const rr = await PtahApp.call('admin_irUpload', [f.name, b64, co, day], (fr, done) => { st[i].sent = st[i].size * (done ? 0.95 : fr * 0.95); st[i].phase = done ? 'save' : 'send'; paint(); });
+        const rr = await PtahApp.call('admin_irUpload', [f.name, b64, co, day, dflt], (fr, done) => { st[i].sent = st[i].size * (done ? 0.95 : fr * 0.95); st[i].phase = done ? 'save' : 'send'; paint(); });
         if (auto && rr && rr.sorted === false) unsorted.push(f.name);
+        if (auto && rr && rr.guessed) guessed.push(f.name);
       };
       // links for a whole chunk of files in ONE server call (fast); if the server is older, one call per file; if that fails too, the old way
       const chunkP = {}, batchOk = { v: true }, pend = [], flushing = [];
@@ -357,7 +361,7 @@
         const c = Math.floor(i / LINK_CHUNK);
         if (!chunkP[c]) {
           const part = files.slice(c * LINK_CHUNK, (c + 1) * LINK_CHUNK);
-          chunkP[c] = (auto ? PtahApp.call('admin_irUploadStartAuto', [part.map(f => [f.name, f.size]), day, location.origin]) : PtahApp.call('admin_irUploadStartBatch', [part.map(f => [f.name, f.size]), co, day, location.origin])).then(rs => { if (auto) (rs || []).forEach((x, k) => { if (x && x.sorted === false) unsorted.push(part[k].name); }); return rs; }).catch(er => { if (er && er.net) throw er; batchOk.v = false; return null; });
+          chunkP[c] = (auto ? PtahApp.call('admin_irUploadStartAuto', [part.map(f => [f.name, f.size]), day, location.origin, dflt]) : PtahApp.call('admin_irUploadStartBatch', [part.map(f => [f.name, f.size]), co, day, location.origin])).then(rs => { if (auto) (rs || []).forEach((x, k) => { if (x && x.sorted === false) unsorted.push(part[k].name); else if (x && x.guessed) guessed.push(part[k].name); }); return rs; }).catch(er => { if (er && er.net) throw er; batchOk.v = false; return null; });
         }
         const r = await chunkP[c];
         return r && r[i - c * LINK_CHUNK] && r[i - c * LINK_CHUNK].url ? r[i - c * LINK_CHUNK].url : null;
@@ -365,7 +369,7 @@
       const flush = (all) => {
         while (pend.length >= (all ? 1 : DONE_CHUNK)) {
           const part = pend.splice(0, DONE_CHUNK);
-          flushing.push((auto ? PtahApp.call('admin_irUploadDoneAuto', [part.map(x => [x.id, x.name]), day]) : PtahApp.call('admin_irUploadDoneBatch', [part.map(x => [x.id, x.name]), co, day])).then(r => { (r.files || []).forEach((x, k) => { if (!x.ok) bad.push(part[k].name + ': ' + t('did not arrive on Drive', 'ماوصلش الدرايف')); }); }).catch(er => { bad.push(t('Could not confirm ', 'مقدرتش أأكد ') + part.length + t(' files: ', ' ملف: ') + (er.message || er)); }));
+          flushing.push((auto ? PtahApp.call('admin_irUploadDoneAuto', [part.map(x => [x.id, x.name]), day, dflt]) : PtahApp.call('admin_irUploadDoneBatch', [part.map(x => [x.id, x.name]), co, day])).then(r => { (r.files || []).forEach((x, k) => { if (!x.ok) bad.push(part[k].name + ': ' + t('did not arrive on Drive', 'ماوصلش الدرايف')); }); }).catch(er => { bad.push(t('Could not confirm ', 'مقدرتش أأكد ') + part.length + t(' files: ', ' ملف: ') + (er.message || er)); }));
         }
       };
       const one = async i => {
@@ -395,7 +399,8 @@
       await Promise.all(Array.from({ length: Math.min(UP_PARALLEL, files.length) }, async () => { while (next < files.length) await one(next++); }));
       flush(true); await Promise.all(flushing);
       out.innerHTML = `✓ ${ok} ${t('uploaded', 'اترفع')}` + (bad.length ? `<br><span class="bad">${bad.map(esc).join('<br>')}</span>` : '') + (ok && !fast && fastOff ? `<br><small class="ir-hint">${t('Uploaded the slower way (fast upload not available yet).', 'اترفع بالطريقة البطيئة (الرفع السريع لسه مش شغال).')}</small>` : '');
-      if (unsorted.length) out.innerHTML += `<div class="ir-warn" role="alert"><b>⚠ ${unsorted.length} ${t('file(s) went to Unsorted: the name was not recognised.', 'ملف راحوا Unsorted: الاسم مش معروف.')}</b><br>${unsorted.slice(0, 12).map(esc).join('<br>')}${unsorted.length > 12 ? '<br>…' : ''}<br><small>${t('Fix them below (Unsorted section): choose company, discipline and CIR / MIR.', 'صلّحهم تحت (قسم Unsorted): اختار الشركة والتخصص وCIR أو MIR.')}</small></div>`;
+      if (auto && ok) out.innerHTML += `<div class="ir-sum"><b>✓ ${ok - unsorted.length} ${t('sorted', 'اتصنفوا')}</b>${guessed.length ? ` <small>(${guessed.length} ${t('with the discipline you chose', 'بالتخصص اللي اخترته')}: ${esc((DISCS.find(d => d[0] === dflt) || [0, dflt])[1].split(' · ')[0])})</small>` : ''}${unsorted.length ? `<br><b class="bad">⚠ ${unsorted.length} ${t('need your choice (no company or no CIR/MIR in the name)', 'محتاجين اختيارك (مفيش شركة أو CIR/MIR في الاسم)')}</b><br><button type="button" class="ir-lnk" data-irfixall="1">${t('Fix them all', 'صلّحهم كلهم')}</button>` : ''}</div>`;
+      window.__irJustUnsorted = unsorted.slice();
       index = null; drawList();
     };
     drawList(); drawReorg();
@@ -445,10 +450,49 @@
         (() => {
           const un = r.files.filter(f => f.co === 'UNSORTED'), rest = r.files.filter(f => f.co !== 'UNSORTED');
           const row = f => `<div class="row" data-irrow="${esc(f.id)}"><span dir="auto">${esc(f.name)}<small class="ir-path">${esc(pathOf(f))}</small></span><span class="mono">${fmtSize(f.size)} <button type="button" class="ir-lnk" data-irfix="${esc(f.id)}" title="${t('Change company / discipline / type', 'غيّر الشركة / التخصص / النوع')}">✎</button> <button type="button" class="ir-lnk" data-irdel="${esc(f.id)}">✕</button></span></div>`;
-          return (un.length ? `<h4 class="ir-sec">⚠ Unsorted (${un.length})</h4><div class="card-list">${un.map(row).join('')}</div>` : '') +
+          const urow = f => `<div class="row" data-irrow="${esc(f.id)}"><label class="ir-ck"><input type="checkbox" data-irck="${esc(f.id)}"> <span dir="auto">${esc(f.name)}</span></label><span class="mono">${fmtSize(f.size)} <button type="button" class="ir-lnk" data-irfix="${esc(f.id)}" title="${t('Change company / discipline / type', 'غيّر الشركة / التخصص / النوع')}">✎</button> <button type="button" class="ir-lnk" data-irdel="${esc(f.id)}">✕</button></span></div>`;
+          return (un.length ? `<h4 class="ir-sec">⚠ Unsorted (${un.length})</h4><div class="card ir-bulk" id="irBulk"><div class="ir-sel"><label>${t('Search in names', 'دوّر في الأسماء')}<input class="sc-in" id="irBF" placeholder="SQ"></label><label class="ir-all"><span>&nbsp;</span><button type="button" class="ir-lnk" data-irall="1">${t('Select all shown', 'حدد المعروض كله')}</button></label></div>
+            <div class="ir-fix ir-sel"><label>${t('Company', 'الشركة')}<select class="sc-in" id="irBCo"><option value="">–</option>${COMPANIES.filter(c => c[0] !== 'OTHER').map(c => `<option value="${c[0]}">${esc(c[1])}</option>`).join('')}</select></label>
+            <label>${t('Discipline', 'التخصص')}<select class="sc-in" id="irBDisc">${discOpts(lsGet('shkIrDisc') || 'ARC')}</select></label>
+            <label>CIR / MIR<select class="sc-in" id="irBType"><option value="CIR">CIR</option><option value="MIR">MIR</option></select></label>
+            <label>${t('Day', 'اليوم')}<input type="date" class="sc-in" id="irBDay" value="${today()}"></label></div>
+            <div class="btnrow"><button type="button" class="ir-lnk" data-irbulk="1" id="irBGo">${t('Apply to selected', 'طبّق على المحدد')} (0)</button> <span class="small" id="irBMsg"></span></div></div><div class="card-list" id="irBList">${un.map(urow).join('')}</div>` : '') +
             `<div class="card-list">${rest.length ? rest.map(row).join('') : un.length ? '' : `<div class="sc-empty">${t('No files yet.', 'مفيش ملفات لسه.')}</div>`}</div>`;
         })();
     } catch (e) { el.innerHTML = `<div class="sc-empty">${esc(e.message || e)}</div>`; }
+  }
+  // BULK marking of the Unsorted files: tick many (or select all shown, or search by name) and set company / discipline / CIR-MIR / day once
+  const bulkRows = () => Array.from(document.querySelectorAll('#irBList [data-irrow]'));
+  const bulkIds = () => bulkRows().filter(r => r.querySelector('[data-irck]').checked).map(r => r.dataset.irrow);
+  function bulkSync() {
+    const sel = bulkRows().filter(r => r.querySelector('[data-irck]').checked), go = $('irBGo'); if (!go) return;
+    go.textContent = t('Apply to selected', 'طبّق على المحدد') + ' (' + sel.length + ')'; go.disabled = !sel.length;
+    // suggest company and CIR/MIR when every selected name says the same
+    const names = sel.map(r => r.querySelector('span[dir]').textContent.toUpperCase());
+    ['SH', 'SQ', 'AT'].forEach(c => { if (names.length && names.every(n => new RegExp('(^|[^A-Z0-9])' + c + '([^A-Z0-9]|$)').test(n))) $('irBCo').value = c; });
+    ['CIR', 'MIR'].forEach(c => { if (names.length && names.every(n => new RegExp('(^|[^A-Z0-9])' + c + '([^A-Z0-9]|$)').test(n))) $('irBType').value = c; });
+  }
+  document.addEventListener('input', ev => {
+    if (ev.target && ev.target.id === 'irBF') { const q = ev.target.value.trim().toUpperCase(); bulkRows().forEach(r => { r.style.display = !q || r.querySelector('span[dir]').textContent.toUpperCase().includes(q) ? '' : 'none'; }); }
+  });
+  document.addEventListener('change', ev => { if (ev.target && ev.target.matches && ev.target.matches('[data-irck]')) bulkSync(); });
+  // after an upload: tick the files that were not recognised and scroll to them
+  function fixAll() {
+    const names = window.__irJustUnsorted || [], box = $('irBulk'); if (!box) return;
+    bulkRows().forEach(r => { r.querySelector('[data-irck]').checked = names.length ? names.includes(r.querySelector('span[dir]').textContent) : true; });
+    bulkSync(); box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  async function bulkApply(btn) {
+    const ids = bulkIds(), co = $('irBCo').value, disc = $('irBDisc').value, type = $('irBType').value, day = $('irBDay').value, msg = $('irBMsg');
+    if (!ids.length) return;
+    if (!co) { msg.textContent = t('Choose the company first.', 'اختار الشركة الأول.'); return; }
+    if (!day) { msg.textContent = t('Choose the day.', 'اختار اليوم.'); return; }
+    try { lsSet('shkIrDisc', disc); } catch (e) {}
+    btn.disabled = true; let done = 0, fail = 0, next = 0;
+    const tick = () => { msg.textContent = (done + fail) + ' / ' + ids.length + '…'; };
+    await Promise.all([0, 1, 2].map(async () => { while (next < ids.length) { const id = ids[next++]; try { await api('admin_irMove', [id, co, disc, type, day]); done++; } catch (e) { fail++; } tick(); } }));
+    index = null; await drawList();
+    const m2 = $('irBMsg'); if (m2) m2.textContent = '✓ ' + done + (fail ? ' · ' + fail + ' ✕' : '');
   }
   // fix / reassign one file (admin and DC only; the server checks again)
   function fixForm(id) {
@@ -498,6 +542,9 @@
     const pl = ev.target.closest && ev.target.closest('[data-irplan]'); if (pl) return showPlan();
     const ap = ev.target.closest && ev.target.closest('[data-irapply]'); if (ap) return applyPlan(ap);
     const fx = ev.target.closest && ev.target.closest('[data-irfix]'); if (fx) return fixForm(fx.dataset.irfix);
+    const fa = ev.target.closest && ev.target.closest('[data-irfixall]'); if (fa) return fixAll();
+    const sa = ev.target.closest && ev.target.closest('[data-irall]'); if (sa) { bulkRows().forEach(r => { if (r.style.display !== 'none') r.querySelector('[data-irck]').checked = true; }); return bulkSync(); }
+    const bk = ev.target.closest && ev.target.closest('[data-irbulk]'); if (bk) return bulkApply(bk);
     const fg = ev.target.closest && ev.target.closest('[data-irfixgo]'); if (fg) {
       const w = fg.closest('.ir-fix'), msg = w.querySelector('[data-fmsg]'); fg.disabled = true; msg.textContent = '…';
       try {

@@ -41,6 +41,9 @@ const IR_OPEN = 'Open', IR_CLOSED = 'Closed', IR_UNSORTED = 'Unsorted';
 const IR_ENGINEER_ACCESS = 'view';        // 'view' or 'edit': what an engineer can do inside his own Closed folder (change here, then New version)
 // discipline code (as written in the file name) -> folder name. A code that is not here is still accepted and its own letters become the folder name.
 const IR_DISCS = { ARC: 'ARC - Architectural', STR: 'STR - Structural', ELE: 'ELE - Electrical', EL: 'EL - Electrical', MEC: 'MEC - Mechanical', MEP: 'MEP - MEP', PLU: 'PLU - Plumbing', HVAC: 'HVAC - HVAC', FF: 'FF - Fire Fighting', CIV: 'CIV - Civil', LAN: 'LAN - Landscape', INT: 'INT - Interior' };
+// other spellings of the same discipline -> the code used for the folder (Alexandria writes ARCH, so ARCH lands in the ARC - Architectural folder)
+const IR_DISC_ALIAS = { ARCH: 'ARC', ARCHI: 'ARC', STRUC: 'STR', STRUCT: 'STR', ELEC: 'ELE', MECH: 'MEC', PLUMB: 'PLU', FIRE: 'FF', LAND: 'LAN' };
+function irAlias_(c) { c = String(c || '').toUpperCase(); return IR_DISC_ALIAS[c] || c; }
 const IR_TYPES = { CIR: 'CIR', MIR: 'MIR' };
 const IR_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -77,12 +80,21 @@ function irClosedDir_(root, co, day, me, create) {
   return e && irSub_(e, day, create);
 }
 
-// Reads a file name like CP2C-CN-SH-CIR-ARC-14688 (rev / extra words after it are fine).
-// Returns { co: 'SH', type: 'CIR', disc: 'ARC', no: '14688' } or null when the name does not say company + CIR/MIR + discipline.
-function irParse_(name) {
-  const m = String(name || '').toUpperCase().match(/(?:^|[^A-Z0-9])([A-Z]{2})[-_ ]+(CIR|MIR)[-_ ]+([A-Z]{2,5})(?:[-_ ]+(\d{2,}))?/);
-  if (!m || !IR_COMPANIES[m[1]] || m[1] === 'OTHER') return null;
-  return { co: m[1], type: m[2], disc: m[3], no: m[4] || '' };
+// Reads a file name in any order: company (SH / SQ / AT) and CIR / MIR can be anywhere as separate pieces; the discipline (ARC, STR ...) is optional.
+// Works for CP2C-CN-SH-CIR-ARC-14688 and also PEG-1202-CP2D-CN-SQ-CIR-6217 (no discipline: defDisc is used, default ARC).
+// Returns { co, type, disc, no, discGuessed } or null when the name has no company or no CIR/MIR.
+const IR_DEFAULT_DISC = 'ARC';
+function irParse_(name, defDisc) {
+  const tk = String(name || '').replace(/\.[A-Za-z0-9]+$/, '').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean).map(t => IR_DISC_ALIAS[t] || t);
+  const co = tk.filter(t => IR_COMPANIES[t] && t !== 'OTHER')[0];
+  const ti = tk.findIndex(t => IR_TYPES[t]);
+  if (!co || ti < 0) return null;
+  let disc = tk.filter(t => IR_DISCS[t])[0];
+  if (!disc && /^[A-Z]{2,5}$/.test(tk[ti + 1] || '') && !IR_COMPANIES[tk[ti + 1]] && !IR_TYPES[tk[ti + 1]]) disc = tk[ti + 1];   // unknown code right after CIR/MIR: its own folder
+  const nums = tk.filter(t => /^\d{3,}$/.test(t));
+  const guessed = !disc;
+  if (!disc) { const d = irAlias_(String(defDisc || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 5)); disc = d.length >= 2 ? d : IR_DEFAULT_DISC; }
+  return { co: co, type: tk[ti], disc: disc, no: nums.length ? nums[nums.length - 1] : '', discGuessed: guessed };
 }
 function irDiscName_(code) { return IR_DISCS[code] || code; }
 function irDiscKey_(folderName) { const k = Object.keys(IR_DISCS).filter(c => IR_DISCS[c] === folderName)[0]; return k || String(folderName).split(' - ')[0]; }
@@ -477,7 +489,7 @@ const IR_ADMIN_FUNCS_ = {
     const lock = LockService.getScriptLock(); lock.waitLock(20000);
     try {
       const root = irRoot_(true);
-      const info = auto ? irParse_(name) : null;
+      const info = auto ? irParse_(name, a[4]) : null;
       const folder = auto ? irOpenDir_(root, info, day, true) : irSub_(irSub_(irSub_(root, IR_OPEN, true), IR_COMPANIES[co], true), day, true);
       const old = folder.getFilesByName(name);
       let replaced = false;
@@ -486,7 +498,7 @@ const IR_ADMIN_FUNCS_ = {
       CacheService.getScriptCache().remove('ir_index3');
       const label = auto ? irPathLabel_(info, day) : IR_COMPANIES[co] + ' / ' + day;
       apiLog_(me, 'IR file', 'Open / ' + label + ' / ' + name + (replaced ? ' (replaced)' : ''));
-      return { id: file.getId(), name: name, replaced: replaced, sorted: auto ? !!info : true, path: label };
+      return { id: file.getId(), name: name, replaced: replaced, sorted: auto ? !!info : true, guessed: !!(info && info.discGuessed), path: label };
     } finally { lock.releaseLock(); }
   },
 
@@ -682,13 +694,13 @@ const IR_ADMIN_FUNCS_ = {
           const mime = IR_EXT[name.match(/\.([A-Za-z0-9]+)$/)[1].toLowerCase()];
           if (!(size > 0)) throw new Error('Empty file: ' + name);
           if (size > IR_MAX_DIRECT) throw new Error(name + ' is too big.');
-          const info = irParse_(name), label = irPathLabel_(info, day);
+          const info = irParse_(name, a[3]), label = irPathLabel_(info, day);
           if (!folders[label]) folders[label] = irOpenDir_(root, info, day, true).getId();
           const headers = { Authorization: 'Bearer ' + token, 'X-Upload-Content-Type': mime, 'X-Upload-Content-Length': String(size) };
           if (okOrigin) headers.Origin = origin;
           reqs.push({ url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id', method: 'post', contentType: 'application/json; charset=UTF-8',
             headers: headers, muteHttpExceptions: true, payload: JSON.stringify({ name: name, parents: [folders[label]], mimeType: mime }) });
-          meta.push({ name: name, sorted: !!info, path: label });
+          meta.push({ name: name, sorted: !!info, guessed: !!(info && info.discGuessed), path: label });
         } catch (e) { meta.push({ error: String(e.message || e) }); }
       });
     } finally { lock.releaseLock(); }
@@ -698,7 +710,7 @@ const IR_ADMIN_FUNCS_ = {
       if (m.error) return { error: m.error };
       const r = res[k++];
       const h = r.getAllHeaders(), url = h.Location || h.location;
-      return r.getResponseCode() === 200 && url ? { url: String(url), name: m.name, sorted: m.sorted, path: m.path } : { error: 'Drive did not start the upload (' + r.getResponseCode() + ').' };
+      return r.getResponseCode() === 200 && url ? { url: String(url), name: m.name, sorted: m.sorted, guessed: m.guessed, path: m.path } : { error: 'Drive did not start the upload (' + r.getResponseCode() + ').' };
     });
   },
 
@@ -711,7 +723,7 @@ const IR_ADMIN_FUNCS_ = {
     const out = []; let replaced = 0, un = 0;
     list.forEach(x => {
       try {
-        const name = irSafeName_(x[1]), info = irParse_(name);
+        const name = irSafeName_(x[1]), info = irParse_(name, a[2]);
         const folder = irOpenDir_(root, info, day, false);
         const file = DriveApp.getFileById(String(x[0] || ''));
         let inside = false; const ps = file.getParents();
@@ -735,7 +747,7 @@ const IR_ADMIN_FUNCS_ = {
     const file = DriveApp.getFileById(String(a[0] || ''));
     const open = irSub_(root, IR_OPEN, false);
     if (!open || file.isTrashed() || !irInside_(file, open)) throw new Error('Only a file inside Open can be moved.');
-    const co = String(a[1] || ''), disc = String(a[2] || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5), type = String(a[3] || ''), day = String(a[4] || '');
+    const co = String(a[1] || ''), disc = irAlias_(String(a[2] || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 5)), type = String(a[3] || ''), day = String(a[4] || '');
     if (!IR_DAY_RE.test(day)) throw new Error('Bad day.');
     let info = null;
     if (co) {
@@ -781,6 +793,16 @@ const IR_ADMIN_FUNCS_ = {
         take(c, '', 'Open / ' + c.getName());
         const ds = c.getFolders();
         while (ds.hasNext()) { const d = ds.next(); if (!d.isTrashed() && IR_DAY_RE.test(d.getName())) take(d, d.getName(), 'Open / ' + c.getName() + ' / ' + d.getName()); }
+        // discipline folders written another way (like Open / Alexandria / ARCH / CIR / day) go to the main folder of that discipline
+        const dcs = c.getFolders();
+        while (dcs.hasNext()) {
+          const dc = dcs.next(); if (dc.isTrashed() || IR_DAY_RE.test(dc.getName())) continue;
+          const key = irDiscKey_(dc.getName());
+          if (irAlias_(key) === key) continue;
+          const tys = dc.getFolders();
+          while (tys.hasNext()) { const ty = tys.next(); if (ty.isTrashed()) continue; const dds = ty.getFolders();
+            while (dds.hasNext()) { const d = dds.next(); if (!d.isTrashed() && IR_DAY_RE.test(d.getName())) take(d, d.getName(), 'Open / ' + c.getName() + ' / ' + dc.getName() + ' / ' + ty.getName() + ' / ' + d.getName()); } }
+        }
       }
     }
     return { moves: moves, total: moves.length, unsorted: moves.filter(m => m.unsorted).length };

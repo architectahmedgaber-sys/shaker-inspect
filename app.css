@@ -463,3 +463,8 @@ body:not(.at-home) #refreshBtn { display: inline-flex !important; }
 .ir-fix { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
 .ir-fix label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
 .ir-fix .sc-in { min-width: 0; max-width: 150px; }
+.ir-ck { display: flex; gap: 8px; align-items: center; min-width: 0; flex: 1; }
+.ir-ck input { width: 20px; height: 20px; flex: none; }
+.ir-sum { margin-top: 8px; padding: 9px 12px; border-radius: 12px; font-size: 13.5px; background: rgba(60,160,90,.1); border: 1px dashed #3ca05a; }
+.ir-bulk { margin-top: 8px; }
+.ir-all button { align-self: flex-start; }
