@@ -34,6 +34,14 @@ const IR_FOLDER_NAME = 'Shaker Inspect - IR Files';
 const IR_COMPANIES = { SH: 'SH - EL-Shorouk', SQ: 'SQ - Square', AT: 'AT - Alexandria', OTHER: 'Other' };
 const IR_MAX_UPLOAD = 14 * 1024 * 1024;      // bytes of one file sent from the phone
 const IR_MAX_DIRECT = 150 * 1024 * 1024;     // bytes of one file sent straight from the phone to Drive (fast upload)
+
+// true when a file with this name AND the same size already sits in the folder (a re-upload of the same file is skipped)
+function irHasSame_(folder, name, size) {
+  const it = folder.getFilesByName(name);
+  while (it.hasNext()) { const f = it.next(); if (!f.isTrashed() && f.getSize() === size) return true; }
+  return false;
+}
+
 const IR_MAX_OPEN = 20 * 1024 * 1024;        // bytes of one file sent back to the phone
 const IR_MAX_BIG = 120 * 1024 * 1024;       // bytes of a file the app may read in pieces (fill and close)
 const IR_EXT = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };
@@ -514,9 +522,9 @@ const IR_ADMIN_FUNCS_ = {
     if (!IR_DAY_RE.test(day)) throw new Error('Pick the day (date).');
     if (!(size > 0)) throw new Error('Empty file: ' + name);
     if (size > IR_MAX_DIRECT) throw new Error(name + ' is bigger than ' + Math.round(IR_MAX_DIRECT / 1048576) + ' MB.');
-    let folderId;
+    let folderId, folder;
     const lock = LockService.getScriptLock(); lock.waitLock(20000);
-    try { folderId = irSub_(irSub_(irSub_(irRoot_(true), IR_OPEN, true), IR_COMPANIES[co], true), day, true).getId(); }
+    try { folder = irSub_(irSub_(irSub_(irRoot_(true), IR_OPEN, true), IR_COMPANIES[co], true), day, true); folderId = folder.getId(); }
     finally { lock.releaseLock(); }
     const headers = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken(), 'X-Upload-Content-Type': IR_EXT[ext], 'X-Upload-Content-Length': String(size) };
     if (/^[a-z][a-z0-9+.\-]*:\/\/[A-Za-z0-9.\-]+(:\d+)?$/i.test(origin)) headers.Origin = origin;   // lets the browser read the answer of Drive
@@ -571,6 +579,7 @@ const IR_ADMIN_FUNCS_ = {
         const mime = IR_EXT[name.match(/\.([A-Za-z0-9]+)$/)[1].toLowerCase()];
         if (!(size > 0)) throw new Error('Empty file: ' + name);
         if (size > IR_MAX_DIRECT) throw new Error(name + ' is too big.');
+        if (irHasSame_(folder, name, size)) { meta.push({ i: i, exists: true, name: name }); return; }
         const headers = { Authorization: 'Bearer ' + token, 'X-Upload-Content-Type': mime, 'X-Upload-Content-Length': String(size) };
         if (okOrigin) headers.Origin = origin;
         reqs.push({ url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id', method: 'post', contentType: 'application/json; charset=UTF-8',
@@ -582,6 +591,7 @@ const IR_ADMIN_FUNCS_ = {
     let k = 0;
     return meta.map(m => {
       if (m.error) return { error: m.error };
+      if (m.exists) return { exists: true, name: m.name };
       const r = res[k++];
       const h = r.getAllHeaders(), url = h.Location || h.location;
       return r.getResponseCode() === 200 && url ? { url: String(url), name: m.name } : { error: 'Drive did not start the upload (' + r.getResponseCode() + ').' };
@@ -696,6 +706,7 @@ const IR_ADMIN_FUNCS_ = {
           if (size > IR_MAX_DIRECT) throw new Error(name + ' is too big.');
           const info = irParse_(name, a[3]), label = irPathLabel_(info, day);
           if (!folders[label]) folders[label] = irOpenDir_(root, info, day, true).getId();
+          if (irHasSame_(DriveApp.getFolderById(folders[label]), name, size)) { meta.push({ exists: true, name: name, sorted: !!info, path: label }); return; }
           const headers = { Authorization: 'Bearer ' + token, 'X-Upload-Content-Type': mime, 'X-Upload-Content-Length': String(size) };
           if (okOrigin) headers.Origin = origin;
           reqs.push({ url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id', method: 'post', contentType: 'application/json; charset=UTF-8',
@@ -708,6 +719,7 @@ const IR_ADMIN_FUNCS_ = {
     let k = 0;
     return meta.map(m => {
       if (m.error) return { error: m.error };
+      if (m.exists) return { exists: true, name: m.name, sorted: m.sorted, path: m.path };
       const r = res[k++];
       const h = r.getAllHeaders(), url = h.Location || h.location;
       return r.getResponseCode() === 200 && url ? { url: String(url), name: m.name, sorted: m.sorted, guessed: m.guessed, path: m.path } : { error: 'Drive did not start the upload (' + r.getResponseCode() + ').' };
