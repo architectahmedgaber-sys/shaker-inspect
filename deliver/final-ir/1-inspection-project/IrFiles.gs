@@ -1,13 +1,12 @@
 /**
  * Shaker Inspect · IrFiles.gs  (api-7)
- * The IR files (PDF / pictures downloaded from ACC) live in ONE Drive folder, "Shaker Inspect - IR Files",
- * organised like this (two main folders, then company, then day):
+ * The IR files (PDF / pictures downloaded from ACC) live in ONE Drive folder, "Shaker Inspect - IR Files":
  *
  *     Shaker Inspect - IR Files / Open   / SH - EL-Shorouk / ARC - Architectural / CIR / 2026-11-12 / <IR files as downloaded from ACC>
  *                                        / SQ - Square     / STR - Structural / MIR / ...
  *                                        / AT - Alexandria / ...
  *                                        / Unsorted / 2026-11-12 / <files whose name was not recognised>
- *                               / Closed / SH - EL-Shorouk / 2026-11-12 / <engineer who closed it> / <the IR form with Section C filled by the app>
+ *                               / Closed / SH - EL-Shorouk / <engineer who closed it> / 2026-11-12 / <CIR number>.pdf  (Section C filled by the app)
  *                                        / ...
  *
  * AUTO SORT: the DC (or an admin) picks the day and many files at once (Admin screen > IR files). The app reads each file name,
@@ -15,9 +14,15 @@
  * Open / company / discipline / CIR or MIR / day. A name it cannot read goes to Open / Unsorted / day and the uploader is told.
  * Only Admin and DC can upload, move a file (admin_irMove) or approve the one-time re-organisation of the old files (admin_irReorgPlan / admin_irReorgApply).
  * The older way (company picked by hand) still works.
- * Every signed-in person can open the files inside the request screen, and open the Drive folder from the app.
- * Nobody needs an ACC account. Each approved person is given VIEW access to the folder (their Google email)
- * the first time they open the folder link.
+ *
+ * Who sees what:
+ *   Admin and DC   : the whole IR folder (Open and Closed).
+ *   Engineer       : only his own folder Closed / <company> / <his name>. The app shares it with the email he signed in with
+ *                    (view only, see IR_ENGINEER_ACCESS) the first time he closes a request or opens "My closed files".
+ * Nobody gets "anyone with the link" access. Nobody needs an ACC account.
+ *
+ * ONE-TIME MOVE of the old Closed files (Closed / company / day / engineer) into the new layout:
+ * Admin screen > IR files > "Closed folders" card > Review > (read the list) > Approve and move. Nothing moves before the approval.
  *
  * Paste this file in the INSPECTION project as a script file named IrFiles. Api.gs (api-7) and Code.gs must be pasted too.
  * No setup function to run. Deploy > Manage deployments > pencil > New version.
@@ -33,6 +38,7 @@ const IR_MAX_OPEN = 20 * 1024 * 1024;        // bytes of one file sent back to t
 const IR_MAX_BIG = 120 * 1024 * 1024;       // bytes of a file the app may read in pieces (fill and close)
 const IR_EXT = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };
 const IR_OPEN = 'Open', IR_CLOSED = 'Closed', IR_UNSORTED = 'Unsorted';
+const IR_ENGINEER_ACCESS = 'view';        // 'view' or 'edit': what an engineer can do inside his own Closed folder (change here, then New version)
 // discipline code (as written in the file name) -> folder name. A code that is not here is still accepted and its own letters become the folder name.
 const IR_DISCS = { ARC: 'ARC - Architectural', STR: 'STR - Structural', ELE: 'ELE - Electrical', EL: 'EL - Electrical', MEC: 'MEC - Mechanical', MEP: 'MEP - MEP', PLU: 'PLU - Plumbing', HVAC: 'HVAC - HVAC', FF: 'FF - Fire Fighting', CIV: 'CIV - Civil', LAN: 'LAN - Landscape', INT: 'INT - Interior' };
 const IR_TYPES = { CIR: 'CIR', MIR: 'MIR' };
@@ -56,16 +62,19 @@ function irSub_(parent, name, create) {
   return create ? parent.createFolder(name) : null;
 }
 
-// Closed / <company> / <day> / <engineer who closes the request>  (the engineer comes from the sign-in, never from the phone)
+// Closed / <company> / <engineer who closes the request> / <day>  (the engineer comes from the sign-in, never from the phone)
 function irEngDir_(me) {
   const n = String((me && me.engineer) || '').replace(/[\\\/:*?"<>|\u0000-\u001f]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 80);
   return n || 'Unknown engineer';
 }
-function irClosedDir_(root, co, day, me, create) {
+function irEngFolder_(root, co, me, create) {
   let f = irSub_(root, IR_CLOSED, create);
   f = f && irSub_(f, IR_COMPANIES[co], create);
-  f = f && irSub_(f, day, create);
   return f && irSub_(f, irEngDir_(me), create);
+}
+function irClosedDir_(root, co, day, me, create) {
+  const e = irEngFolder_(root, co, me, create);
+  return e && irSub_(e, day, create);
 }
 
 // Reads a file name like CP2C-CN-SH-CIR-ARC-14688 (rev / extra words after it are fine).
@@ -158,8 +167,11 @@ function irInside_(file, root) {
   return false;
 }
 
-// give this person view access to the whole IR folder (their Google email), once every 6 hours
+const irIsFull_ = me => me && (me.role === 'Admin' || me.role === 'DC');
+
+// Admin and DC: view access to the whole IR folder (their Google email), once every 6 hours
 function irShare_(me) {
+  if (!irIsFull_(me)) return;
   const key = 'irshare_' + String(me.email || '').toLowerCase();
   const cache = CacheService.getScriptCache();
   if (!me.email || cache.get(key)) return;
@@ -168,20 +180,127 @@ function irShare_(me) {
   try { cache.put(key, '1', 21600); } catch (e) {}
 }
 
+// an engineer: access to his own folder Closed / <company> / <engineer> only (his registered email), once every 6 hours
+function irShareEngineer_(email, role, folder) {
+  email = String(email || '').toLowerCase();
+  if (!email || !folder || role === 'Admin' || role === 'DC') return;
+  const key = 'irsh2_' + folder.getId() + '_' + email + '_' + IR_ENGINEER_ACCESS;
+  const cache = CacheService.getScriptCache();
+  if (cache.get(key)) return;
+  try {
+    if (IR_ENGINEER_ACCESS === 'edit') folder.addEditor(email); else folder.addViewer(email);
+    try { cache.put(key, '1', 21600); } catch (e) {}
+  } catch (e) { console.warn('share engineer: ' + e); }
+}
+
+// the engineer's own folders (one per company he closed in), newest closing day first; also makes sure he has access to them
+function irMine_(closed, me) {
+  const out = [];
+  if (!closed) return out;
+  Object.keys(IR_COMPANIES).forEach(k => {
+    const c = irSub_(closed, IR_COMPANIES[k], false), e = c && irSub_(c, irEngDir_(me), false);
+    if (!e) return;
+    irShareEngineer_(me.email, me.role, e);
+    const days = [], ds = e.getFolders();
+    while (ds.hasNext()) { const d = ds.next(); if (!d.isTrashed() && IR_DAY_RE.test(d.getName())) days.push({ day: d.getName(), url: d.getUrl() }); }
+    days.sort((a, b) => a.day < b.day ? 1 : -1);
+    out.push({ key: k, name: IR_COMPANIES[k], url: e.getUrl(), latest: days[0] || null, days: days.slice(0, 31) });
+  });
+  out.sort((a, b) => ((b.latest && b.latest.day) || '') < ((a.latest && a.latest.day) || '') ? -1 : 1);
+  return out;
+}
+
+
+// ---------------------------------------------------------------- one-time move of the old Closed files
+// old: Closed / <company> / <day> / <engineer> / file   (or Closed / <company> / <day> / file with no engineer)
+// new: Closed / <company> / <engineer> / <day> / file
+function irAdminEmails_() {
+  const out = {};
+  readUsers_().forEach(u => { if ((u.role === 'Admin' || u.role === 'DC') && u.email && String(u.status).toLowerCase() === 'approved') out[u.email] = true; });
+  return out;
+}
+function irEngKey_(n) { return String(n || '').replace(/[\\\/:*?"<>|\u0000-\u001f]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 80).toLowerCase(); }
+
+function irMigScan_() {
+  const root = irRoot_(false), closed = root && irSub_(root, IR_CLOSED, false);
+  const moves = [], oldDays = [];
+  let already = 0;
+  if (!closed) return { moves: moves, already: already, oldDays: oldDays, closed: null };
+  const files = (folder, co, eng, day) => {
+    const it = folder.getFiles();
+    while (it.hasNext()) { const f = it.next(); moves.push({ id: f.getId(), name: f.getName(), co: co, eng: eng, day: day }); }
+  };
+  Object.keys(IR_COMPANIES).forEach(k => {
+    const c = irSub_(closed, IR_COMPANIES[k], false); if (!c) return;
+    const subs = c.getFolders();
+    while (subs.hasNext()) {
+      const s = subs.next(); if (s.isTrashed()) continue;
+      if (IR_DAY_RE.test(s.getName())) {                       // old layout: <day> / <engineer> / files
+        oldDays.push({ id: s.getId(), co: k });
+        files(s, k, 'Unknown engineer', s.getName());
+        const es = s.getFolders();
+        while (es.hasNext()) { const e = es.next(); if (!e.isTrashed()) files(e, k, e.getName(), s.getName()); }
+      } else {                                                  // new layout already: <engineer> / <day> / files
+        const ds = s.getFolders();
+        while (ds.hasNext()) { const d = ds.next(); if (!d.isTrashed()) { const it = d.getFiles(); while (it.hasNext()) { it.next(); already++; } } }
+      }
+    }
+  });
+  moves.sort((a, b) => (a.co + a.eng + a.day + a.name) < (b.co + b.eng + b.day + b.name) ? -1 : 1);
+  return { moves: moves, already: already, oldDays: oldDays, closed: closed };
+}
+function irMigSig_(moves) {
+  const d = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, moves.map(m => m.id).join(','));
+  return moves.length + '-' + d.map(b => ('0' + (b & 255).toString(16)).slice(-2)).join('').slice(0, 12);
+}
+
+// who must have access, who loses it (computed again at the end, so the list shown is what happens)
+function irMigAccess_(scan, engNames) {
+  const root = irRoot_(false), admins = irAdminEmails_(), owner = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
+  const have = {}, revoke = [], grant = [];
+  if (root) {
+    root.getViewers().concat(root.getEditors()).forEach(u => { const e = String(u.getEmail() || '').toLowerCase(); if (e) have[e] = true; });
+    root.getViewers().forEach(u => { const e = String(u.getEmail() || '').toLowerCase(); if (e && e !== owner && !admins[e]) revoke.push(e); });
+  }
+  Object.keys(admins).forEach(e => { if (e !== owner && !have[e]) grant.push(e); });
+  const byEng = {};
+  readUsers_().forEach(u => { if (u.email && u.role !== 'Admin' && u.role !== 'DC' && String(u.status).toLowerCase() === 'approved') byEng[irEngKey_(u.engineer)] = u; });
+  const share = [], unmatched = [];
+  Object.keys(engNames).forEach(co => Object.keys(engNames[co]).forEach(eng => {
+    const u = eng === 'Unknown engineer' ? null : byEng[irEngKey_(eng)];
+    if (u) share.push({ co: co, eng: eng, email: u.email }); else unmatched.push(IR_COMPANIES[co] + ' / ' + eng);
+  }));
+  return { revoke: revoke, grant: grant, share: share, unmatched: unmatched };
+}
+function irMigEngNames_(scan) {
+  const names = {};
+  scan.moves.forEach(m => { (names[m.co] = names[m.co] || {})[m.eng] = 1; });
+  if (scan.closed) Object.keys(IR_COMPANIES).forEach(k => {
+    const c = irSub_(scan.closed, IR_COMPANIES[k], false); if (!c) return;
+    const es = c.getFolders();
+    while (es.hasNext()) { const e = es.next(); if (!e.isTrashed() && !IR_DAY_RE.test(e.getName())) (names[k] = names[k] || {})[e.getName()] = 1; }
+  });
+  return names;
+}
+
 const IR_FUNCS_ = {
   // names of all the IR files (the app matches them to requests by the number in the name)
   ir_index: () => ({ files: irList_(), companies: IR_COMPANIES }),
 
-  // the Drive links: main folder, each company, and each day inside it (newest first)
+  // the Drive links. Everybody: "mine" = his own closed folders (with the latest closing day).
+  // Admin and DC also get the whole Open and Closed trees (Closed: company > engineer).
   ir_links: (me) => {
-    const root = irRoot_(false);
-    if (!root) return { root: '', open: [], closed: [] };
+    const root = irRoot_(false), full = irIsFull_(me);
+    if (!root) return { full: full, root: '', open: [], closed: [], mine: [] };
     irShare_(me);
-    const list = (parent) => {
+    const open = irSub_(root, IR_OPEN, false), closed = irSub_(root, IR_CLOSED, false);
+    const mine = irMine_(closed, me);
+    if (!full) return { full: false, mine: mine };
+    const listOpen = () => {
       const out = [];
-      if (!parent) return out;
+      if (!open) return out;
       Object.keys(IR_COMPANIES).forEach(k => {
-        const c = irSub_(parent, IR_COMPANIES[k], false); if (!c) return;
+        const c = irSub_(open, IR_COMPANIES[k], false); if (!c) return;
         const days = [], groups = [];
         const ds = c.getFolders();
         while (ds.hasNext()) {
@@ -201,13 +320,24 @@ const IR_FUNCS_ = {
       });
       return out;
     };
-    const open = irSub_(root, IR_OPEN, false), closed = irSub_(root, IR_CLOSED, false);
-    const un = open && irSub_(open, IR_UNSORTED, false);
-    return { root: root.getUrl(), openUrl: open ? open.getUrl() : '', closedUrl: closed ? closed.getUrl() : '', unsortedUrl: un ? un.getUrl() : '', open: list(open), closed: list(closed) };
+    const unsorted = open && irSub_(open, IR_UNSORTED, false);
+    const listClosed = () => {
+      const out = [];
+      if (!closed) return out;
+      Object.keys(IR_COMPANIES).forEach(k => {
+        const c = irSub_(closed, IR_COMPANIES[k], false); if (!c) return;
+        const engs = [], es = c.getFolders();
+        while (es.hasNext()) { const e = es.next(); if (!e.isTrashed() && !IR_DAY_RE.test(e.getName())) engs.push({ name: e.getName(), url: e.getUrl() }); }
+        engs.sort((a, b) => a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1);
+        out.push({ key: k, name: IR_COMPANIES[k], url: c.getUrl(), engs: engs });
+      });
+      return out;
+    };
+    return { full: true, root: root.getUrl(), openUrl: open ? open.getUrl() : '', closedUrl: closed ? closed.getUrl() : '', unsortedUrl: unsorted ? unsorted.getUrl() : '', open: listOpen(), closed: listClosed(), mine: mine };
   },
 
   // the app fills Section C of the IR form when a request is closed and saves the filled PDF here:
-  // Closed / <company> / <day of the close> / <engineer> / <same file name>   a=[company key, day, file name, base64]
+  // Closed / <company> / <engineer> / <day of the close> / <same file name>   a=[company key, day, file name, base64]
   ir_saveClosed: (me, a) => {
     need_(me, ['Admin', 'Engineer']);
     const co = String(a[0] || ''), day = String(a[1] || '');
@@ -220,7 +350,9 @@ const IR_FUNCS_ = {
     const lock = LockService.getScriptLock(); lock.waitLock(20000);
     try {
       const root = irRoot_(true);
-      const folder = irClosedDir_(root, co, day, me, true);
+      const eng = irEngFolder_(root, co, me, true);
+      irShareEngineer_(me.email, me.role, eng);
+      const folder = irSub_(eng, day, true);
       const old = folder.getFilesByName(name);
       while (old.hasNext()) old.next().setTrashed(true);
       const file = folder.createFile(Utilities.newBlob(bytes, 'application/pdf', name));
@@ -234,8 +366,8 @@ const IR_FUNCS_ = {
         } catch (e) { console.warn('move original: ' + e); }
       }
       try { CacheService.getScriptCache().remove('ir_index3'); } catch (e) {}
-      apiLog_(me, 'IR form filled', 'Closed / ' + IR_COMPANIES[co] + ' / ' + day + ' / ' + irEngDir_(me) + ' / ' + name + (moved ? ' (original removed from Open)' : ''));
-      return { id: file.getId(), url: folder.getUrl(), moved: moved };
+      apiLog_(me, 'IR form filled', 'Closed / ' + IR_COMPANIES[co] + ' / ' + irEngDir_(me) + ' / ' + day + ' / ' + name + (moved ? ' (original removed from Open)' : ''));
+      return { id: file.getId(), url: folder.getUrl(), engUrl: eng.getUrl(), moved: moved };
     } finally { lock.releaseLock(); }
   },
 
@@ -268,7 +400,11 @@ const IR_FUNCS_ = {
     if (!(size > 0) || size > IR_MAX_DIRECT) throw new Error('Bad file size.');
     let folderId;
     const lock = LockService.getScriptLock(); lock.waitLock(20000);
-    try { folderId = irClosedDir_(irRoot_(true), co, day, me, true).getId(); }
+    try {
+      const eng = irEngFolder_(irRoot_(true), co, me, true);
+      irShareEngineer_(me.email, me.role, eng);
+      folderId = irSub_(eng, day, true).getId();
+    }
     finally { lock.releaseLock(); }
     const headers = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken(), 'X-Upload-Content-Type': 'application/pdf', 'X-Upload-Content-Length': String(size) };
     if (/^[a-z][a-z0-9+.\-]*:\/\/[A-Za-z0-9.\-]+(:\d+)?$/i.test(origin)) headers.Origin = origin;
@@ -308,8 +444,9 @@ const IR_FUNCS_ = {
       } catch (e) { console.warn('move original: ' + e); }
     }
     try { CacheService.getScriptCache().remove('ir_index3'); } catch (e) {}
-    apiLog_(me, 'IR form filled', 'Closed / ' + IR_COMPANIES[co] + ' / ' + day + ' / ' + irEngDir_(me) + ' / ' + name + (moved ? ' (original removed from Open)' : '') + ' (direct)');
-    return { id: file.getId(), url: folder.getUrl(), moved: moved };
+    apiLog_(me, 'IR form filled', 'Closed / ' + IR_COMPANIES[co] + ' / ' + irEngDir_(me) + ' / ' + day + ' / ' + name + (moved ? ' (original removed from Open)' : '') + ' (direct)');
+    const engF = irEngFolder_(root, co, me, false);
+    return { id: file.getId(), url: folder.getUrl(), engUrl: engF ? engF.getUrl() : folder.getUrl(), moved: moved };
   },
 
   ir_get: (me, a) => {
@@ -458,6 +595,72 @@ const IR_ADMIN_FUNCS_ = {
     const out = list.map(x => ({ id: String(x[0]), ok: !!seen[String(x[0])] }));
     apiLog_(me, 'IR files', 'Open / ' + IR_COMPANIES[co] + ' / ' + day + ' / ' + out.filter(o => o.ok).length + ' files (fast batch)' + (replaced ? ', ' + replaced + ' replaced' : ''));
     return { files: out, replaced: replaced };
+  },
+
+  // MOVE OLD CLOSED FILES, step 1: only LOOKS and gives the list to review. Nothing is changed. Admin only.
+  admin_irMigratePlan: (me) => {
+    if (me.role !== 'Admin') throw new Error('Admins only.');
+    const scan = irMigScan_(), acc = irMigAccess_(scan, irMigEngNames_(scan));
+    const groups = {};
+    scan.moves.forEach(m => { const k = m.co + '|' + m.eng + '|' + m.day; groups[k] = (groups[k] || 0) + 1; });
+    return {
+      sig: irMigSig_(scan.moves), total: scan.moves.length, already: scan.already,
+      groups: Object.keys(groups).map(k => { const x = k.split('|'); return { co: x[0], company: IR_COMPANIES[x[0]], eng: x[1], day: x[2], n: groups[k] }; }),
+      access: acc
+    };
+  },
+
+  // MOVE OLD CLOSED FILES, step 2 (a=[sig from the review, continuing?]): moves the files in small rounds (the app calls again until left is 0).
+  // The first call refuses if the list changed since the review. When nothing is left it sets the access shown in the review and removes the empty old folders.
+  admin_irMigrateRun: (me, a) => {
+    if (me.role !== 'Admin') throw new Error('Admins only.');
+    const sig = String(a[0] || ''), cont = !!a[1];
+    const lock = LockService.getScriptLock(); lock.waitLock(30000);
+    try {
+      const scan = irMigScan_();
+      if (!cont && irMigSig_(scan.moves) !== sig) throw new Error('The list changed since the review. Press Review again.');
+      const root = irRoot_(false), t0 = Date.now(), folders = {};
+      const target = (m) => {
+        const k = m.co + '|' + m.eng + '|' + m.day;
+        if (!folders[k]) folders[k] = irSub_(irSub_(irSub_(scan.closed, IR_COMPANIES[m.co], true), m.eng, true), m.day, true);
+        return folders[k];
+      };
+      let moved = 0, left = 0; const failed = [];
+      for (let i = 0; i < scan.moves.length; i++) {
+        const m = scan.moves[i];
+        if (Date.now() - t0 > 150000) { left = scan.moves.length - i; break; }
+        try {
+          const dest = target(m), dup = dest.getFilesByName(m.name);
+          if (dup.hasNext()) { failed.push(m.name + ': a file with this name is already in the new folder'); continue; }
+          DriveApp.getFileById(m.id).moveTo(dest); moved++;
+        } catch (e) { failed.push(m.name + ': ' + (e && e.message || e)); }
+      }
+      let finish = null;
+      if (!left) {
+        // empty old folders (company / day / engineer) go to the bin
+        scan.oldDays.forEach(d => {
+          try {
+            const day = DriveApp.getFolderById(d.id), es = day.getFolders();
+            while (es.hasNext()) { const e = es.next(); if (!e.getFiles().hasNext() && !e.getFolders().hasNext()) e.setTrashed(true); }
+            if (!day.getFiles().hasNext() && !day.getFolders().hasNext()) day.setTrashed(true);
+          } catch (e) { console.warn('old folder: ' + e); }
+        });
+        const acc = irMigAccess_(scan, irMigEngNames_(irMigScan_()));
+        const done = { granted: 0, revoked: 0, shared: 0 };
+        acc.grant.forEach(e => { try { root.addViewer(e); done.granted++; } catch (x) { console.warn(x); } });
+        acc.revoke.forEach(e => { try { root.removeViewer(e); done.revoked++; } catch (x) { console.warn(x); } });
+        acc.share.forEach(x => {
+          try {
+            const f = irSub_(irSub_(scan.closed, IR_COMPANIES[x.co], false) || scan.closed, x.eng, false);
+            if (f && IR_ENGINEER_ACCESS === 'edit') { f.addEditor(x.email); done.shared++; } else if (f) { f.addViewer(x.email); done.shared++; }
+          } catch (e) { console.warn(e); }
+        });
+        finish = { granted: done.granted, revoked: done.revoked, shared: done.shared, unmatched: acc.unmatched };
+      }
+      try { CacheService.getScriptCache().remove('ir_index3'); } catch (e) {}
+      apiLog_(me, 'IR closed move', moved + ' moved, ' + failed.length + ' failed, ' + left + ' left' + (finish ? '; access: +' + finish.granted + ' admin/DC, -' + finish.revoked + ' removed, ' + finish.shared + ' engineer folders shared' : ''));
+      return { moved: moved, left: left, failed: failed.slice(0, 30), failedN: failed.length, finish: finish };
+    } finally { lock.releaseLock(); }
   },
 
   // AUTO SORT upload, step 1 (a=[[[name, size], ...], day, origin]): one call makes the folders each file needs

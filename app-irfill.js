@@ -2,7 +2,7 @@
    When the server accepts a close, the app takes the IR form (PDF) that the DC uploaded for that request,
    writes into Section C what the engineer decided (status tick, comment, name, date) with the same
    layout rules as the old "fill-cir-forms" skill, and saves the filled PDF on Drive in
-   <company> / Closed / <day> / <same file name>. Nothing to press. If anything is missing (no IR file,
+   Closed / <company> / <engineer> / <day> / <same file name>. Nothing to press. If anything is missing (no IR file,
    not a CIR form, offline) the close itself is never affected: a small message says why the form was not filled.
    Needs api-7 (ir_saveClosed in IrFiles.gs). Loaded after app-ir.js. */
 (function () {
@@ -321,13 +321,30 @@
           x.send(new Blob([out], { type: 'application/pdf' }));
         });
         status(t('Finishing on Drive…', 'بيخلّص على الدرايف…'));
-        await api('ir_putDone', [d.id, co, day, name, origId || '']);
-        return;
+        return await api('ir_putDone', [d.id, co, day, name, origId || '']);
       } catch (e) { console.warn('direct save', e); if (e && e.net) throw e; }
     }
     if (out.length > 14 * 1024 * 1024) throw new Error(t('the filled file is over 14 MB and needs the new script (IrFiles.gs) to be saved', 'الملف بعد التعبئة أكبر من 14 ميجا ومحتاج السكريبت الجديد (IrFiles.gs) عشان يتحفظ'));
     status(t('Saving on Drive…', 'بيحفظ على الدرايف…'));
-    await api('ir_saveClosed', [co, day, name, toB64(out), origId || '']);
+    return await api('ir_saveClosed', [co, day, name, toB64(out), origId || '']);
+  }
+
+  // after a close: a small card with the two buttons (open my folder / copy the link of today's folder)
+  let card = null, cardT = 0;
+  function doneCard(r) {
+    if (!r || !r.url) return false;
+    try {
+      if (!card) { card = document.createElement('div'); card.className = 'ir-done';
+        card.addEventListener('click', e => { const c = e.target.closest('[data-ircopy]'); if (c && window.Shk && Shk.ir && Shk.ir.copyLink) Shk.ir.copyLink(c.dataset.ircopy); if (e.target.closest('[data-irdx]')) card.style.display = 'none'; });
+        document.body.appendChild(card); }
+      const esc = x => String(x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+      card.innerHTML = `<b>${t('✓ IR form filled and saved in Closed on Drive.', '✓ فورم الـ IR اتملا واتحفظ في Closed على الدرايف.')}</b>
+        <span><a href="${esc(r.engUrl || r.url)}" target="_blank" rel="noopener">${t('Open my folder', 'افتح فولدري')}</a>
+        <button type="button" data-ircopy="${esc(r.url)}">${t('Copy link', 'انسخ اللينك')}</button>
+        <button type="button" data-irdx="1" aria-label="Close">✕</button></span>`;
+      card.style.display = ''; clearTimeout(cardT); cardT = setTimeout(() => { card.style.display = 'none'; }, 15000);
+      return true;
+    } catch (e) { return false; }
   }
 
   async function run(p) {
@@ -348,9 +365,9 @@
       const pk = window.Shk.ir.projectKey({ irNumber: p.irNumber, description: p.description });
       const co = (m && m[1]) || (pk && pk !== 'OTHER' ? pk : 'OTHER');
       status(t('Sending to Drive… 0%', 'بيرفع على الدرايف… 0%'));
-      await save(co, String(p.date || '').slice(0, 10), form.name, out, form.id, f => status(t('Sending to Drive… ', 'بيرفع على الدرايف… ') + Math.round(f * 100) + '%'));
+      const saved = await save(co, String(p.date || '').slice(0, 10), form.name, out, form.id, f => status(t('Sending to Drive… ', 'بيرفع على الدرايف… ') + Math.round(f * 100) + '%'));
       status('');
-      note(t('✓ IR form filled and saved in Closed on Drive.', '✓ فورم الـ IR اتملا واتحفظ في Closed على الدرايف.'));
+      if (!doneCard(saved)) note(t('✓ IR form filled and saved in Closed on Drive.', '✓ فورم الـ IR اتملا واتحفظ في Closed على الدرايف.'));
     } catch (e) {
       status('');
       note(t('The IR form could not be filled: ', 'فورم الـ IR ماتملاش: ') + (e && e.message || e));

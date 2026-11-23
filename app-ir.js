@@ -240,6 +240,15 @@
   const baseHide = window.hidePanel;
   if (typeof baseHide === 'function') window.hidePanel = function () { cur = null; loadSeq++; return baseHide.apply(this, arguments); };
 
+  // copy a Drive link to the clipboard (with a fallback for old WebViews) and say so
+  async function copyLink(url) {
+    let ok = false;
+    try { await navigator.clipboard.writeText(url); ok = true; } catch (e) {}
+    if (!ok) { try { const ta = document.createElement('textarea'); ta.value = url; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove(); } catch (e) {} }
+    try { window.showToast(ok ? t('Link copied', 'اللينك اتنسخ') : t('Could not copy the link', 'اللينك ماتنسخش'), null, null, 3000); } catch (e) {}
+    return ok;
+  }
+
   // ---------------------------------------------------------------- Drive folders sheet (everybody)
   async function openFolders(prefer) {
     let sh = $('irSheet');
@@ -251,14 +260,23 @@
     try {
       const r = (await api('ir_links')) || {};
       const box = sh.querySelector('.ir-sheet-box');
-      const sect = (title, url, list) => {
+      const sect = (title, url, list, kind) => {
         const cos = (list || []).slice().sort((a, b) => (b.key === prefer) - (a.key === prefer));
+        const inner = c => kind === 'closed'
+          ? (c.engs && c.engs.length ? c.engs.map(e => `<a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.name)}</a>`).join('') : `<small class="ir-hint">${t('No engineers yet.', 'مفيش مهندسين لسه.')}</small>`)
+          : (c.days.length ? c.days.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('') : `<small class="ir-hint">${t('No days yet.', 'مفيش أيام لسه.')}</small>`);
         return `<h4 class="ir-sec">${title}</h4>` + (url ? `<a class="ir-go" href="${esc(url)}" target="_blank" rel="noopener">📁 ${title} · ${t('all companies', 'كل الشركات')}</a>` : '') +
           (cos.length ? cos.map(c => `<div class="ir-co"><a class="ir-go" href="${esc(c.url)}" target="_blank" rel="noopener">📁 ${esc(c.name)}</a>
-            ${(c.groups || []).map(g => `<div class="ir-days"><a class="ir-go" href="${esc(g.url)}" target="_blank" rel="noopener">${esc(g.disc)} · ${esc(g.type)}</a>${g.days.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('')}</div>`).join('')}<div class="ir-days">${c.days.length ? c.days.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('') : `<small class="ir-hint">${t('No days yet.', 'مفيش أيام لسه.')}</small>`}</div></div>`).join('') : `<small class="ir-hint">${t('Nothing here yet.', 'مفيش حاجة هنا لسه.')}</small>`);
+            ${kind === 'closed' ? '' : (c.groups || []).map(g => `<div class="ir-days"><a class="ir-go" href="${esc(g.url)}" target="_blank" rel="noopener">${esc(g.disc)} · ${esc(g.type)}</a>${g.days.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('')}</div>`).join('')}
+            <div class="ir-days">${inner(c)}</div></div>`).join('') : `<small class="ir-hint">${t('Nothing here yet.', 'مفيش حاجة هنا لسه.')}</small>`);
       };
+      const mine = r.mine || [];
+      const mineHtml = `<h4 class="ir-sec">${t('My closed files', 'ملفاتي المقفولة')}</h4>` + (mine.length ? mine.map(m => `<div class="ir-co"><a class="ir-go" href="${esc(m.url)}" target="_blank" rel="noopener">📁 ${t('Open my folder', 'افتح فولدري')} · ${esc(m.name)}</a>` +
+        (m.latest ? `<button type="button" class="ir-lnk" data-ircopy="${esc(m.latest.url)}">${t('Copy link', 'انسخ اللينك')} · ${esc(m.latest.day)}</button>` : '') +
+        (m.days.length ? `<div class="ir-days">${m.days.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.day)}</a>`).join('')}</div>` : '') + `</div>`).join('') :
+        `<small class="ir-hint">${t('Nothing closed from the app yet. Your folder shows up here after you close your first request.', 'لسه ماقفلتش حاجة من الأبليكيشن. فولدرك هيظهر هنا بعد أول طلب تقفله.')}</small>`);
       box.innerHTML = `<div class="ir-sheet-h"><b>${t('IR files on Drive', 'ملفات الـ IR على الدرايف')}</b><span><button type="button" data-irrf="1" class="ir-lnk" aria-label="Refresh" title="Refresh">⟳</button><button type="button" data-irx="1" class="ir-lnk">✕</button></span></div>` +
-        sect(t('Open', 'Open (لسه متقفلتش)'), r.openUrl, r.open) + sect(t('Closed', 'Closed (الفورم مملية)'), r.closedUrl, r.closed) +
+        mineHtml + (r.full ? sect(t('Open', 'Open (لسه متقفلتش)'), r.openUrl, r.open, 'open') + sect(t('Closed', 'Closed (الفورم مملية)'), r.closedUrl, r.closed, 'closed') : '') +
         `<small class="ir-hint">${t('If Drive asks for access, sign in with the same Google account you use in the app.', 'لو الدرايف طلب إذن، ادخل بنفس حساب جوجل اللي بتستخدمه في الأبليكيشن.')}</small>`;
     } catch (e) { sh.querySelector('.ir-sheet-box').innerHTML += `<div class="ir-load bad">${esc(e.message || e)}</div>`; }
   }
@@ -311,6 +329,9 @@
           <label>${t('Work of the day', 'شغل يوم')}<input type="date" id="irDay" class="sc-in" value="${today()}"></label></div>
         <div class="btnrow"><label class="ir-pick" id="irPickLab"><input type="file" id="irPick" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/*" multiple hidden>${t('Choose files', 'اختار الملفات')}</label></div>
         <div id="irUp" class="small" style="margin-top:8px"></div></div>
+      ${PtahApp.role() === 'Admin' ? `<div class="card" id="irMig"><b>${t('Closed folders', 'فولدرات Closed')}</b>
+        <p class="small" style="margin:6px 0 8px">${t('One-time move of the old closed files to Closed / Company / Engineer / Date. Press Review first: nothing moves until you approve the list.', 'نقل مرة واحدة للملفات المقفولة القديمة إلى Closed / الشركة / المهندس / التاريخ. اضغط Review الأول: مفيش حاجة بتتنقل غير لما توافق على القايمة.')}</p>
+        <div class="btnrow"><button type="button" class="ir-lnk" data-irmig="plan">${t('Review', 'Review')}</button></div><div id="irMigOut" class="small" style="margin-top:8px"></div></div>` : ''}
       <div id="irReorg"></div><div id="irList"><div class="sc-load"><i></i><i></i><i></i></div></div><p class="shk-sign">architected by Ptah</p>`;
     const gate = () => { const ok = !!$('irCo').value && !!$('irDay').value; $('irPickLab').classList.toggle('off', !ok); $('irPick').disabled = !ok; try { lsSet('shkIrCo', $('irCo').value); } catch (e) {} };
     $('irCo').onchange = $('irDay').onchange = gate; gate();
@@ -379,6 +400,41 @@
     };
     drawList(); drawReorg();
   }
+  // one-time move of the old Closed files: review the list, approve, then it moves them in rounds
+  async function migPlan() {
+    const out = $('irMigOut'); if (!out) return;
+    out.innerHTML = t('Looking at Drive…', 'بيبص على الدرايف…');
+    try {
+      const p = await api('admin_irMigratePlan'), a = p.access || {};
+      const tree = {};
+      (p.groups || []).forEach(g => { ((tree[g.company] = tree[g.company] || {})[g.eng] = tree[g.company][g.eng] || []).push(g.day + ' (' + g.n + ')'); });
+      const list = Object.keys(tree).map(co => `<div><b>${esc(co)}</b>` + Object.keys(tree[co]).map(e => `<div dir="auto" style="margin-inline-start:12px">${esc(e)} <small class="ir-hint">${tree[co][e].map(esc).join(' · ')}</small></div>`).join('') + '</div>').join('');
+      const em = x => (x && x.length ? x.map(esc).join('<br>') : '—');
+      out.innerHTML = `<b>${p.total}</b> ${t('files will move', 'ملف هيتنقل')} · ${p.already} ${t('already in the new layout', 'أصلا في الشكل الجديد')}
+        <div style="max-height:220px;overflow:auto;margin:8px 0;padding:8px;border:1px solid rgba(128,128,128,.3);border-radius:10px">${list || t('Nothing to move.', 'مفيش حاجة تتنقل.')}</div>
+        <div><b>${t('Access after the move', 'الصلاحيات بعد النقل')}</b></div>
+        <div class="ir-hint">${t('Admins and DCs get view of the whole IR folder:', 'الأدمنز والـ DCs بيشوفوا فولدر الـ IR كله:')}<br>${em(a.grant)}</div>
+        <div class="ir-hint">${t('View of the whole IR folder is removed from (they keep only their own folder):', 'بيتشال منهم مشاهدة فولدر الـ IR كله (هيشوفوا فولدرهم بس):')}<br>${em(a.revoke)}</div>
+        <div class="ir-hint">${t('Engineer folders shared with the registered email:', 'فولدرات المهندسين اللي بتتشارك على الإيميل المسجل:')}<br>${em((a.share || []).map(x => x.eng + ' → ' + x.email))}</div>
+        <div class="ir-hint">${t('No registered engineer with this name (folder is not shared):', 'مفيش مهندس مسجل بالاسم ده (الفولدر مش هيتشارك):')}<br>${em(a.unmatched)}</div>
+        <div class="btnrow" style="margin-top:8px"><button type="button" class="ir-lnk" data-irmig="plan">${t('Review again', 'Review تاني')}</button> <button type="button" class="ir-lnk" data-irmig="run" data-sig="${esc(p.sig)}">${t('Approve and move', 'موافق وانقل')}</button></div>`;
+    } catch (e) { out.innerHTML = `<span class="bad">${esc(e.message || e)}</span>`; }
+  }
+  async function migRun(sig, btn) {
+    const out = $('irMigOut'); if (!out) return;
+    btn.disabled = true; let moved = 0, failedN = 0, fails = [], cont = false, fin = null;
+    try {
+      for (let i = 0; i < 200; i++) {
+        out.innerHTML = t('Moving… ', 'بينقل… ') + moved;
+        const r = await api('admin_irMigrateRun', [sig, cont]); cont = true;
+        moved += r.moved || 0; failedN += r.failedN || 0; fails = fails.concat(r.failed || []);
+        if (!r.left) { fin = r.finish; break; }
+      }
+      out.innerHTML = `✓ ${moved} ${t('moved', 'اتنقل')}` + (failedN ? `<br><span class="bad">${failedN} ${t('failed', 'فشل')}:<br>${fails.slice(0, 15).map(esc).join('<br>')}</span>` : '') +
+        (fin ? `<br><small class="ir-hint">${t('Access', 'الصلاحيات')}: +${fin.granted} · −${fin.revoked} · ${fin.shared} ${t('engineer folders shared', 'فولدر مهندس اتشارك')}</small>` : '');
+      index = null;
+    } catch (e) { out.innerHTML = `<span class="bad">${esc(e.message || e)}</span><br><small class="ir-hint">${t('Press Review and approve again to continue.', 'اضغط Review ووافق تاني عشان تكمل.')}</small>`; }
+  }
   async function drawList() {
     const el = $('irList'); if (!el) return;
     try {
@@ -437,6 +493,8 @@
     } catch (e) { box.innerHTML += `<br><span class="bad">${esc(e.message || e)}</span>`; }
   }
   document.addEventListener('click', async ev => {
+    const mg = ev.target.closest && ev.target.closest('[data-irmig]'); if (mg) return mg.dataset.irmig === 'plan' ? migPlan() : migRun(mg.dataset.sig, mg);
+    const cp = ev.target.closest && ev.target.closest('[data-ircopy]'); if (cp) return copyLink(cp.dataset.ircopy);
     const pl = ev.target.closest && ev.target.closest('[data-irplan]'); if (pl) return showPlan();
     const ap = ev.target.closest && ev.target.closest('[data-irapply]'); if (ap) return applyPlan(ap);
     const fx = ev.target.closest && ev.target.closest('[data-irfix]'); if (fx) return fixForm(fx.dataset.irfix);
@@ -458,7 +516,7 @@
   });
   Object.assign(window.Shk = window.Shk || {}, { admIr: admIr });
 
-  Object.assign(window.Shk, { ir: { loadIndex, filesFor, loadPdfJs, b64bytes, projectKey: getProjectKey, openFolders, paintUp } });
+  Object.assign(window.Shk, { ir: { loadIndex, filesFor, loadPdfJs, b64bytes, projectKey: getProjectKey, openFolders, paintUp, copyLink } });
 
   // home: quick buttons (everybody gets "IR folder", admins and DC also get "Upload IR").
   // The home screen rebuilds its button row now and then, so the buttons are put back whenever they are missing.

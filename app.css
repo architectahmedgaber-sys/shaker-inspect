@@ -451,6 +451,13 @@ html[data-theme="dark"] .rf-ho { color: #fff; }
 .live-ts:empty { display: none; }
 /* the top-bar Refresh button of the request lists (hidden on Home, where the hero has its own) */
 body:not(.at-home) #refreshBtn { display: inline-flex !important; }
+
+/* after closing an IR: small card with "Open my folder" and "Copy link" */
+.ir-done { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 9999; width: min(92vw, 420px); padding: 10px 14px; border-radius: 16px; background: #12233f; color: #fff; border: 1px solid #c9a227; box-shadow: 0 4px 16px rgba(0,0,0,.3); font: 600 13px/1.35 system-ui, sans-serif; display: flex; flex-direction: column; gap: 8px; }
+.ir-done span { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ir-done a, .ir-done button { background: rgba(201,162,39,.18); color: #f3d77a; border: 1px solid #c9a227; border-radius: 999px; padding: 6px 12px; font: 600 13px system-ui, sans-serif; text-decoration: none; cursor: pointer; }
+.ir-done button[data-irdx] { margin-inline-start: auto; background: none; border-color: transparent; color: #fff; }
+.ir-sheet [data-ircopy] { display: inline-block; margin-top: 6px; }
 /* IR auto sort: inline fix form under a file row */
 [data-irrow] { flex-wrap: wrap; }
 .ir-fix { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
