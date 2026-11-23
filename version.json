@@ -1,6 +1,6 @@
 {
- "version": "1.0.71",
- "build": 71,
+ "version": "1.0.72",
+ "build": 72,
  "notes": [
   "New: quick search button on every screen (or press / on a laptop): type an IR number, villa number or company and open the request in one tap.",
   "Faster: the app opens from the phone copy at once, and long lists draw their first rows immediately.",
