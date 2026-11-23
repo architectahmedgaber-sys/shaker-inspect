@@ -322,7 +322,7 @@
   const toB64 = f => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).replace(/^data:[^,]*,/, '')); r.onerror = () => bad(new Error('read')); r.readAsDataURL(f); });
 
   // fast upload: the phone sends the file straight to a one-time Drive link made by the server (the folders and names are still decided by the server)
-  const UP_PARALLEL = 5, LINK_CHUNK = 15, DONE_CHUNK = 40;
+  const UP_PARALLEL = 5, UP_MAX = 6, UP_MIN = 2, LINK_CHUNK = 15, DONE_CHUNK = 40;   // start at 5 files at once (as before), slow down only when errors show up
   let fastOff = false;                    // set when the fast way fails once: the rest of the files use the old way
   function putToDrive(url, file, onProg) {
     return new Promise((ok, bad) => {
@@ -367,70 +367,125 @@
       <div id="irSortBar"></div><div id="irReorg"></div><div id="irList"><div class="sc-load"><i></i><i></i><i></i></div></div><p class="shk-sign">architected by Ptah</p>`;
     const gate = () => { const ok = !!$('irCo').value && !!$('irDay').value; $('irPickLab').classList.toggle('off', !ok); $('irPick').disabled = !ok; try { lsSet('shkIrCo', $('irCo').value); lsSet('shkIrDisc', $('irDisc').value); } catch (e) {} $('irDiscLab').style.display = $('irCo').value === 'AUTO' ? '' : 'none'; };
     $('irCo').onchange = $('irDay').onchange = $('irDisc').onchange = gate; gate();
-    $('irPick').onchange = async e => {
-      const files = Array.from(e.target.files || []); e.target.value = '';
+    // ---- bulk upload: few at a time, server calls one by one, automatic retry, skips what is already on Drive ----
+    let sess = null;                                   // totals of this pick, kept across "Retry failed files"
+    const pause = ms => new Promise(r => setTimeout(r, ms));
+    // a server call that tries again (2s, 5s, 10s, 20s, 30s) when the connection drops; other errors come straight back
+    const callRetry = async (fn, args) => {
+      const waits = [2000, 5000, 10000, 20000, 30000];
+      for (let k = 0; ; k++) {
+        try { return await PtahApp.call(fn, args); }
+        catch (er) {
+          if (!(er && er.net) || k >= waits.length) throw er;
+          if (navigator.onLine === false) await new Promise(r => { const h = () => { window.removeEventListener('online', h); r(); }; window.addEventListener('online', h); setTimeout(h, waits[k] * 3); });
+          else await pause(waits[k]);
+        }
+      }
+    };
+    // the Apps Script server works on one thing at a time (it locks), so server calls wait in one line
+    let srvTail = Promise.resolve();
+    const srv = (fn, args) => { const p = srvTail.then(() => callRetry(fn, args)); srvTail = p.catch(() => {}); return p; };
+    const putRetry = async (url, f, onProg) => {
+      let last;
+      for (let k = 0; k < 3; k++) {
+        try { return await putToDrive(url, f, onProg); } catch (er) { last = er; await pause(1500 * (k + 1)); }
+      }
+      throw last;
+    };
+    const runBatch = async (files, isRetry) => {
       const co = $('irCo').value, day = $('irDay').value;
-      if (!co || !day) { $('irUp').textContent = t('Choose the company and the day first.', 'اختار الشركة واليوم الأول.'); return; }
-      const out = $('irUp'); let ok = 0, fast = 0, finished = 0; const bad = [], unsorted = []; const auto = co === 'AUTO', dflt = $('irDisc').value || 'ARC', guessed = [];
-      // up to 3 files at once; each one goes straight to Drive (fast) and falls back to the old way through the server
+      if (!sess || !isRetry) sess = { ok: 0, already: 0, unsorted: [], guessed: [], failed: [] };
+      const out = $('irUp'), auto = co === 'AUTO', dflt = $('irDisc').value || 'ARC';
+      let fast = 0, finished = 0;
+      const failed = [];                               // [{ f, msg }] kept so one tap can try them again
       const st = files.map(f => ({ name: f.name, size: f.size || 1, sent: 0, phase: 'wait' }));
       const paint = () => paintBatch(out, st, finished);
       const slow = async (f, i) => {
         st[i].phase = 'read'; paint();
         const b64 = await toB64(f);
         st[i].phase = 'send'; paint();
-        const rr = await PtahApp.call('admin_irUpload', [f.name, b64, co, day, dflt], (fr, done) => { st[i].sent = st[i].size * (done ? 0.95 : fr * 0.95); st[i].phase = done ? 'save' : 'send'; paint(); });
-        if (auto && rr && rr.sorted === false) unsorted.push(f.name);
-        if (auto && rr && rr.guessed) guessed.push(f.name);
+        const rr = await callRetry('admin_irUpload', [f.name, b64, co, day, dflt]);
+        if (auto && rr && rr.sorted === false) sess.unsorted.push(f.name);
+        if (auto && rr && rr.guessed) sess.guessed.push(f.name);
       };
-      // links for a whole chunk of files in ONE server call (fast); if the server is older, one call per file; if that fails too, the old way
+      // links for a chunk of files in ONE server call; if the server is older, one call per file; if that fails too, the old way
       const chunkP = {}, batchOk = { v: true }, pend = [], flushing = [];
       const linkFor = async i => {
         if (!batchOk.v) return null;
         const c = Math.floor(i / LINK_CHUNK);
         if (!chunkP[c]) {
           const part = files.slice(c * LINK_CHUNK, (c + 1) * LINK_CHUNK);
-          chunkP[c] = (auto ? PtahApp.call('admin_irUploadStartAuto', [part.map(f => [f.name, f.size]), day, location.origin, dflt]) : PtahApp.call('admin_irUploadStartBatch', [part.map(f => [f.name, f.size]), co, day, location.origin])).then(rs => { if (auto) (rs || []).forEach((x, k) => { if (x && x.sorted === false) unsorted.push(part[k].name); else if (x && x.guessed) guessed.push(part[k].name); }); return rs; }).catch(er => { if (er && er.net) throw er; batchOk.v = false; return null; });
+          chunkP[c] = srv(auto ? 'admin_irUploadStartAuto' : 'admin_irUploadStartBatch', auto ? [part.map(f => [f.name, f.size]), day, location.origin, dflt] : [part.map(f => [f.name, f.size]), co, day, location.origin])
+            .then(rs => { if (auto) (rs || []).forEach((x, k) => { if (x && x.sorted === false) sess.unsorted.push(part[k].name); else if (x && x.guessed) sess.guessed.push(part[k].name); }); return rs; })
+            .catch(er => { if (er && er.net) { delete chunkP[c]; throw er; } batchOk.v = false; return null; });   // no connection: ask again for the next file of the chunk
         }
+        if (((c + 1) * LINK_CHUNK) < files.length && !chunkP[c + 1]) linkFor((c + 1) * LINK_CHUNK).catch(() => {});   // links of the next chunk are made while this one uploads
         const r = await chunkP[c];
-        return r && r[i - c * LINK_CHUNK] && r[i - c * LINK_CHUNK].url ? r[i - c * LINK_CHUNK].url : null;
+        return r && r[i - c * LINK_CHUNK] ? r[i - c * LINK_CHUNK] : null;
       };
-      const flush = (all) => {
+      const flush = all => {
         while (pend.length >= (all ? 1 : DONE_CHUNK)) {
           const part = pend.splice(0, DONE_CHUNK);
-          flushing.push((auto ? PtahApp.call('admin_irUploadDoneAuto', [part.map(x => [x.id, x.name]), day, dflt]) : PtahApp.call('admin_irUploadDoneBatch', [part.map(x => [x.id, x.name]), co, day])).then(r => { (r.files || []).forEach((x, k) => { if (!x.ok) bad.push(part[k].name + ': ' + t('did not arrive on Drive', 'ماوصلش الدرايف')); }); }).catch(er => { bad.push(t('Could not confirm ', 'مقدرتش أأكد ') + part.length + t(' files: ', ' ملف: ') + (er.message || er)); }));
+          flushing.push(srv(auto ? 'admin_irUploadDoneAuto' : 'admin_irUploadDoneBatch', auto ? [part.map(x => [x.id, x.name]), day, dflt] : [part.map(x => [x.id, x.name]), co, day])
+            .then(r => { (r.files || []).forEach((x, k) => { if (x.ok) sess.ok++; else failed.push({ f: part[k].f, msg: t('did not arrive on Drive', 'ماوصلش الدرايف') }); }); })
+            .catch(er => { part.forEach(x => failed.push({ f: x.f, msg: t('could not confirm', 'مقدرتش أأكد') })); }));
         }
       };
       const one = async i => {
         const f = files[i];
         try {
           if (!fastOff) {
-            let url = await linkFor(i), perFile = false;
+            const lk = await linkFor(i);
+            if (lk && lk.exists) { sess.already++; return; }
+            if (lk && lk.error) throw new Error(lk.error);
+            let url = lk && lk.url, perFile = false;
             if (!url && !batchOk.v && !auto) {        // older server: one link per file
-              try { const l = await PtahApp.call('admin_irUploadStart', [f.name, f.size, co, day, location.origin]); url = l && l.url; perFile = !!url; } catch (er) { if (er && er.net) throw er; fastOff = true; }
+              try { const l = await srv('admin_irUploadStart', [f.name, f.size, co, day, location.origin]); url = l && l.url; perFile = !!url; } catch (er) { if (er && er.net) throw er; fastOff = true; }
             }
             if (url) {
               st[i].phase = 'send'; paint();
-              let drive = null;
-              try { drive = await putToDrive(url, f, fr => { st[i].sent = st[i].size * fr * 0.95; paint(); }); } catch (er) { if (perFile) fastOff = true; }
+              let drive = null, putErr = null;
+              try { drive = await putRetry(url, f, fr => { st[i].sent = st[i].size * fr * 0.95; paint(); }); } catch (er) { putErr = er; if (perFile) fastOff = true; }
               if (drive && drive.id) {
-                if (perFile) { st[i].phase = 'save'; st[i].sent = st[i].size * 0.95; paint(); await PtahApp.call('admin_irUploadDone', [drive.id, f.name, co, day]); }
-                else { pend.push({ id: drive.id, name: f.name }); flush(false); }
-                fast++; ok++; return;
+                if (perFile) { st[i].phase = 'save'; st[i].sent = st[i].size * 0.95; paint(); await srv('admin_irUploadDone', [drive.id, f.name, co, day]); sess.ok++; }
+                else { pend.push({ id: drive.id, name: f.name, f: f }); flush(false); }
+                fast++; return;
               }
+              // Drive link failed 3 times: the slow way only if nothing has worked fast yet; otherwise leave it for the retry button
+              if (fast > 0 || files.length > 10) throw new Error(t('connection dropped while sending', 'النت قطع وقت الإرسال'));
             }
           }
-          await slow(f, i); ok++;
-        } catch (er) { bad.push(f.name + ': ' + (er.message || er)); }
+          await slow(f, i); sess.ok++;
+        } catch (er) { failed.push({ f: f, msg: (er && er.message) || String(er) }); }
         finally { st[i].sent = st[i].size; st[i].phase = 'done'; finished++; paint(); }
       };
-      let next = 0;
-      await Promise.all(Array.from({ length: Math.min(UP_PARALLEL, files.length) }, async () => { while (next < files.length) await one(next++); }));
+      // adaptive: start at 5 at once; every error takes one slot away (down to 2), 25 good files in a row give one back (up to 6)
+      let next = 0, limit = UP_PARALLEL, active = 0, good = 0, nFail = 0;
+      const tune = () => { if (failed.length > nFail) { nFail = failed.length; good = 0; limit = Math.max(UP_MIN, limit - 1); } else if (++good >= 25) { good = 0; limit = Math.min(UP_MAX, limit + 1); } };
+      await Promise.all(Array.from({ length: Math.min(UP_MAX, files.length) }, async () => {
+        while (next < files.length) {
+          if (active >= limit) { await pause(150); continue; }
+          const i = next++; active++;
+          try { await one(i); } finally { active--; tune(); }
+        }
+      }));
       flush(true); await Promise.all(flushing);
-      out.innerHTML = `✓ ${ok} ${t('uploaded', 'اترفع')}` + (bad.length ? `<br><span class="bad">${bad.map(esc).join('<br>')}</span>` : '') + (ok && !fast && fastOff ? `<br><small class="ir-hint">${t('Uploaded the slower way (fast upload not available yet).', 'اترفع بالطريقة البطيئة (الرفع السريع لسه مش شغال).')}</small>` : '');
-      if (auto && ok) out.innerHTML += `<div class="ir-sum"><b>✓ ${ok - unsorted.length} ${t('sorted', 'اتصنفوا')}</b>${guessed.length ? ` <small>(${guessed.length} ${t('with the discipline you chose', 'بالتخصص اللي اخترته')}: ${esc((DISCS.find(d => d[0] === dflt) || [0, dflt])[1].split(' · ')[0])})</small>` : ''}${unsorted.length ? `<br><b class="bad">⚠ ${unsorted.length} ${t('need your choice (no company or no CIR/MIR in the name)', 'محتاجين اختيارك (مفيش شركة أو CIR/MIR في الاسم)')}</b><br><button type="button" class="ir-lnk" data-irfixall="1">${t('Fix them all', 'صلّحهم كلهم')}</button>` : ''}</div>`;
-      window.__irJustUnsorted = unsorted.slice();
-      index = null; await drawList(); if (unsorted.length) fixAll();
+      sess.failed = failed;
+      const names = failed.map(x => x.f.name + ': ' + x.msg);
+      out.innerHTML = `<div class="ir-sum"><b>✓ ${sess.ok} ${t('uploaded', 'اترفع')}</b>${sess.already ? ` · ${sess.already} ${t('already there (skipped)', 'موجودين من قبل (اتخطّوا)')}` : ''}${failed.length ? ` · <b class="bad">✗ ${failed.length} ${t('failed', 'فشلوا')}</b>` : ''}</div>`
+        + (failed.length ? `<div class="small bad" style="margin-top:6px">${names.slice(0, 8).map(esc).join('<br>')}${names.length > 8 ? '<br>…' : ''}</div><div class="btnrow" style="margin-top:8px"><button type="button" class="ir-lnk" data-irretry="1" style="font-weight:700">${t('Retry failed files', 'جرّب الملفات اللي فشلت تاني')} (${failed.length})</button></div><small class="ir-hint">${t('Files already on Drive are skipped, so nothing is duplicated.', 'الملفات اللي على الدرايف بتتخطى، فمفيش تكرار.')}</small>` : '');
+      if (auto && sess.ok) out.innerHTML += `<div class="ir-sum"><b>✓ ${sess.ok - sess.unsorted.length} ${t('sorted', 'اتصنفوا')}</b>${sess.guessed.length ? ` <small>(${sess.guessed.length} ${t('with the discipline you chose', 'بالتخصص اللي اخترته')}: ${esc((DISCS.find(d => d[0] === dflt) || [0, dflt])[1].split(' · ')[0])})</small>` : ''}${sess.unsorted.length ? `<br><b class="bad">⚠ ${sess.unsorted.length} ${t('need your choice (no company or no CIR/MIR in the name)', 'محتاجين اختيارك (مفيش شركة أو CIR/MIR في الاسم)')}</b><br><button type="button" class="ir-lnk" data-irfixall="1">${t('Fix them all', 'صلّحهم كلهم')}</button>` : ''}</div>`;
+      const rb = out.querySelector('[data-irretry]'); if (rb) rb.onclick = () => { const again = sess.failed.map(x => x.f); if (again.length) runBatch(again, true); };
+      window.__irJustUnsorted = sess.unsorted.slice();
+      index = null; await drawList(); if (sess.unsorted.length && !failed.length) fixAll();
+    };
+    $('irPick').onchange = async e => {
+      const files = Array.from(e.target.files || []); e.target.value = '';
+      const co = $('irCo').value, day = $('irDay').value;
+      if (!co || !day) { $('irUp').textContent = t('Choose the company and the day first.', 'اختار الشركة واليوم الأول.'); return; }
+      if (!files.length) return;
+      fastOff = false;
+      await runBatch(files, false);
     };
     drawList(); drawReorg();
   }
