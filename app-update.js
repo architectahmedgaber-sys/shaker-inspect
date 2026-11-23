@@ -1,5 +1,5 @@
 /* Shaker Inspect: "New update available" notice.
-   Checks version.json (served next to the app) on launch, when the app comes back to the front, and every 30 min.
+   Checks version.json (served next to the app) on launch, when the app comes back to the front, and every 3 min. Web app: a new version installs by itself at a quiet moment (nothing open, no typing); the button appears only if that fails.
    Phone app (APK): the Update button opens the latest APK download. Web app / installed web app: it clears the
    cached files and reloads. version.js / version.json are written by the build workflow, never by hand. */
 (function () {
@@ -28,16 +28,37 @@
 
   async function check(force) {
     const now = Date.now();
-    if (!force && now - lastCheck < 10 * 60 * 1000) return null;
+    if (!force && now - lastCheck < 2 * 60 * 1000) return null;
     lastCheck = now;
     try {
       const r = await fetch(VER_URL + '?t=' + now, { cache: 'no-store' });
       if (!r.ok) throw new Error('v' + r.status);
       latest = await r.json();
     } catch (e) { return null; }                      // offline or not published yet: stay quiet
-    if (isNewer(latest) && (force || +latest.build !== dismissed)) show();
+    if (isNewer(latest) && !NATIVE && !autoGaveUp()) autoApply();                 // web app: update by itself when it is safe
+    else if (isNewer(latest) && (force || +latest.build !== dismissed)) show();
     else if (!isNewer(latest)) hide();
     return latest;
+  }
+
+  // ---- web app / installed web app: no button needed. The new version loads by itself at a quiet moment ----
+  const TRIED = 'shkAutoUpd';
+  const autoGaveUp = () => { try { return +sessionStorage.getItem(TRIED) === +latest.build; } catch (e) { return false; } };   // already reloaded once for this build and still old: show the button instead
+  const busyNow = () => !!document.querySelector('.modal-overlay.active, .login-overlay.open, .acct-overlay.open, #edOverlay.open, #shkScreen.open, .sx-page.open, .ir-sheet.open, .sq-overlay.open, .tour-overlay.open, #hoWrap.open')
+    || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '')
+    || (document.visibilityState !== 'hidden' && Date.now() - lastTouch < 15000);
+  let lastTouch = 0, autoTimer = null, autoSince = 0;
+  ['pointerdown', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, () => { lastTouch = Date.now(); }, { passive: true, capture: true }));
+  function autoApply() {
+    clearTimeout(autoTimer);
+    if (!isNewer(latest) || autoGaveUp()) return;
+    if (!autoSince) autoSince = Date.now();
+    if (navigator.onLine !== false && !busyNow()) {
+      try { sessionStorage.setItem(TRIED, String(latest.build)); } catch (e) {}
+      return update();
+    }
+    if (Date.now() - autoSince > 10 * 60 * 1000) { autoSince = 0; if (+latest.build !== dismissed) show(); return; }   // busy for 10 minutes: ask instead
+    autoTimer = setTimeout(autoApply, 8000);
   }
 
   function hide() { const b = document.getElementById('updBar'); if (b) b.remove(); }
@@ -93,5 +114,6 @@
   window.ShkUpdate = { check: check, update: update, current: CUR };
   setTimeout(() => { check(true); accountLine(); }, 3000);                 // on launch
   document.addEventListener('visibilitychange', () => { if (!document.hidden) check(false); });   // on resume
-  setInterval(() => check(false), 30 * 60 * 1000);
+  addEventListener('online', () => check(false));
+  setInterval(() => { if (!document.hidden) check(false); }, 3 * 60 * 1000);
 })();

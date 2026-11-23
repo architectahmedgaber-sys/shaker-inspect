@@ -1457,14 +1457,31 @@
         rows.className = 'rows';
         rows.insertAdjacentHTML('beforeend',
           '<div class="r-item r-head"><span></span><span>Villa / Number</span><span>Activity</span><span>Due</span><span>Waiting</span></div>');
-        list.forEach(item => rows.appendChild(buildRow(item, showTag)));
         stage.appendChild(rows);
+        fillChunks(rows, list, item => buildRow(item, showTag));
       } else {
         const grid = document.createElement('div');
         grid.className = 'cards-grid';
-        list.forEach(item => grid.appendChild(buildCard(item, showTag)));
         stage.appendChild(grid);
+        fillChunks(grid, list, item => buildCard(item, showTag));
       }
+    }
+
+    // Long lists: the first rows appear at once, the rest are added in small batches while the screen is idle
+    let chunkSeq = 0;
+    function fillChunks(host, list, build) {
+      const my = ++chunkSeq, FIRST = 30, STEP = 40;
+      let i = 0;
+      const put = n => { const f = document.createDocumentFragment(); for (const end = Math.min(list.length, i + n); i < end; i++) f.appendChild(build(list[i])); host.appendChild(f); };
+      put(FIRST);
+      if (i >= list.length) return;
+      const idle = window.requestIdleCallback || (fn => setTimeout(fn, 30));
+      const next = () => {
+        if (my !== chunkSeq || !host.isConnected) return;       // the list was redrawn meanwhile
+        put(STEP); markSelected();
+        if (i < list.length) idle(next);
+      };
+      idle(next);
     }
 
     function buildRow(item, showTag) {
@@ -2656,5 +2673,6 @@
   <script src="app-update.js"></script>
   <script src="app-refresh.js"></script>
   <script src="app-live.js"></script>
+  <script src="app-search.js"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@
    Layers = full-screen pages, popups, scanner, Handover tracker (and its inner levels). Company / list / request
    levels already use history in index.html; this file adds the rest. Back exits only from the home screen. */
 (function () {
-  const SEL = '#hoWrap.open, #shkScreen.open, .acct-overlay.open, .tour-overlay.open, .ed-overlay.open, #vxScan, #vxDraw, .sx-page.open, .ir-sheet.open';
+  const SEL = '#hoWrap.open, #shkScreen.open, .acct-overlay.open, .tour-overlay.open, .ed-overlay.open, #vxScan, #vxDraw, .sx-page.open, .ir-sheet.open, .sq-overlay.open';
   const CLOSERS = '[data-sx="x"],[data-irx],[data-vx="qrclose"],[data-vx="scanclose"],[data-dr="cancel"],[data-mg="x"],#dxSigX,.acct-close';
   let order = [];          // open layers, bottom to top
   let trDepth = 0;         // inner levels of the Handover tracker (reported by the iframe)
