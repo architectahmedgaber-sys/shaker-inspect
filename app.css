@@ -487,3 +487,7 @@ body:not(.at-home) #refreshBtn { display: inline-flex !important; }
 .ir-remrow > span { flex: 1 1 180px; }
 .ir-remrow .sc-in { flex: 0 1 180px; }
 .ir-rules summary { cursor: pointer; }
+.ir-missco { border-top: 1px solid var(--line, rgba(128,128,128,.25)); }
+.ir-missco > summary { cursor: pointer; list-style: none; }
+.ir-missco > summary::-webkit-details-marker { display: none; }
+.ir-missco > .row { padding-inline-start: 10px; }

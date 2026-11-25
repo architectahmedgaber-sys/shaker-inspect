@@ -606,44 +606,61 @@
   }
 
   // ---------------------------------------------------------------- open requests that still have NO IR file (so Ahmed knows exactly what to download from ACC)
-  const miss = { sort: 'age', co: '', list: [] };
+  const miss = { sort: 'age', list: [], all: [], cos: [] };
   function missingRows(open) {
-    const seen = new Set(), out = [];
+    const seen = new Set(), tot = {}, out = [];
     open.forEach(i => {
-      if (filesFor(i).length) return;
+      let key = '', co = '';
+      try { key = getProject(i); co = projectInfo(key).label; } catch (e) {}
       const id = String(i.irNumber || '') + '|' + String(i.rev || '0'); if (seen.has(id)) return; seen.add(id);
-      let co = '', ty = '', vil = '', act = '', age = '';
-      try { co = projectInfo(getProject(i)).label; ty = getDocType(i); vil = villaOf(i); act = activityOf(i); age = ageText(i); } catch (e) {}
+      const c = tot[key] = tot[key] || { key, label: co || key, total: 0, withFile: 0 };
+      c.total++;
+      if (filesFor(i).length) { c.withFile++; return; }
+      let ty = '', vil = '', act = '', age = '';
+      try { ty = getDocType(i); vil = villaOf(i); act = activityOf(i); age = ageText(i); } catch (e) {}
       let day = ''; if (i.ageDays !== null && i.ageDays !== undefined) { const d = new Date(Date.now() - i.ageDays * 864e5); day = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
-      out.push({ ir: String(i.irNumber || ''), rev: String(i.rev || '0'), co, ty, vil, act, age, ageDays: (i.ageDays === null || i.ageDays === undefined) ? -1 : i.ageDays, day, by: i.createdBy || i.contractor || '', late: (() => { try { return isLate(i); } catch (e) { return false; } })() });
+      out.push({ ir: String(i.irNumber || ''), rev: String(i.rev || '0'), key, co, ty, vil, act, age, ageDays: (i.ageDays === null || i.ageDays === undefined) ? -1 : i.ageDays, day, by: i.createdBy || i.contractor || '', late: (() => { try { return isLate(i); } catch (e) { return false; } })() });
     });
+    ['SH', 'SQ', 'AT'].forEach(k => { if (!tot[k]) tot[k] = { key: k, label: (COMPANIES.find(c => c[0] === k) || [0, k])[1], total: 0, withFile: 0 }; });
+    miss.cos = Object.keys(tot).map(k => tot[k]).sort((x, y) => (['SH', 'SQ', 'AT', 'OTHER'].indexOf(x.key) + 1 || 9) - (['SH', 'SQ', 'AT', 'OTHER'].indexOf(y.key) + 1 || 9));
     return out;
   }
+  const missNum = x => { const m = String(x).match(/(\d+)\D*$/); return m ? +m[1] : 0; };
+  const missCmp = {
+    age: (a, b) => b.ageDays - a.ageDays || missNum(a.ir) - missNum(b.ir),
+    ir: (a, b) => missNum(a.ir) - missNum(b.ir),
+    vil: (a, b) => (a.vil < b.vil ? -1 : a.vil > b.vil ? 1 : 0) || missNum(a.ir) - missNum(b.ir)
+  };
   function drawMissing(open) {
     const el = $('irMissing'); if (!el) return;
     miss.all = missingRows(open);
-    if (!miss.all.length) { el.innerHTML = `<h4 class="ir-sec">${t('Requests without an IR file', 'طلبات من غير ملف IR')}</h4><div class="card"><div class="sc-empty">${t('Every open request has its file ✓', 'كل الطلبات المفتوحة ليها ملف ✓')}</div></div>`; return; }
-    const cos = Array.from(new Set(miss.all.map(r => r.co))).filter(Boolean).sort();
-    if (miss.co && !cos.includes(miss.co)) miss.co = '';
-    el.innerHTML = `<h4 class="ir-sec">⚠ ${t('Requests without an IR file', 'طلبات من غير ملف IR')} (<span id="irMissN"></span>)</h4><div class="card ir-bulk"><div class="ir-sel">
-      <label>${t('Company', 'الشركة')}<select class="sc-in" id="irMissCo"><option value="">${t('All', 'الكل')}</option>${cos.map(c => `<option value="${esc(c)}"${c === miss.co ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
-      <label>${t('Sort by', 'رتّب حسب')}<select class="sc-in" id="irMissSort"><option value="age">${t('Oldest first', 'الأقدم الأول')}</option><option value="ir">${t('IR number', 'رقم الـ IR')}</option><option value="co">${t('Company', 'الشركة')}</option><option value="vil">${t('Villa', 'الفيلا')}</option></select></label></div>
-      <div class="btnrow"><button type="button" class="ir-lnk" id="irMissCopy">${t('Copy IR numbers', 'انسخ أرقام الـ IR')}</button> <span class="small" id="irMissMsg"></span></div>
-      <div class="card-list" id="irMissList"></div></div>`;
+    const totalMiss = miss.all.length;
+    el.innerHTML = `<h4 class="ir-sec">${totalMiss ? '⚠ ' : '✓ '}${t('Open requests by company', 'الطلبات المفتوحة حسب الشركة')}</h4><div class="card ir-bulk">
+      <div class="ir-sel"><label>${t('Sort by', 'رتّب حسب')}<select class="sc-in" id="irMissSort"><option value="age">${t('Oldest first', 'الأقدم الأول')}</option><option value="ir">${t('IR number', 'رقم الـ IR')}</option><option value="vil">${t('Villa', 'الفيلا')}</option></select></label></div>
+      <div id="irMissBody"></div>
+      <div class="btnrow"><button type="button" class="ir-lnk" id="irMissCopyAll"${totalMiss ? '' : ' disabled'}>${t('Copy all missing IR numbers', 'انسخ كل أرقام الناقص')} (${totalMiss})</button> <span class="small" id="irMissMsg"></span></div></div>`;
     $('irMissSort').value = miss.sort;
-    paintMissing();
-    $('irMissCo').onchange = ev => { miss.co = ev.target.value; paintMissing(); };
     $('irMissSort').onchange = ev => { miss.sort = ev.target.value; paintMissing(); };
-    $('irMissCopy').onclick = async () => { const ok = await copyText(miss.list.map(r => r.ir).join('\n')); const m = $('irMissMsg'); if (m) m.textContent = ok ? '✓ ' + miss.list.length + ' ' + t('copied', 'اتنسخ') : t('Could not copy', 'ماتنسخش'); };
+    $('irMissBody').addEventListener('toggle', ev => { const d = ev.target; if (d && d.dataset && d.dataset.mco) (miss.openCo = miss.openCo || {})[d.dataset.mco] = d.open; }, true);
+    $('irMissBody').addEventListener('click', async ev => {
+      const b = ev.target.closest && ev.target.closest('[data-misscopy]'); if (!b) return; ev.preventDefault(); ev.stopPropagation();
+      const rows = miss.all.filter(r => r.key === b.dataset.misscopy).sort(missCmp[miss.sort] || missCmp.age);
+      const ok = await copyText(rows.map(r => r.ir).join('\n')); const m = $('irMissMsg'); if (m) m.textContent = ok ? '✓ ' + rows.length + ' ' + t('copied', 'اتنسخ') : t('Could not copy', 'ماتنسخش');
+    });
+    $('irMissCopyAll').onclick = async () => { const ok = await copyText(miss.all.slice().sort(missCmp[miss.sort] || missCmp.age).map(r => r.ir).join('\n')); const m = $('irMissMsg'); if (m) m.textContent = ok ? '✓ ' + totalMiss + ' ' + t('copied', 'اتنسخ') : t('Could not copy', 'ماتنسخش'); };
+    paintMissing();
   }
   function paintMissing() {
-    const el = $('irMissList'); if (!el) return;
-    const num = x => { const m = String(x).match(/(\d+)\D*$/); return m ? +m[1] : 0; };
-    let l = (miss.all || []).filter(r => !miss.co || r.co === miss.co);
-    const by = { age: (a, b) => b.ageDays - a.ageDays || num(a.ir) - num(b.ir), ir: (a, b) => num(a.ir) - num(b.ir), co: (a, b) => (a.co < b.co ? -1 : a.co > b.co ? 1 : 0) || num(a.ir) - num(b.ir), vil: (a, b) => (a.vil < b.vil ? -1 : a.vil > b.vil ? 1 : 0) || num(a.ir) - num(b.ir) };
-    l = l.sort(by[miss.sort] || by.age); miss.list = l;
-    const n = $('irMissN'); if (n) n.textContent = l.length + (miss.co ? ' / ' + miss.all.length : '');
-    el.innerHTML = l.map(r => `<div class="row"><span dir="auto"><b>${esc(r.ir)}</b>${r.rev && r.rev !== '0' ? ' · Rev ' + esc(r.rev) : ''}<small class="ir-path">${esc([r.co, r.ty, r.vil, r.act].filter(Boolean).join(' · '))}${r.by ? '<br>' + esc(r.by) : ''}</small></span><span class="mono${r.late ? ' bad' : ''}">${esc(r.age)}${r.day ? '<br><small>' + r.day + '</small>' : ''}</span></div>`).join('') || `<div class="sc-empty">${t('Nothing for this company ✓', 'مفيش حاجة للشركة دي ✓')}</div>`;
+    const el = $('irMissBody'); if (!el) return;
+    const sorter = missCmp[miss.sort] || missCmp.age, oc = miss.openCo || {};
+    el.innerHTML = miss.cos.map(c => {
+      const rows = miss.all.filter(r => r.key === c.key).sort(sorter), n = rows.length;
+      if (!c.total) return `<div class="row"><span><b>${esc(c.label)}</b></span><span class="mono">${t('no open requests', 'مفيش طلبات مفتوحة')}</span></div>`;
+      if (!n) return `<div class="row"><span><b>✓ ${esc(c.label)}</b><small class="ir-path">${t('All requests have their IR file', 'كل الطلبات ليها ملف IR')}</small></span><span class="mono">${c.withFile}/${c.total}</span></div>`;
+      const isOpen = oc[c.key] !== undefined ? oc[c.key] : true;
+      return `<details class="ir-missco" data-mco="${esc(c.key)}"${isOpen ? ' open' : ''}><summary class="row"><span><b>⚠ ${esc(c.label)}</b><small class="ir-path">${n} ${t('without a file', 'من غير ملف')} · ${c.withFile}/${c.total} ${t('have files', 'ليها ملفات')}</small></span><span class="mono"><button type="button" class="ir-lnk" data-misscopy="${esc(c.key)}">${t('Copy', 'انسخ')} ${n}</button></span></summary>` +
+        rows.map(r => `<div class="row"><span dir="auto"><b>${esc(r.ir)}</b>${r.rev && r.rev !== '0' ? ' · Rev ' + esc(r.rev) : ''}<small class="ir-path">${esc([r.ty, r.vil, r.act].filter(Boolean).join(' · '))}${r.by ? '<br>' + esc(r.by) : ''}</small></span><span class="mono${r.late ? ' bad' : ''}">${esc(r.age)}${r.day ? '<br><small>' + r.day + '</small>' : ''}</span></div>`).join('') + `</details>`;
+    }).join('');
   }
   async function copyText(txt) {
     let ok = false;
