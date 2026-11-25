@@ -719,11 +719,11 @@
         (() => {
           const un = r.files.filter(f => f.co === 'UNSORTED'), rest = r.files.filter(f => f.co !== 'UNSORTED');
           const row = f => `<div class="row" data-irrow="${esc(f.id)}"><span dir="auto">${esc(f.name)}<small class="ir-path">${esc(pathOf(f))}</small></span><span class="mono">${fmtSize(f.size)} <button type="button" class="ir-lnk" data-irfix="${esc(f.id)}" title="${t('Change company / discipline / type', 'غيّر الشركة / التخصص / النوع')}">✎</button> <button type="button" class="ir-lnk" data-irdel="${esc(f.id)}">✕</button></span></div>`;
-          const urow = f => `<div class="row" data-irrow="${esc(f.id)}"><label class="ir-ck"><input type="checkbox" data-irck="${esc(f.id)}"> <span dir="auto">${esc(f.name)}</span></label><span class="mono">${fmtSize(f.size)} <button type="button" class="ir-lnk" data-irfix="${esc(f.id)}" title="${t('Change company / discipline / type', 'غيّر الشركة / التخصص / النوع')}">✎</button> <button type="button" class="ir-lnk" data-irdel="${esc(f.id)}">✕</button></span></div>`;
           const needs = r.files.filter(f => f.co === 'UNSORTED' || (f.co && (!f.disc || !f.type)));
           const needSet = new Set(needs.map(f => f.id));
           const shown = bulkAll ? r.files : needs, others = r.files.filter(f => !shown.includes(f));
           window.__irNeed = needs.length;
+          bulk.files = shown; bulk.sel = new Set(); bulk.q = ''; bulk.lim = BULK_STEP;
           const bar = $('irSortBar');
           if (bar) bar.innerHTML = `<div class="card ir-sortbar"><button type="button" class="ir-big${needs.length ? ' warn' : ''}" data-irsort="1">🗂 ${t('Fix unsorted files', 'صلّح الملفات غير المصنّفة')}${needs.length ? ` <span class="ir-badge">${needs.length}</span>` : ''}</button><small class="ir-hint">${needs.length ? t('Tick many files and set company / discipline / CIR-MIR / day once.', 'حدد ملفات كتير وظبّط الشركة / التخصص / CIR-MIR / اليوم مرة واحدة.') : t('All files are sorted ✓. You can still mark any files by choosing "Show all files".', 'كل الملفات متصنفة ✓. تقدر برضه تحدد أي ملفات بزرار "اعرض كل الملفات".')}</small></div>`;
           if (!shown.length) return `<div class="card ir-bulk" id="irBulk"><div class="sc-empty">${t('Nothing needs sorting ✓', 'مفيش حاجة محتاجة تصنيف ✓')}</div><div class="btnrow"><button type="button" class="ir-lnk" data-irmode="1">${t('Show all files', 'اعرض كل الملفات')}</button></div></div>` + (r.files.length ? '' : `<div class="card-list"><div class="sc-empty">${t('No files yet.', 'مفيش ملفات لسه.')}</div></div>`);
@@ -733,32 +733,46 @@
             <label>CIR / MIR<select class="sc-in" id="irBType"><option value="CIR">CIR</option><option value="MIR">MIR</option></select></label>
             <label>${t('Day', 'اليوم')}<input type="date" class="sc-in" id="irBDay" value="${today()}"></label></div>
             <label class="ir-ck small"><input type="checkbox" id="irBRem"> ${t('Remember: files of this company with no discipline in the name get this discipline from now on', 'افتكر: ملفات الشركة دي اللي اسمها من غير تخصص تاخد التخصص ده من دلوقتي')}</label>
-            <div class="btnrow"><button type="button" class="ir-lnk" data-irbulk="1" id="irBGo">${t('Apply to selected', 'طبّق على المحدد')} (0)</button> <span class="small" id="irBMsg"></span></div></div><div class="card-list" id="irBList">${shown.length ? shown.map(urow).join('') : ''}</div>` +
+            <div class="btnrow"><button type="button" class="ir-lnk" data-irbulk="1" id="irBGo">${t('Apply to selected', 'طبّق على المحدد')} (0)</button> <span class="small" id="irBMsg"></span></div></div><div class="card-list" id="irBList">${bulkListHtml()}</div>` +
             (r.files.length ? '' : `<div class="card-list"><div class="sc-empty">${t('No files yet.', 'مفيش ملفات لسه.')}</div></div>`);
         })();
     } catch (e) { el.innerHTML = `<div class="sc-empty">${esc(e.message || e)}</div>`; }
   }
   // BULK marking of the Unsorted files: tick many (or select all shown, or search by name) and set company / discipline / CIR-MIR / day once
-  const bulkRows = () => Array.from(document.querySelectorAll('#irBList [data-irrow]'));
-  const bulkIds = () => bulkRows().filter(r => r.querySelector('[data-irck]').checked).map(r => r.dataset.irrow);
+  // The list is DATA first: which files, which are ticked and the search text live here, and only the first BULK_STEP matches are drawn.
+  // (4000 unsorted files used to mean 30,000 page elements: every tap anywhere on the screen was slow.)
+  const BULK_STEP = 50, bulk = { files: [], sel: new Set(), q: '', lim: BULK_STEP };
+  const bulkUrow = f => `<div class="row" data-irrow="${esc(f.id)}"><label class="ir-ck"><input type="checkbox" data-irck="${esc(f.id)}"${bulk.sel.has(f.id) ? ' checked' : ''}> <span dir="auto">${esc(f.name)}</span></label><span class="mono">${fmtSize(f.size)} <button type="button" class="ir-lnk" data-irfix="${esc(f.id)}" title="${t('Change company / discipline / type', 'غيّر الشركة / التخصص / النوع')}">✎</button> <button type="button" class="ir-lnk" data-irdel="${esc(f.id)}">✕</button></span></div>`;
+  const bulkMatches = () => { const q = bulk.q.trim().toUpperCase(); return q ? bulk.files.filter(f => f.name.toUpperCase().includes(q)) : bulk.files; };
+  function bulkListHtml() {
+    const m = bulkMatches(), shown = m.slice(0, bulk.lim);
+    return shown.map(bulkUrow).join('') + (m.length > shown.length ? `<div class="row"><button type="button" class="ir-lnk" data-irmore="1">${t('Show more', 'اعرض أكتر')} (${m.length - shown.length})</button></div>` : '') + (!m.length && bulk.files.length ? `<div class="sc-empty">${t('No file matches.', 'مفيش ملف مطابق.')}</div>` : '');
+  }
+  function paintBulk() { const l = $('irBList'); if (l) l.innerHTML = bulkListHtml(); bulkSync(); }
+  const bulkIds = () => Array.from(bulk.sel);
   function bulkSync() {
-    const sel = bulkRows().filter(r => r.querySelector('[data-irck]').checked), go = $('irBGo'); if (!go) return;
+    const go = $('irBGo'); if (!go) return;
+    const sel = bulk.files.filter(f => bulk.sel.has(f.id));
     go.textContent = t('Apply to selected', 'طبّق على المحدد') + ' (' + sel.length + ')'; go.disabled = !sel.length;
     // suggest company and CIR/MIR when every selected name says the same
-    const names = sel.map(r => r.querySelector('span[dir]').textContent.toUpperCase());
+    const names = sel.map(f => f.name.toUpperCase());
     ['SH', 'SQ', 'AT'].forEach(c => { if (names.length && names.every(n => new RegExp('(^|[^A-Z0-9])' + c + '([^A-Z0-9]|$)').test(n))) $('irBCo').value = c; });
     ['CIR', 'MIR'].forEach(c => { if (names.length && names.every(n => new RegExp('(^|[^A-Z0-9])' + c + '([^A-Z0-9]|$)').test(n))) $('irBType').value = c; });
   }
+  let bulkT = 0;
   document.addEventListener('input', ev => {
-    if (ev.target && ev.target.id === 'irBF') { const q = ev.target.value.trim().toUpperCase(); bulkRows().forEach(r => { r.style.display = !q || r.querySelector('span[dir]').textContent.toUpperCase().includes(q) ? '' : 'none'; }); }
+    if (ev.target && ev.target.id === 'irBF') { const v = ev.target.value; clearTimeout(bulkT); bulkT = setTimeout(() => { bulk.q = v; bulk.lim = BULK_STEP; paintBulk(); }, 200); }
   });
-  document.addEventListener('change', ev => { if (ev.target && ev.target.matches && ev.target.matches('[data-irck]')) bulkSync(); });
+  document.addEventListener('change', ev => {
+    const c = ev.target && ev.target.matches && ev.target.matches('[data-irck]') && ev.target;
+    if (c) { if (c.checked) bulk.sel.add(c.dataset.irck); else bulk.sel.delete(c.dataset.irck); bulkSync(); }
+  });
   // after an upload: tick the files that were not recognised and scroll to them
   function fixAll() {
     const names = window.__irJustUnsorted || [], box = $('irBulk'); if (!box) return;
     if (bulkAll) { bulkAll = false; return drawList().then(fixAll); }
-    bulkRows().forEach(r => { r.querySelector('[data-irck]').checked = names.length ? names.includes(r.querySelector('span[dir]').textContent) : true; });
-    bulkSync(); box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    bulk.sel = new Set(bulk.files.filter(f => !names.length || names.includes(f.name)).map(f => f.id));
+    paintBulk(); box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   async function bulkApply(btn) {
     const ids = bulkIds(), co = $('irBCo').value, disc = $('irBDisc').value, type = $('irBType').value, day = $('irBDay').value, msg = $('irBMsg');
@@ -869,7 +883,8 @@
     const ap = ev.target.closest && ev.target.closest('[data-irapply]'); if (ap) return applyPlan(ap);
     const fx = ev.target.closest && ev.target.closest('[data-irfix]'); if (fx) return fixForm(fx.dataset.irfix);
     const fa = ev.target.closest && ev.target.closest('[data-irfixall]'); if (fa) return fixAll();
-    const sa = ev.target.closest && ev.target.closest('[data-irall]'); if (sa) { bulkRows().forEach(r => { if (r.style.display !== 'none') r.querySelector('[data-irck]').checked = true; }); return bulkSync(); }
+    const sa = ev.target.closest && ev.target.closest('[data-irall]'); if (sa) { bulkMatches().forEach(f => bulk.sel.add(f.id)); return paintBulk(); }
+    const bm = ev.target.closest && ev.target.closest('[data-irmore]'); if (bm) { bulk.lim += BULK_STEP; return paintBulk(); }
     const bk = ev.target.closest && ev.target.closest('[data-irbulk]'); if (bk) return bulkApply(bk);
     const so = ev.target.closest && ev.target.closest('[data-irsort]'); if (so) { window.__irJustUnsorted = []; return fixAll(); }
     const md = ev.target.closest && ev.target.closest('[data-irmode]'); if (md) { bulkAll = !bulkAll; return drawList(); }
