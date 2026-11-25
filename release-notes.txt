@@ -1,1 +1,1 @@
-Changed: the missing-files list draws only the company headers and 30 rows at a time (was every row), so the area is light and taps respond at once. No Apps Script change.
+Changed: the "Mark many files" list in Admin > IR files draws 50 files at a time (was all of them), so the whole screen is light. No Apps Script change.
