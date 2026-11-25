@@ -637,9 +637,9 @@ const IR_ADMIN_FUNCS_ = {
     if (!IR_COMPANIES[co]) throw new Error('Pick the company first.');
     if (!IR_DAY_RE.test(day)) throw new Error('Pick the day (date).');
     if (!list.length || list.length > 60) throw new Error('Bad batch.');
-    let folderId;
+    let folderId, folder;
     const lock = LockService.getScriptLock(); lock.waitLock(20000);
-    try { folderId = irSub_(irSub_(irSub_(irRoot_(true), IR_OPEN, true), IR_COMPANIES[co], true), day, true).getId(); }
+    try { folder = irSub_(irSub_(irSub_(irRoot_(true), IR_OPEN, true), IR_COMPANIES[co], true), day, true); folderId = folder.getId(); }
     finally { lock.releaseLock(); }
     const token = ScriptApp.getOAuthToken(), okOrigin = /^[a-z][a-z0-9+.\-]*:\/\/[A-Za-z0-9.\-]+(:\d+)?$/i.test(origin);
     const meta = [], reqs = [];
