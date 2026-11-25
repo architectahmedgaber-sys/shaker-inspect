@@ -110,6 +110,14 @@ function irSeen_(map, root, folder, name, size) {
   return map ? !!irIdxCheck_(map, name, size) : (irHasSame_(folder, name, size) || !!irExisting_(root, name, size));
 }
 
+// The IR number = the number right after CIR / MIR (and the discipline), e.g. ...-CIR-ARCH-21667 - 2nd coat ... villa 232 gives 21667
+// (irParse_ returns the LAST number of the name, which here would be the villa).
+function irIrNo_(name) {
+  const tk = String(name || '').replace(/\.[A-Za-z0-9]+$/, '').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  const ti = tk.findIndex(t => IR_TYPES[t]); if (ti < 0) return '';
+  for (let j = ti + 1; j <= ti + 3 && j < tk.length; j++) if (/^\d{3,}$/.test(tk[j])) return tk[j];
+  return '';
+}
 // REV in a file name: Rev1 / Rev 2 / R1 (none = 0)
 function irRevOf_(name) {
   const rv = String(name).match(/(?:^|[^A-Za-z])rev(?:ision)?[\s._-]*0*(\d+)|[-_ ]r0*(\d+)(?=[-_. ]|$)/i);
@@ -123,7 +131,8 @@ function irRevOf_(name) {
 function irAfterClose_(me, p, res) {
   try {
     if (!p || !res || !res.success || res.duplicate) return;
-    const info = irParse_(String(p.irNumber || ''), ''); if (!info || !info.no) return;
+    const info = irParse_(String(p.irNumber || ''), ''); if (!info) return;
+    info.no = irIrNo_(String(p.irNumber || '')); if (!info.no) return;
     const root = irRoot_(false), open = root && irSub_(root, IR_OPEN, false); if (!open) return;
     const rev = Number(String(p.rev || '0').replace(/\D/g, '')) || 0;
     const gone = [], rows = [], failed = [];
@@ -131,7 +140,7 @@ function irAfterClose_(me, p, res) {
     while (it.hasNext()) {
       const f = it.next(), n = f.getName();
       if (f.isTrashed() || !irInside_(f, open)) continue;
-      const x = irParse_(n, ''); if (!x || x.co !== info.co || x.type !== info.type || x.no !== info.no) continue;
+      const x = irParse_(n, ''); if (!x || x.co !== info.co || x.type !== info.type || irIrNo_(n) !== info.no) continue;
       if (irRevOf_(n) > rev) continue;
       try { rows.push([n, f.getSize(), '', 'done']); f.setTrashed(true); gone.push(f.getId()); } catch (e) { rows.pop(); failed.push(n); }
     }
@@ -222,9 +231,9 @@ function irDupScan_() {
   const used = {}; groups.forEach(g => { used[g.keep.id] = 1; g.extras.forEach(e => { used[e.id] = 1; }); });
   const byNo = {};
   files.forEach(f => {
-    const info = irParse_(f.name, ''); if (!info || !info.no) return;
+    const info = irParse_(f.name, ''), ino = irIrNo_(f.name); if (!info || !ino) return;
     const rv = String(f.name).match(/(?:^|[^A-Za-z])rev(?:ision)?[\s._-]*0*(\d+)|[-_ ]r0*(\d+)(?=[-_. ]|$)/i), rev = rv ? (rv[1] || rv[2]) : '0';   // Rev 0 and Rev 1 of one IR are different files, never duplicates
-    const kk = info.co + '|' + info.type + '|' + info.no + '|' + rev;
+    const kk = info.co + '|' + info.type + '|' + ino + '|' + rev;
     (byNo[kk] = byNo[kk] || []).push(f);
   });
   Object.keys(byNo).forEach(k => {
