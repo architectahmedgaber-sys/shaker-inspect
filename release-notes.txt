@@ -1,1 +1,1 @@
-Changed: sorting the missing-files list no longer redraws it (no more lost taps), and long lists draw only what is on screen. No Apps Script change.
+Changed: the list of requests without an IR file is read from the sheet log instead of Drive, so it opens at once. Needs the new IrFiles.gs + New version (steps in deliver/final-ir/SETUP_STEPS_IRHAVE.md).

@@ -607,10 +607,8 @@
 
   // ---------------------------------------------------------------- open requests that still have NO IR file (so Ahmed knows exactly what to download from ACC)
   const miss = { sort: 'age', list: [], all: [], cos: [] };
-  function missingRows(open) {
+  function missingRows(open, nums) {
     const seen = new Set(), tot = {}, out = [];
-    const nums = new Set();                                   // every number found in a file name, leading zeros removed (same rule as filesFor, one pass instead of one regex scan per request)
-    (index || []).forEach(f => { (String(f.name).match(/\d+/g) || []).forEach(x => nums.add(x.replace(/^0+/, ''))); });
     open.forEach(i => {
       let key = '', co = '';
       try { key = getProject(i); co = projectInfo(key).label; } catch (e) {}
@@ -634,13 +632,28 @@
     ir: (a, b) => missNum(a.ir) - missNum(b.ir),
     vil: (a, b) => (a.vil < b.vil ? -1 : a.vil > b.vil ? 1 : 0) || missNum(a.ir) - missNum(b.ir)
   };
-  function drawMissing(open) {
+  // the IR numbers that have a file come from the sheet log (one fast read); only if that log does not exist yet, the Drive list is used
+  async function loadMissing() {
     const el = $('irMissing'); if (!el) return;
-    miss.all = missingRows(open);
+    if (!el.firstChild) el.innerHTML = `<h4 class="ir-sec">${t('Open requests by company', 'الطلبات المفتوحة حسب الشركة')}</h4><div class="card"><div class="sc-load"><i></i><i></i><i></i></div></div>`;
+    try {
+      const open = (typeof allItems !== 'undefined' && allItems) || [], nums = new Set();
+      let names = null, src = 'sheet', rows = 0;
+      try { const r = await api('admin_irHave'); names = r && r.names; rows = (r && r.rows) || 0; } catch (e) {}
+      if (!names) { src = 'drive'; names = (await loadIndex()).map(f => f.name); }
+      names.forEach(nm => { (String(nm).match(/\d+/g) || []).forEach(x => nums.add(x.replace(/^0+/, ''))); });
+      miss.src = src; miss.rows = rows;
+      drawMissing(open, nums);
+    } catch (e) { el.innerHTML = `<h4 class="ir-sec">${t('Open requests by company', 'الطلبات المفتوحة حسب الشركة')}</h4><div class="card"><div class="sc-empty">${esc(e.message || e)}</div></div>`; }
+  }
+  function drawMissing(open, nums) {
+    const el = $('irMissing'); if (!el) return;
+    miss.all = missingRows(open, nums);
     const totalMiss = miss.all.length;
     el.innerHTML = `<h4 class="ir-sec">${totalMiss ? '⚠ ' : '✓ '}${t('Open requests by company', 'الطلبات المفتوحة حسب الشركة')}</h4><div class="card ir-bulk">
       <div class="ir-chips" id="irMissSort" role="group">${[['age', t('Oldest first', 'الأقدم')], ['ir', t('IR number', 'رقم IR')], ['vil', t('Villa', 'الفيلا')]].map(x => `<button type="button" class="ir-chip${x[0] === miss.sort ? ' on' : ''}" data-msort="${x[0]}">${x[1]}</button>`).join('')}</div>
       <div id="irMissBody"></div>
+      <small class="ir-hint">${miss.src === 'sheet' ? t('From the upload log in the sheet (' + miss.rows + ' files). Files put on Drive by hand are not in it until Find duplicates runs.', 'من سجل الرفع في الشيت (' + miss.rows + ' ملف). الملفات اللي اترفعت بإيدك على الدرايف مش فيه إلا لما تشغّل Find duplicates.') : t('From the Drive list (the sheet log does not exist yet).', 'من قايمة الدرايف (سجل الشيت لسه مش موجود).')}</small>
       <div class="btnrow"><button type="button" class="ir-lnk" id="irMissCopyAll"${totalMiss ? '' : ' disabled'}>${t('Copy all missing IR numbers', 'انسخ كل أرقام الناقص')} (${totalMiss})</button> <span class="small" id="irMissMsg"></span></div></div>`;
     $('irMissSort').addEventListener('click', ev => {
       const b = ev.target.closest && ev.target.closest('[data-msort]'); if (!b || b.dataset.msort === miss.sort) return;
@@ -688,11 +701,11 @@
   let bulkAll = false;
   async function drawList() {
     const el = $('irList'); if (!el) return;
+    loadMissing();                                           // from the sheet, in parallel: it never waits for the Drive scan
     try {
       const r = await api('admin_irList'); index = r.files; indexAt = Date.now();
       const open = (typeof allItems !== 'undefined' && allItems) || [];
       const withFile = open.filter(i => filesFor(i).length).length;
-      try { drawMissing(open); } catch (e) { const mm = $('irMissing'); if (mm) mm.innerHTML = ''; }
       el.innerHTML = `<div class="kpis"><div class="kpi"><b>${r.files.length}</b><span>${t('Files', 'ملفات')}</span></div><div class="kpi ${open.length - withFile ? 'bad' : 'ok'}"><b>${withFile}/${open.length}</b><span>${t('Open requests with a file', 'طلبات مفتوحة لها ملف')}</span></div></div>` +
         (() => {
           const un = r.files.filter(f => f.co === 'UNSORTED'), rest = r.files.filter(f => f.co !== 'UNSORTED');
