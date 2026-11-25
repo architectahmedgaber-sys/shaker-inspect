@@ -580,23 +580,29 @@
       const same = p.groups.filter(g => g.kind === 'same'), cl = p.groups.filter(g => g.kind === 'closed'), sz = p.groups.filter(g => g.kind === 'size'), nb = p.groups.filter(g => g.kind === 'number');
       out.innerHTML = `<b>${p.same}</b> ${t('exact copies (ticked)', 'نسخة مطابقة (معلّمة)')} · <b>${p.closed}</b> ${t('Open copies of already Closed files', 'نسخ Open لملفات اتقفلت')} · <b>${p.size}</b> ${t('same name, other size', 'نفس الاسم وحجم تاني')} · <b>${p.number}</b> ${t('same IR number, other name/type', 'نفس الرقم واسم/نوع تاني')} (${t('these three are not ticked: check them', 'التلاتة دول مش معلّمين: راجعهم')}) · ${p.scanned} ${t('files checked', 'ملف اتفحص')}${p.truncated ? ' ⚠ ' + t('(stopped early)', '(وقف بدري)') : ''}
         <div style="max-height:320px;overflow:auto;margin:8px 0;padding:8px;border:1px solid rgba(128,128,128,.3);border-radius:10px">${same.length ? `<div><b>${t('Same file twice', 'نفس الملف مرتين')}</b></div>` + same.map(block).join('') : ''}${cl.length ? `<div style="margin-top:10px"><b>${t('Already in Closed', 'موجود في Closed')}</b></div>` + cl.map(block).join('') : ''}${sz.length ? `<div style="margin-top:10px"><b>${t('Same name, different size (newest kept)', 'نفس الاسم وحجم مختلف (الأحدث بيفضل)')}</b></div>` + sz.map(block).join('') : ''}${nb.length ? `<div style="margin-top:10px"><b>${t('Same IR number, different file name or type', 'نفس رقم الـ IR واسم أو نوع مختلف')}</b></div>` + nb.map(block).join('') : ''}</div>
-        <div class="btnrow"><button type="button" class="ir-lnk" data-irdup="plan">${t('Find again', 'دوّر تاني')}</button> <button type="button" class="ir-lnk" data-irdup="run">${t('Send ticked files to the bin', 'ابعت المعلّم لسلة الدرايف')}</button></div>`;
+        <div class="btnrow"><button type="button" class="ir-lnk" data-irdup="plan">${t('Find again', 'دوّر تاني')}</button> <button type="button" class="ir-lnk" data-irdup="run">${t('Send ticked files to the bin', 'ابعت المعلّم لسلة الدرايف')}</button></div><div id="irDupMsg" class="small" style="margin-top:8px"></div>`;
     } catch (e) { out.innerHTML = `<span class="bad">${esc(e.message || e)}</span>`; }
   }
   async function dupRun(btn) {
     const out = $('irDupOut'); if (!out) return;
+    const msg = $('irDupMsg') || out;
     const ids = Array.from(out.querySelectorAll('[data-irdupck]:checked')).map(x => x.dataset.irdupck);
-    if (!ids.length) { return; }
-    if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = t('Tap again: send ', 'اضغط تاني: ابعت ') + ids.length + t(' files to the bin', ' ملف للسلة'); return; }
-    btn.disabled = true; let n = 0, fails = [];
+    if (!ids.length) { msg.innerHTML = '<span class="bad">' + t('Nothing is ticked.', 'مفيش حاجة معلّمة.') + '</span>'; return; }
+    if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = t('Tap again: send ', 'اضغط تاني: ابعت ') + ids.length + t(' files to the bin', ' ملف للسلة'); msg.innerHTML = t('Tap the same button once more to confirm.', 'اضغط نفس الزرار مرة كمان للتأكيد.'); return; }
+    btn.disabled = true; let n = 0, ign = 0, fails = [];
     try {
       for (let i = 0; i < ids.length; i += 100) {
-        out.insertAdjacentHTML('afterbegin', '<div>' + t('Working… ', 'شغال… ') + n + '</div>');
-        const r = await api('admin_irDupTrash', [ids.slice(i, i + 100)]); n += r.trashed || 0; fails = fails.concat(r.failed || []);
+        msg.innerHTML = '⏳ ' + t('Sending to the Drive bin… this can take a minute, do not close. Done so far: ', 'بيبعت لسلة الدرايف… ممكن ياخد دقيقة، متقفلش. اتبعت لحد دلوقتي: ') + n;
+        try { msg.scrollIntoView({ block: 'center' }); } catch (e) {}
+        const r = await api('admin_irDupTrash', [ids.slice(i, i + 100)]); n += r.trashed || 0; ign += r.ignored || 0; fails = fails.concat(r.failed || []);
       }
-      out.innerHTML = `✓ ${n} ${t('copies sent to the Drive bin', 'نسخة اتبعتت لسلة الدرايف')}` + (fails.length ? `<br><span class="bad">${fails.length} ${t('failed', 'فشل')}:<br>${fails.slice(0, 15).map(esc).join('<br>')}</span><br><small class="ir-hint">${t('Files owned by someone else can only be removed from Drive by their owner.', 'الملفات اللي مالكها حد تاني بيشيلها مالكها من الدرايف.')}</small>` : '');
       index = null;
-    } catch (e) { out.innerHTML = `<span class="bad">${esc(e.message || e)}</span>`; }
+      const txt = (n ? '✓ ' : '⚠ ') + n + ' ' + t('copies sent to the Drive bin', 'نسخة اتبعتت لسلة الدرايف')
+        + (ign ? `<br>${ign} ${t('skipped (no longer an extra copy)', 'اتخطوا (مبقوش نسخة زيادة)')}` : '')
+        + (fails.length ? `<br><span class="bad">${fails.length} ${t('failed', 'فشل')}:<br>${fails.slice(0, 15).map(esc).join('<br>')}</span><br><small class="ir-hint">${t('Files owned by someone else can only be removed from Drive by their owner.', 'الملفات اللي مالكها حد تاني بيشيلها مالكها من الدرايف.')}</small>` : '');
+      await dupPlan();
+      const m2 = $('irDupMsg'); if (m2) { m2.innerHTML = txt; try { m2.scrollIntoView({ block: 'center' }); } catch (e) {} }
+    } catch (e) { btn.disabled = false; delete btn.dataset.sure; msg.innerHTML = `<span class="bad">${esc(e.message || e)}</span>`; }
   }
   let bulkAll = false;
   async function drawList() {
