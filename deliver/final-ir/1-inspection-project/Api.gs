@@ -155,6 +155,7 @@ const API_FUNCS_ = {
     }
     const res = undoAction(token);
     apiLog_(me, 'undo', res && res.success ? 'undone' : 'refused: ' + (res && res.error));
+    if (res && res.success && typeof irAfterUndo_ === 'function') irAfterUndo_(token);
     if (res && res.success && typeof extrasAfterUndo_ === 'function') { try { extrasAfterUndo_(me, token); } catch (e) { console.warn('trash: ' + e); } }
     return res;
   },
