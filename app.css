@@ -499,5 +499,3 @@ body:not(.at-home) #refreshBtn { display: inline-flex !important; }
 .ir-chip { border: 1px solid var(--line, rgba(128,128,128,.35)); background: transparent; color: inherit; border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 13.5px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .ir-chip.on { background: var(--accent, #1f3a68); color: #fff; border-color: transparent; }
 .ir-miss, .ir-miss * { overflow-anchor: none; }
-#irList .row, #irMissing .row { content-visibility: auto; contain-intrinsic-size: auto 58px; }
-#irMissing .ir-mhead { content-visibility: visible; }
