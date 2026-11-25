@@ -1,8 +1,8 @@
 {
- "version": "1.0.85",
- "build": 85,
+ "version": "1.0.86",
+ "build": 86,
  "notes": [
-  "Changed: the missing-files list draws only the company headers and 30 rows at a time (was every row), so the area is light and taps respond at once. No Apps Script change."
+  "Changed: the \"Mark many files\" list in Admin > IR files draws 50 files at a time (was all of them), so the whole screen is light. No Apps Script change."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
