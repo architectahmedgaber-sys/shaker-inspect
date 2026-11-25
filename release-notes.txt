@@ -1,1 +1,1 @@
-Changed: Admin > IR files now shows every company (EL-Shorouk, Square, Alexandria): a green check when all its requests have files, otherwise the missing ones listed under the company, with a Copy button per company. No Apps Script change.
+Changed: the sort choice in the missing-files list is now three buttons (one tap) instead of a drop-down list. No Apps Script change.

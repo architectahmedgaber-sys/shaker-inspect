@@ -639,11 +639,13 @@
     miss.all = missingRows(open);
     const totalMiss = miss.all.length;
     el.innerHTML = `<h4 class="ir-sec">${totalMiss ? '⚠ ' : '✓ '}${t('Open requests by company', 'الطلبات المفتوحة حسب الشركة')}</h4><div class="card ir-bulk">
-      <div class="ir-sel"><label>${t('Sort by', 'رتّب حسب')}<select class="sc-in" id="irMissSort"><option value="age">${t('Oldest first', 'الأقدم الأول')}</option><option value="ir">${t('IR number', 'رقم الـ IR')}</option><option value="vil">${t('Villa', 'الفيلا')}</option></select></label></div>
+      <div class="ir-chips" id="irMissSort" role="group">${[['age', t('Oldest first', 'الأقدم')], ['ir', t('IR number', 'رقم IR')], ['vil', t('Villa', 'الفيلا')]].map(x => `<button type="button" class="ir-chip${x[0] === miss.sort ? ' on' : ''}" data-msort="${x[0]}">${x[1]}</button>`).join('')}</div>
       <div id="irMissBody"></div>
       <div class="btnrow"><button type="button" class="ir-lnk" id="irMissCopyAll"${totalMiss ? '' : ' disabled'}>${t('Copy all missing IR numbers', 'انسخ كل أرقام الناقص')} (${totalMiss})</button> <span class="small" id="irMissMsg"></span></div></div>`;
-    $('irMissSort').value = miss.sort;
-    $('irMissSort').onchange = ev => { miss.sort = ev.target.value; paintMissing(); };
+    $('irMissSort').addEventListener('click', ev => {
+      const b = ev.target.closest && ev.target.closest('[data-msort]'); if (!b || b.dataset.msort === miss.sort) return;
+      miss.sort = b.dataset.msort; $('irMissSort').querySelectorAll('.ir-chip').forEach(x => x.classList.toggle('on', x === b)); paintMissing();
+    });
     $('irMissBody').addEventListener('click', async ev => {
       const mm = ev.target.closest && ev.target.closest('[data-mmore]');
       if (mm) { const key = mm.dataset.mmore, rows = miss.all.filter(r => r.key === key).sort(missCmp[miss.sort] || missCmp.age); mm.closest('.row').outerHTML = rows.slice(40).map(miss.rowHtml).join(''); return; }

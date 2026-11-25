@@ -493,3 +493,8 @@ body:not(.at-home) #refreshBtn { display: inline-flex !important; }
 .ir-miss .ir-mco:not(.open) .ir-chev { transform: rotate(-90deg); }
 .ir-miss .ir-mco:not(.open) > .ir-mbody { display: none; }
 .ir-miss .ir-mbody .row { padding-inline-start: 24px; }
+
+.ir-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.ir-chip { border: 1px solid var(--line, rgba(128,128,128,.35)); background: transparent; color: inherit; border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 13.5px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ir-chip.on { background: var(--accent, #1f3a68); color: #fff; border-color: transparent; }
+.ir-miss, .ir-miss * { overflow-anchor: none; }
