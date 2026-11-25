@@ -1,8 +1,8 @@
 {
- "version": "1.0.79",
- "build": 79,
+ "version": "1.0.80",
+ "build": 80,
  "notes": [
-  "New: Admin > IR files now lists the open requests that have no IR file yet (IR number, company, villa, age), with company filter, sorting and a Copy IR numbers button. No Apps Script change."
+  "Changed: Admin > IR files now shows every company (EL-Shorouk, Square, Alexandria): a green check when all its requests have files, otherwise the missing ones listed under the company, with a Copy button per company. No Apps Script change."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
