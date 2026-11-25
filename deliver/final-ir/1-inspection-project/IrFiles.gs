@@ -35,15 +35,15 @@ const IR_COMPANIES = { SH: 'SH - EL-Shorouk', SQ: 'SQ - Square', AT: 'AT - Alexa
 const IR_MAX_UPLOAD = 14 * 1024 * 1024;      // bytes of one file sent from the phone
 const IR_MAX_DIRECT = 150 * 1024 * 1024;     // bytes of one file sent straight from the phone to Drive (fast upload)
 
-// true when a file with this name AND the same size already sits in the folder (a re-upload of the same file is skipped)
+// true when a file with this name already sits in the folder (a re-upload of the same name is skipped)
 function irHasSame_(folder, name, size) {
   const it = folder.getFilesByName(name);
-  while (it.hasNext()) { const f = it.next(); if (!f.isTrashed() && f.getSize() === size) return true; }
+  while (it.hasNext()) { const f = it.next(); if (!f.isTrashed()) return true; }
   return false;
 }
 
 // DUPLICATE GUARD: true when this file is already ANYWHERE in the IR folder (not only in the folder of the day it is going to):
-//   - same name and same size anywhere in Open, Unsorted or the old layout, or
+//   - same name anywhere in Open, Unsorted or the old layout (any size), or
 //   - same name inside Closed (a closed file was filled by the app, so its size is different from the original).
 // One Drive search by name, so it stays fast even for 200 files. Returns '' (not found), 'same' or 'closed'.
 function irExisting_(root, name, size) {
@@ -57,7 +57,7 @@ function irExisting_(root, name, size) {
       if (f.isTrashed() || f.getName() !== name || !irInside_(f, root)) continue;
       if (closed === null) closed = irSub_(root, IR_CLOSED, false) || false;
       if (closed && irInside_(f, closed)) return 'closed';
-      if (f.getSize() === size) hit = 'same';
+      hit = 'same';
     }
   } catch (e) { console.warn('irExisting_: ' + e); }
   return hit;
@@ -98,7 +98,6 @@ function irIdxCheck_(map, name, size) {
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     if (r.zone === 'done') return 'closed';                      // closed in the sheet: its Open file was removed, never upload it again
-    if (r.zone !== 'closed' && r.size !== size) continue;
     try { if (DriveApp.getFileById(r.id).isTrashed()) continue; } catch (e) { continue; }
     if (r.zone === 'closed') return 'closed';
     hit = 'same';

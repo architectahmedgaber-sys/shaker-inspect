@@ -5,7 +5,7 @@ In the inspection Apps Script project (not the tracker one):
 2. Deploy > Manage deployments > pencil > New version (same URL).
 
 Prevention: the script keeps a log in a new sheet tab `_IR_Index` (name, size, Drive id, open/closed), written on every upload and close.
-Before upload links are made it reads that tab once and skips a file that is already there (same name and size, or same name already closed).
+Before upload links are made it reads that tab once and skips a file that is already there (same file name, any size, anywhere in the IR folder).
 A log row counts only if its file is still on Drive and not in the bin. Until the log exists, the old Drive search is used.
 **First time: press Find duplicates once. It also builds the log.** Files put on Drive by hand are not in the log until the next Find duplicates.
 Before, only the folder of the chosen day was checked, so a different day, a different discipline or sorting, or a file
