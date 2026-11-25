@@ -91,6 +91,14 @@ function irIdxAdd_(rows) {
     sh.getRange(sh.getLastRow() + 1, 1, data.length, 5).setValues(data);
   } catch (e) { console.warn('irIdxAdd_: ' + e); }
 }
+// a file removed from the app leaves the log too, so the "requests without a file" list stays true
+function irIdxDrop_(id) {
+  try {
+    const sh = irIdxSheet_(false); if (!sh || sh.getLastRow() < 2) return;
+    const ids = sh.getRange(2, 3, sh.getLastRow() - 1, 1).getValues();
+    for (let i = ids.length - 1; i >= 0; i--) if (String(ids[i][0]) === String(id)) sh.deleteRow(i + 2);
+  } catch (e) { console.warn('irIdxDrop_: ' + e); }
+}
 // '' (not there), 'same' (same name and size) or 'closed' (same name already closed); only rows whose file is still alive count
 function irIdxCheck_(map, name, size) {
   const rows = map[String(name).toLowerCase()]; if (!rows) return '';
@@ -1205,7 +1213,18 @@ const IR_ADMIN_FUNCS_ = {
     if (!irInside_(file, root)) throw new Error('File not found.');
     file.setTrashed(true);
     irDropIndex_();
+    irIdxDrop_(file.getId());
     apiLog_(me, 'IR file removed', file.getName());
     return true;
+  },
+
+  // WHICH IR NUMBERS HAVE A FILE, read from the sheet log (_IR_Index) only: one fast sheet read, no Drive scan.
+  // names = every file name in the log (lower case), or null when the log does not exist yet (the app then falls back to the Drive list).
+  admin_irHave: () => {
+    const sh = irIdxSheet_(false); if (!sh) return { names: null, rows: 0 };
+    const n = sh.getLastRow() - 1; if (n < 1) return { names: [], rows: 0 };
+    const seen = {}, names = [];
+    sh.getRange(2, 1, n, 1).getValues().forEach(r => { const k = String(r[0] || ''); if (k && !seen[k]) { seen[k] = 1; names.push(k); } });
+    return { names: names, rows: n };
   }
 };
