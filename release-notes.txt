@@ -1,1 +1,1 @@
-Changed: the sort choice in the missing-files list is now three buttons (one tap) instead of a drop-down list. No Apps Script change.
+Changed: sorting the missing-files list no longer redraws it (no more lost taps), and long lists draw only what is on screen. No Apps Script change.
