@@ -370,7 +370,7 @@
       ${(PtahApp.role() === 'Admin' || PtahApp.role() === 'DC') ? `<div class="card" id="irDup"><b>${t('Duplicate files', 'الملفات المتكررة')}</b>
         <p class="small" style="margin:6px 0 8px">${t('Finds the same file uploaded twice (Open, Closed, Unsorted). Press Find first: nothing is removed until you tick files and confirm. Removed files go to the Drive bin (30 days), never deleted for good.', 'بيدور على نفس الملف اللي اترفع مرتين (Open و Closed و Unsorted). اضغط Find الأول: مفيش حاجة بتتشال غير لما تعلّم على الملفات وتأكد. الملفات بتروح سلة الدرايف (30 يوم) ومبتتمسحش نهائي.')}</p>
         <div class="btnrow"><button type="button" class="ir-lnk" data-irdup="plan">${t('Find duplicates', 'دوّر على المتكرر')}</button></div><div id="irDupOut" class="small" style="margin-top:8px"></div></div>` : ''}
-      <div id="irRules"></div><div id="irSortBar"></div><div id="irReorg"></div><div id="irList"><div class="sc-load"><i></i><i></i><i></i></div></div><p class="shk-sign">architected by Ptah</p>`;
+      <div id="irRules"></div><div id="irMissing"></div><div id="irSortBar"></div><div id="irReorg"></div><div id="irList"><div class="sc-load"><i></i><i></i><i></i></div></div><p class="shk-sign">architected by Ptah</p>`;
     const gate = () => { const ok = !!$('irCo').value && !!$('irDay').value; $('irPickLab').classList.toggle('off', !ok); $('irPickDirLab').classList.toggle('off', !ok); $('irPick').disabled = !ok; $('irPickDir').disabled = !ok; $('irDrop').classList.toggle('off', !ok); try { lsSet('shkIrCo', $('irCo').value); lsSet('shkIrDisc', $('irDisc').value); } catch (e) {} $('irDiscLab').style.display = $('irCo').value === 'AUTO' ? '' : 'none'; };
     $('irCo').onchange = $('irDay').onchange = $('irDisc').onchange = gate; gate();
     // ---- bulk upload: few at a time, server calls one by one, automatic retry, skips what is already on Drive ----
@@ -604,6 +604,53 @@
       const m2 = $('irDupMsg'); if (m2) { m2.innerHTML = txt; try { m2.scrollIntoView({ block: 'center' }); } catch (e) {} }
     } catch (e) { btn.disabled = false; delete btn.dataset.sure; msg.innerHTML = `<span class="bad">${esc(e.message || e)}</span>`; }
   }
+
+  // ---------------------------------------------------------------- open requests that still have NO IR file (so Ahmed knows exactly what to download from ACC)
+  const miss = { sort: 'age', co: '', list: [] };
+  function missingRows(open) {
+    const seen = new Set(), out = [];
+    open.forEach(i => {
+      if (filesFor(i).length) return;
+      const id = String(i.irNumber || '') + '|' + String(i.rev || '0'); if (seen.has(id)) return; seen.add(id);
+      let co = '', ty = '', vil = '', act = '', age = '';
+      try { co = projectInfo(getProject(i)).label; ty = getDocType(i); vil = villaOf(i); act = activityOf(i); age = ageText(i); } catch (e) {}
+      let day = ''; if (i.ageDays !== null && i.ageDays !== undefined) { const d = new Date(Date.now() - i.ageDays * 864e5); day = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+      out.push({ ir: String(i.irNumber || ''), rev: String(i.rev || '0'), co, ty, vil, act, age, ageDays: (i.ageDays === null || i.ageDays === undefined) ? -1 : i.ageDays, day, by: i.createdBy || i.contractor || '', late: (() => { try { return isLate(i); } catch (e) { return false; } })() });
+    });
+    return out;
+  }
+  function drawMissing(open) {
+    const el = $('irMissing'); if (!el) return;
+    miss.all = missingRows(open);
+    if (!miss.all.length) { el.innerHTML = `<h4 class="ir-sec">${t('Requests without an IR file', 'طلبات من غير ملف IR')}</h4><div class="card"><div class="sc-empty">${t('Every open request has its file ✓', 'كل الطلبات المفتوحة ليها ملف ✓')}</div></div>`; return; }
+    const cos = Array.from(new Set(miss.all.map(r => r.co))).filter(Boolean).sort();
+    if (miss.co && !cos.includes(miss.co)) miss.co = '';
+    el.innerHTML = `<h4 class="ir-sec">⚠ ${t('Requests without an IR file', 'طلبات من غير ملف IR')} (<span id="irMissN"></span>)</h4><div class="card ir-bulk"><div class="ir-sel">
+      <label>${t('Company', 'الشركة')}<select class="sc-in" id="irMissCo"><option value="">${t('All', 'الكل')}</option>${cos.map(c => `<option value="${esc(c)}"${c === miss.co ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
+      <label>${t('Sort by', 'رتّب حسب')}<select class="sc-in" id="irMissSort"><option value="age">${t('Oldest first', 'الأقدم الأول')}</option><option value="ir">${t('IR number', 'رقم الـ IR')}</option><option value="co">${t('Company', 'الشركة')}</option><option value="vil">${t('Villa', 'الفيلا')}</option></select></label></div>
+      <div class="btnrow"><button type="button" class="ir-lnk" id="irMissCopy">${t('Copy IR numbers', 'انسخ أرقام الـ IR')}</button> <span class="small" id="irMissMsg"></span></div>
+      <div class="card-list" id="irMissList"></div></div>`;
+    $('irMissSort').value = miss.sort;
+    paintMissing();
+    $('irMissCo').onchange = ev => { miss.co = ev.target.value; paintMissing(); };
+    $('irMissSort').onchange = ev => { miss.sort = ev.target.value; paintMissing(); };
+    $('irMissCopy').onclick = async () => { const ok = await copyText(miss.list.map(r => r.ir).join('\n')); const m = $('irMissMsg'); if (m) m.textContent = ok ? '✓ ' + miss.list.length + ' ' + t('copied', 'اتنسخ') : t('Could not copy', 'ماتنسخش'); };
+  }
+  function paintMissing() {
+    const el = $('irMissList'); if (!el) return;
+    const num = x => { const m = String(x).match(/(\d+)\D*$/); return m ? +m[1] : 0; };
+    let l = (miss.all || []).filter(r => !miss.co || r.co === miss.co);
+    const by = { age: (a, b) => b.ageDays - a.ageDays || num(a.ir) - num(b.ir), ir: (a, b) => num(a.ir) - num(b.ir), co: (a, b) => (a.co < b.co ? -1 : a.co > b.co ? 1 : 0) || num(a.ir) - num(b.ir), vil: (a, b) => (a.vil < b.vil ? -1 : a.vil > b.vil ? 1 : 0) || num(a.ir) - num(b.ir) };
+    l = l.sort(by[miss.sort] || by.age); miss.list = l;
+    const n = $('irMissN'); if (n) n.textContent = l.length + (miss.co ? ' / ' + miss.all.length : '');
+    el.innerHTML = l.map(r => `<div class="row"><span dir="auto"><b>${esc(r.ir)}</b>${r.rev && r.rev !== '0' ? ' · Rev ' + esc(r.rev) : ''}<small class="ir-path">${esc([r.co, r.ty, r.vil, r.act].filter(Boolean).join(' · '))}${r.by ? '<br>' + esc(r.by) : ''}</small></span><span class="mono${r.late ? ' bad' : ''}">${esc(r.age)}${r.day ? '<br><small>' + r.day + '</small>' : ''}</span></div>`).join('') || `<div class="sc-empty">${t('Nothing for this company ✓', 'مفيش حاجة للشركة دي ✓')}</div>`;
+  }
+  async function copyText(txt) {
+    let ok = false;
+    try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) {}
+    if (!ok) { try { const ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove(); } catch (e) {} }
+    return ok;
+  }
   let bulkAll = false;
   async function drawList() {
     const el = $('irList'); if (!el) return;
@@ -611,6 +658,7 @@
       const r = await api('admin_irList'); index = r.files; indexAt = Date.now();
       const open = (typeof allItems !== 'undefined' && allItems) || [];
       const withFile = open.filter(i => filesFor(i).length).length;
+      try { drawMissing(open); } catch (e) { const mm = $('irMissing'); if (mm) mm.innerHTML = ''; }
       el.innerHTML = `<div class="kpis"><div class="kpi"><b>${r.files.length}</b><span>${t('Files', 'ملفات')}</span></div><div class="kpi ${open.length - withFile ? 'bad' : 'ok'}"><b>${withFile}/${open.length}</b><span>${t('Open requests with a file', 'طلبات مفتوحة لها ملف')}</span></div></div>` +
         (() => {
           const un = r.files.filter(f => f.co === 'UNSORTED'), rest = r.files.filter(f => f.co !== 'UNSORTED');

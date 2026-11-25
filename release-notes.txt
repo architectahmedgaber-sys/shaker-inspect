@@ -1,3 +1,1 @@
-New: quick search button on every screen (or press / on a laptop): type an IR number, villa number or company and open the request in one tap.
-Faster: the app opens from the phone copy at once, and long lists draw their first rows immediately.
-The web app now updates itself when a new version is released (no more More > Check for updates). No Apps Script change.
+New: Admin > IR files now lists the open requests that have no IR file yet (IR number, company, villa, age), with company filter, sorting and a Copy IR numbers button. No Apps Script change.
