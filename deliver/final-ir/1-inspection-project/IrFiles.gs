@@ -171,10 +171,33 @@ function irDupScan_() {
     const closed = rest.filter(f => f.zone === 'closed').sort(order);
     if (closed.length) {
       const left = rest.filter(f => f.zone !== 'closed');
-      if (left.length) groups.push({ kind: 'closed', keep: pub(closed[0]), extras: left.map(pub) });
+      if (left.length) { groups.push({ kind: 'closed', keep: pub(closed[0]), extras: left.map(pub) }); left.forEach(e => { gone[e.id] = 1; }); }
     }
+    // same name, different size, none of them closed (a revised file uploaded again, or a half-uploaded one): keep the newest
+    const open2 = rest.filter(f => f.zone !== 'closed' && !gone[f.id]).sort((a, b) => b.t - a.t);
+    if (open2.length > 1) { groups.push({ kind: 'size', keep: pub(open2[0]), extras: open2.slice(1).map(pub) }); open2.slice(1).forEach(e => { gone[e.id] = 1; }); }
   });
-  groups.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'same' ? -1 : 1) || (a.keep.name < b.keep.name ? -1 : 1));
+  // same IR number (and company + CIR/MIR) under different names or extensions, e.g. a PDF and a JPG, or a name with an extra suffix
+  const used = {}; groups.forEach(g => { used[g.keep.id] = 1; g.extras.forEach(e => { used[e.id] = 1; }); });
+  const byNo = {};
+  files.forEach(f => {
+    const info = irParse_(f.name, ''); if (!info || !info.no) return;
+    const rv = String(f.name).match(/(?:^|[^A-Za-z])rev(?:ision)?[\s._-]*0*(\d+)|[-_ ]r0*(\d+)(?=[-_. ]|$)/i), rev = rv ? (rv[1] || rv[2]) : '0';   // Rev 0 and Rev 1 of one IR are different files, never duplicates
+    const kk = info.co + '|' + info.type + '|' + info.no + '|' + rev;
+    (byNo[kk] = byNo[kk] || []).push(f);
+  });
+  Object.keys(byNo).forEach(k => {
+    const g = byNo[k].filter(f => f.zone !== 'closed' || true);
+    if (g.length < 2) return;
+    const names = {}; g.forEach(f => { names[irDupKey_(f.name) + '|' + String(f.name).split('.').pop().toLowerCase()] = 1; });
+    if (Object.keys(names).length < 2) return;                      // same name: already handled above
+    if (g.every(f => used[f.id])) return;
+    const closed = g.filter(f => f.zone === 'closed').sort(order);
+    const keep = closed.length ? closed[0] : g.slice().sort((a, b) => b.t - a.t)[0];
+    const extras = g.filter(f => f.id !== keep.id && f.zone !== 'closed' && !used[f.id]);
+    if (extras.length) groups.push({ kind: 'number', keep: pub(keep), extras: extras.map(pub) });
+  });
+  groups.sort((a, b) => (['same','closed','size','number'].indexOf(a.kind) - ['same','closed','size','number'].indexOf(b.kind)) || (a.keep.name < b.keep.name ? -1 : 1));
   return { groups: groups, scanned: files.length, truncated: truncated };
 }
 
@@ -836,9 +859,9 @@ const IR_ADMIN_FUNCS_ = {
   admin_irDupPlan: (me) => {
     if (!irIsFull_(me)) throw new Error('Admins and DCs only.');
     const p = irDupScan_();
-    const n = { same: 0, closed: 0 };
+    const n = { same: 0, closed: 0, size: 0, number: 0 };
     p.groups.forEach(g => { n[g.kind] += g.extras.length; });
-    return { groups: p.groups.slice(0, 400), total: p.groups.length, same: n.same, closed: n.closed, scanned: p.scanned, truncated: p.truncated };
+    return { groups: p.groups.slice(0, 400), total: p.groups.length, same: n.same, closed: n.closed, size: n.size, number: n.number, scanned: p.scanned, truncated: p.truncated };
   },
 
   // REMOVE DUPLICATES (a=[ids ticked in the review]): sends the ticked extra copies to the Drive bin (never deletes for good, restorable 30 days).
