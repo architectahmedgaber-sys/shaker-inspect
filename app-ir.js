@@ -644,11 +644,9 @@
       <div class="btnrow"><button type="button" class="ir-lnk" id="irMissCopyAll"${totalMiss ? '' : ' disabled'}>${t('Copy all missing IR numbers', 'انسخ كل أرقام الناقص')} (${totalMiss})</button> <span class="small" id="irMissMsg"></span></div></div>`;
     $('irMissSort').addEventListener('click', ev => {
       const b = ev.target.closest && ev.target.closest('[data-msort]'); if (!b || b.dataset.msort === miss.sort) return;
-      miss.sort = b.dataset.msort; $('irMissSort').querySelectorAll('.ir-chip').forEach(x => x.classList.toggle('on', x === b)); paintMissing();
+      miss.sort = b.dataset.msort; $('irMissSort').querySelectorAll('.ir-chip').forEach(x => x.classList.toggle('on', x === b)); sortMissing();
     });
     $('irMissBody').addEventListener('click', async ev => {
-      const mm = ev.target.closest && ev.target.closest('[data-mmore]');
-      if (mm) { const key = mm.dataset.mmore, rows = miss.all.filter(r => r.key === key).sort(missCmp[miss.sort] || missCmp.age); mm.closest('.row').outerHTML = rows.slice(40).map(miss.rowHtml).join(''); return; }
       const hd = ev.target.closest && ev.target.closest('[data-mtoggle]');
       const b = ev.target.closest && ev.target.closest('[data-misscopy]');
       if (!b) { if (hd) { const box = hd.parentNode, o = !box.classList.contains('open'); box.classList.toggle('open', o); (miss.openCo = miss.openCo || {})[box.dataset.mco] = o; } return; }
@@ -659,19 +657,27 @@
     $('irMissCopyAll').onclick = async () => { const ok = await copyText(miss.all.slice().sort(missCmp[miss.sort] || missCmp.age).map(r => r.ir).join('\n')); const m = $('irMissMsg'); if (m) m.textContent = ok ? '✓ ' + totalMiss + ' ' + t('copied', 'اتنسخ') : t('Could not copy', 'ماتنسخش'); };
     paintMissing();
   }
+  // The rows are drawn ONCE. Sorting only changes each row's CSS order, so a tap adds / removes no nodes
+  // (every node change wakes several app-wide observers: Back-button sync, Arabic translation, About row ...).
   function paintMissing() {
     const el = $('irMissBody'); if (!el) return;
-    const sorter = missCmp[miss.sort] || missCmp.age, oc = miss.openCo || {}, LIM = 40;
-    const rowHtml = r => `<div class="row"><span dir="auto"><b>${esc(r.ir)}</b>${r.rev && r.rev !== '0' ? ' · Rev ' + esc(r.rev) : ''}<small class="ir-path">${esc([r.ty, r.vil, r.act].filter(Boolean).join(' · '))}${r.by ? '<br>' + esc(r.by) : ''}</small></span><span class="mono${r.late ? ' bad' : ''}">${esc(r.age)}${r.day ? '<br><small>' + r.day + '</small>' : ''}</span></div>`;
+    const oc = miss.openCo || {};
+    miss.all.forEach((r, i) => { r.i = i; });
+    const rowHtml = r => `<div class="row ir-mrow" data-mi="${r.i}"><span dir="auto"><b>${esc(r.ir)}</b>${r.rev && r.rev !== '0' ? ' · Rev ' + esc(r.rev) : ''}<small class="ir-path">${esc([r.ty, r.vil, r.act].filter(Boolean).join(' · '))}${r.by ? '<br>' + esc(r.by) : ''}</small></span><span class="mono${r.late ? ' bad' : ''}">${esc(r.age)}${r.day ? '<br><small>' + r.day + '</small>' : ''}</span></div>`;
     el.innerHTML = '<div class="card-list ir-miss">' + miss.cos.map(c => {
-      const rows = miss.all.filter(r => r.key === c.key).sort(sorter), n = rows.length;
+      const rows = miss.all.filter(r => r.key === c.key), n = rows.length;
       if (!c.total) return `<div class="row"><span><b>${esc(c.label)}</b></span><span class="mono">${t('no open requests', 'مفيش طلبات مفتوحة')}</span></div>`;
       if (!n) return `<div class="row"><span><b>✓ ${esc(c.label)}</b><small class="ir-path">${t('All requests have their IR file', 'كل الطلبات ليها ملف IR')}</small></span><span class="mono">${c.withFile}/${c.total}</span></div>`;
       const isOpen = oc[c.key] !== undefined ? oc[c.key] : true;
       return `<div class="ir-mco${isOpen ? ' open' : ''}" data-mco="${esc(c.key)}"><div class="row ir-mhead" data-mtoggle="${esc(c.key)}" role="button" tabindex="0"><span><b>⚠ ${esc(c.label)}</b><small class="ir-path">${n} ${t('without a file', 'من غير ملف')} · ${c.withFile}/${c.total} ${t('have files', 'ليها ملفات')}</small></span><span class="mono"><button type="button" class="ir-lnk" data-misscopy="${esc(c.key)}">${t('Copy', 'انسخ')} ${n}</button> <i class="ir-chev">▾</i></span></div>` +
-        `<div class="ir-mbody">${rows.slice(0, LIM).map(rowHtml).join('')}${n > LIM ? `<div class="row"><button type="button" class="ir-lnk" data-mmore="${esc(c.key)}">${t('Show the other', 'اعرض الباقي')} ${n - LIM}</button></div>` : ''}</div></div>`;
+        `<div class="ir-mbody">${rows.map(rowHtml).join('')}</div></div>`;
     }).join('') + '</div>';
-    miss.rowHtml = rowHtml;
+    sortMissing();
+  }
+  function sortMissing() {
+    const el = $('irMissBody'); if (!el) return;
+    const rank = {}; miss.all.slice().sort(missCmp[miss.sort] || missCmp.age).forEach((r, k) => { rank[r.i] = k; });
+    el.querySelectorAll('.ir-mrow').forEach(x => { x.style.order = rank[x.dataset.mi]; });
   }
   async function copyText(txt) {
     let ok = false;
