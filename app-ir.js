@@ -367,6 +367,9 @@
       ${(PtahApp.role() === 'Admin' || PtahApp.role() === 'DC') ? `<div class="card" id="irMig"><b>${t('Closed folders', 'فولدرات Closed')}</b>
         <p class="small" style="margin:6px 0 8px">${t('One-time move of the old closed files to Closed / Company / Engineer / Date. Press Review first: nothing moves until you approve the list.', 'نقل مرة واحدة للملفات المقفولة القديمة إلى Closed / الشركة / المهندس / التاريخ. اضغط Review الأول: مفيش حاجة بتتنقل غير لما توافق على القايمة.')}</p>
         <div class="btnrow"><button type="button" class="ir-lnk" data-irmig="plan">${t('Review', 'Review')}</button></div><div id="irMigOut" class="small" style="margin-top:8px"></div></div>` : ''}
+      ${(PtahApp.role() === 'Admin' || PtahApp.role() === 'DC') ? `<div class="card" id="irDup"><b>${t('Duplicate files', 'الملفات المتكررة')}</b>
+        <p class="small" style="margin:6px 0 8px">${t('Finds the same file uploaded twice (Open, Closed, Unsorted). Press Find first: nothing is removed until you tick files and confirm. Removed files go to the Drive bin (30 days), never deleted for good.', 'بيدور على نفس الملف اللي اترفع مرتين (Open و Closed و Unsorted). اضغط Find الأول: مفيش حاجة بتتشال غير لما تعلّم على الملفات وتأكد. الملفات بتروح سلة الدرايف (30 يوم) ومبتتمسحش نهائي.')}</p>
+        <div class="btnrow"><button type="button" class="ir-lnk" data-irdup="plan">${t('Find duplicates', 'دوّر على المتكرر')}</button></div><div id="irDupOut" class="small" style="margin-top:8px"></div></div>` : ''}
       <div id="irRules"></div><div id="irSortBar"></div><div id="irReorg"></div><div id="irList"><div class="sc-load"><i></i><i></i><i></i></div></div><p class="shk-sign">architected by Ptah</p>`;
     const gate = () => { const ok = !!$('irCo').value && !!$('irDay').value; $('irPickLab').classList.toggle('off', !ok); $('irPickDirLab').classList.toggle('off', !ok); $('irPick').disabled = !ok; $('irPickDir').disabled = !ok; $('irDrop').classList.toggle('off', !ok); try { lsSet('shkIrCo', $('irCo').value); lsSet('shkIrDisc', $('irDisc').value); } catch (e) {} $('irDiscLab').style.display = $('irCo').value === 'AUTO' ? '' : 'none'; };
     $('irCo').onchange = $('irDay').onchange = $('irDisc').onchange = gate; gate();
@@ -444,7 +447,7 @@
             if (lk && lk.error) throw new Error(lk.error);
             let url = lk && lk.url, perFile = false;
             if (!url && !batchOk.v && !auto) {        // older server: one link per file
-              try { const l = await srv('admin_irUploadStart', [f.name, f.size, co, day, location.origin]); url = l && l.url; perFile = !!url; } catch (er) { if (er && er.net) throw er; fastOff = true; }
+              try { const l = await srv('admin_irUploadStart', [f.name, f.size, co, day, location.origin]); if (l && l.exists) { sess.already++; return; } url = l && l.url; perFile = !!url; } catch (er) { if (er && er.net) throw er; fastOff = true; }
             }
             if (url) {
               st[i].phase = 'send'; paint();
@@ -564,6 +567,36 @@
         (fin ? `<br><small class="ir-hint">${t('Access', 'الصلاحيات')}: +${fin.granted} · −${fin.revoked} · ${fin.shared} ${t('engineer folders shared', 'فولدر مهندس اتشارك')}</small>` : '');
       index = null;
     } catch (e) { out.innerHTML = `<span class="bad">${esc(e.message || e)}</span><br><small class="ir-hint">${t('Press Review and approve again to continue.', 'اضغط Review ووافق تاني عشان تكمل.')}</small>`; }
+  }
+  // duplicate finder: review list (extras ticked), then send the ticked extras to the Drive bin
+  async function dupPlan() {
+    const out = $('irDupOut'); if (!out) return;
+    out.innerHTML = t('Looking at Drive… (can take a minute)', 'بيبص على الدرايف… (ممكن ياخد دقيقة)');
+    try {
+      const p = await api('admin_irDupPlan');
+      if (!p.groups.length) { out.innerHTML = '✓ ' + t('No duplicates found', 'مفيش ملفات متكررة') + ` · ${p.scanned} ${t('files checked', 'ملف اتفحص')}` + (p.truncated ? ' ⚠ ' + t('(stopped early)', '(وقف بدري)') : ''); return; }
+      const row = (g, e) => `<label class="ir-ck" style="display:block;margin:2px 0"><input type="checkbox" data-irdupck="${esc(e.id)}" ${g.kind === 'same' ? 'checked' : ''}> <span dir="auto">${esc(e.name)}</span> <small class="ir-hint">${esc(e.path)} · ${fmtSize(e.size)}</small></label>`;
+      const block = g => `<div style="margin:8px 0;padding-bottom:6px;border-bottom:1px solid rgba(128,128,128,.2)"><div dir="auto">✓ ${t('Keep', 'يفضل')}: <b>${esc(g.keep.name)}</b> <small class="ir-hint">${esc(g.keep.path)} · ${fmtSize(g.keep.size)}</small></div>${g.extras.map(e => row(g, e)).join('')}</div>`;
+      const same = p.groups.filter(g => g.kind === 'same'), cl = p.groups.filter(g => g.kind === 'closed');
+      out.innerHTML = `<b>${p.same}</b> ${t('exact copies (ticked)', 'نسخة مطابقة (معلّمة)')} · <b>${p.closed}</b> ${t('Open copies of already Closed files (not ticked: the closed one is filled, so check)', 'نسخ Open لملفات اتقفلت (مش معلّمة: المقفول بيتملى فراجع)')} · ${p.scanned} ${t('files checked', 'ملف اتفحص')}${p.truncated ? ' ⚠ ' + t('(stopped early)', '(وقف بدري)') : ''}
+        <div style="max-height:320px;overflow:auto;margin:8px 0;padding:8px;border:1px solid rgba(128,128,128,.3);border-radius:10px">${same.length ? `<div><b>${t('Same file twice', 'نفس الملف مرتين')}</b></div>` + same.map(block).join('') : ''}${cl.length ? `<div style="margin-top:10px"><b>${t('Already in Closed', 'موجود في Closed')}</b></div>` + cl.map(block).join('') : ''}</div>
+        <div class="btnrow"><button type="button" class="ir-lnk" data-irdup="plan">${t('Find again', 'دوّر تاني')}</button> <button type="button" class="ir-lnk" data-irdup="run">${t('Send ticked files to the bin', 'ابعت المعلّم لسلة الدرايف')}</button></div>`;
+    } catch (e) { out.innerHTML = `<span class="bad">${esc(e.message || e)}</span>`; }
+  }
+  async function dupRun(btn) {
+    const out = $('irDupOut'); if (!out) return;
+    const ids = Array.from(out.querySelectorAll('[data-irdupck]:checked')).map(x => x.dataset.irdupck);
+    if (!ids.length) { return; }
+    if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = t('Tap again: send ', 'اضغط تاني: ابعت ') + ids.length + t(' files to the bin', ' ملف للسلة'); return; }
+    btn.disabled = true; let n = 0, fails = [];
+    try {
+      for (let i = 0; i < ids.length; i += 100) {
+        out.insertAdjacentHTML('afterbegin', '<div>' + t('Working… ', 'شغال… ') + n + '</div>');
+        const r = await api('admin_irDupTrash', [ids.slice(i, i + 100)]); n += r.trashed || 0; fails = fails.concat(r.failed || []);
+      }
+      out.innerHTML = `✓ ${n} ${t('copies sent to the Drive bin', 'نسخة اتبعتت لسلة الدرايف')}` + (fails.length ? `<br><span class="bad">${fails.length} ${t('failed', 'فشل')}:<br>${fails.slice(0, 15).map(esc).join('<br>')}</span><br><small class="ir-hint">${t('Files owned by someone else can only be removed from Drive by their owner.', 'الملفات اللي مالكها حد تاني بيشيلها مالكها من الدرايف.')}</small>` : '');
+      index = null;
+    } catch (e) { out.innerHTML = `<span class="bad">${esc(e.message || e)}</span>`; }
   }
   let bulkAll = false;
   async function drawList() {
@@ -719,6 +752,7 @@
     const rd = ev.target.closest && ev.target.closest('[data-irrdel]'); if (rd) { const p = rd.dataset.irrdel.split('|'); return ruleSet(p[0], p[1], ''); }
     const ra = ev.target.closest && ev.target.closest('[data-irradd]'); if (ra) return ra.dataset.irradd === 'disc' ? ruleSet('disc', $('irRC').value, $('irRD').value) : ruleSet('co', $('irRW').value, $('irRW2').value);
     const rr = ev.target.closest && ev.target.closest('[data-irrreset]'); if (rr) { if (!rr.dataset.sure) { rr.dataset.sure = '1'; rr.textContent = t('Tap again to delete all rules', 'اضغط تاني عشان تمسح كل القواعد'); return; } return ruleSet('all', '', ''); }
+    const dp = ev.target.closest && ev.target.closest('[data-irdup]'); if (dp) return dp.dataset.irdup === 'plan' ? dupPlan() : dupRun(dp);
     const mg = ev.target.closest && ev.target.closest('[data-irmig]'); if (mg) return mg.dataset.irmig === 'plan' ? migPlan() : migRun(mg.dataset.sig, mg);
     const cp = ev.target.closest && ev.target.closest('[data-ircopy]'); if (cp) return copyLink(cp.dataset.ircopy);
     const pl = ev.target.closest && ev.target.closest('[data-irplan]'); if (pl) return showPlan();
