@@ -660,9 +660,11 @@
       miss.sort = b.dataset.msort; $('irMissSort').querySelectorAll('.ir-chip').forEach(x => x.classList.toggle('on', x === b)); sortMissing();
     });
     $('irMissBody').addEventListener('click', async ev => {
+      const mm = ev.target.closest && ev.target.closest('[data-mmore]');
+      if (mm) { const k = mm.dataset.mmore, bx = mm.closest('.ir-mbody'); fillMissing(k, (+bx.dataset.n || MISS_STEP) + MISS_STEP); return; }
       const hd = ev.target.closest && ev.target.closest('[data-mtoggle]');
       const b = ev.target.closest && ev.target.closest('[data-misscopy]');
-      if (!b) { if (hd) { const box = hd.parentNode, o = !box.classList.contains('open'); box.classList.toggle('open', o); (miss.openCo = miss.openCo || {})[box.dataset.mco] = o; } return; }
+      if (!b) { if (hd) { const box = hd.parentNode, o = !box.classList.contains('open'); box.classList.toggle('open', o); (miss.openCo = miss.openCo || {})[box.dataset.mco] = o; if (o && !box.querySelector('.ir-mbody').firstChild) fillMissing(box.dataset.mco); } return; }
       ev.preventDefault(); ev.stopPropagation();
       const rows = miss.all.filter(r => r.key === b.dataset.misscopy).sort(missCmp[miss.sort] || missCmp.age);
       const ok = await copyText(rows.map(r => r.ir).join('\n')); const m = $('irMissMsg'); if (m) m.textContent = ok ? '✓ ' + rows.length + ' ' + t('copied', 'اتنسخ') : t('Could not copy', 'ماتنسخش');
@@ -670,27 +672,34 @@
     $('irMissCopyAll').onclick = async () => { const ok = await copyText(miss.all.slice().sort(missCmp[miss.sort] || missCmp.age).map(r => r.ir).join('\n')); const m = $('irMissMsg'); if (m) m.textContent = ok ? '✓ ' + totalMiss + ' ' + t('copied', 'اتنسخ') : t('Could not copy', 'ماتنسخش'); };
     paintMissing();
   }
-  // The rows are drawn ONCE. Sorting only changes each row's CSS order, so a tap adds / removes no nodes
-  // (every node change wakes several app-wide observers: Back-button sync, Arabic translation, About row ...).
+  // Light on purpose: only the company headers are drawn at first. A company's rows are drawn when it is opened,
+  // 30 at a time (a company with up to 30 missing opens by itself), so the page stays a few hundred nodes whatever the size of the list.
+  const MISS_STEP = 30;
+  function missRowHtml(r) {
+    return `<div class="row ir-mrow"><span dir="auto"><b>${esc(r.ir)}</b>${r.rev && r.rev !== '0' ? ' · Rev ' + esc(r.rev) : ''}<small class="ir-path">${esc([r.ty, r.vil, r.act].filter(Boolean).join(' · '))}${r.by ? '<br>' + esc(r.by) : ''}</small></span><span class="mono${r.late ? ' bad' : ''}">${esc(r.age)}${r.day ? '<br><small>' + r.day + '</small>' : ''}</span></div>`;
+  }
+  function fillMissing(key, upto) {
+    const box = document.querySelector('#irMissBody .ir-mco[data-mco="' + key + '"] .ir-mbody'); if (!box) return;
+    const rows = miss.all.filter(r => r.key === key).sort(missCmp[miss.sort] || missCmp.age);
+    const n = Math.max(upto || MISS_STEP, MISS_STEP), shown = Math.min(n, rows.length);
+    box.dataset.n = shown;
+    box.innerHTML = rows.slice(0, shown).map(missRowHtml).join('') + (rows.length > shown ? `<div class="row"><button type="button" class="ir-lnk" data-mmore="${esc(key)}">${t('Show more', 'اعرض أكتر')} (${rows.length - shown})</button></div>` : '');
+  }
   function paintMissing() {
     const el = $('irMissBody'); if (!el) return;
-    const oc = miss.openCo || {};
-    miss.all.forEach((r, i) => { r.i = i; });
-    const rowHtml = r => `<div class="row ir-mrow" data-mi="${r.i}"><span dir="auto"><b>${esc(r.ir)}</b>${r.rev && r.rev !== '0' ? ' · Rev ' + esc(r.rev) : ''}<small class="ir-path">${esc([r.ty, r.vil, r.act].filter(Boolean).join(' · '))}${r.by ? '<br>' + esc(r.by) : ''}</small></span><span class="mono${r.late ? ' bad' : ''}">${esc(r.age)}${r.day ? '<br><small>' + r.day + '</small>' : ''}</span></div>`;
+    const oc = miss.openCo || {}, openNow = [];
     el.innerHTML = '<div class="card-list ir-miss">' + miss.cos.map(c => {
-      const rows = miss.all.filter(r => r.key === c.key), n = rows.length;
+      const n = miss.all.filter(r => r.key === c.key).length;
       if (!c.total) return `<div class="row"><span><b>${esc(c.label)}</b></span><span class="mono">${t('no open requests', 'مفيش طلبات مفتوحة')}</span></div>`;
       if (!n) return `<div class="row"><span><b>✓ ${esc(c.label)}</b><small class="ir-path">${t('All requests have their IR file', 'كل الطلبات ليها ملف IR')}</small></span><span class="mono">${c.withFile}/${c.total}</span></div>`;
-      const isOpen = oc[c.key] !== undefined ? oc[c.key] : true;
-      return `<div class="ir-mco${isOpen ? ' open' : ''}" data-mco="${esc(c.key)}"><div class="row ir-mhead" data-mtoggle="${esc(c.key)}" role="button" tabindex="0"><span><b>⚠ ${esc(c.label)}</b><small class="ir-path">${n} ${t('without a file', 'من غير ملف')} · ${c.withFile}/${c.total} ${t('have files', 'ليها ملفات')}</small></span><span class="mono"><button type="button" class="ir-lnk" data-misscopy="${esc(c.key)}">${t('Copy', 'انسخ')} ${n}</button> <i class="ir-chev">▾</i></span></div>` +
-        `<div class="ir-mbody">${rows.map(rowHtml).join('')}</div></div>`;
+      const isOpen = oc[c.key] !== undefined ? oc[c.key] : n <= MISS_STEP;
+      if (isOpen) openNow.push(c.key);
+      return `<div class="ir-mco${isOpen ? ' open' : ''}" data-mco="${esc(c.key)}"><div class="row ir-mhead" data-mtoggle="${esc(c.key)}" role="button" tabindex="0"><span><b>⚠ ${esc(c.label)}</b><small class="ir-path">${n} ${t('without a file', 'من غير ملف')} · ${c.withFile}/${c.total} ${t('have files', 'ليها ملفات')}</small></span><span class="mono"><button type="button" class="ir-lnk" data-misscopy="${esc(c.key)}">${t('Copy', 'انسخ')} ${n}</button> <i class="ir-chev">▾</i></span></div><div class="ir-mbody"></div></div>`;
     }).join('') + '</div>';
-    sortMissing();
+    openNow.forEach(k => fillMissing(k));
   }
   function sortMissing() {
-    const el = $('irMissBody'); if (!el) return;
-    const rank = {}; miss.all.slice().sort(missCmp[miss.sort] || missCmp.age).forEach((r, k) => { rank[r.i] = k; });
-    el.querySelectorAll('.ir-mrow').forEach(x => { x.style.order = rank[x.dataset.mi]; });
+    document.querySelectorAll('#irMissBody .ir-mco.open').forEach(x => fillMissing(x.dataset.mco, +x.querySelector('.ir-mbody').dataset.n || MISS_STEP));
   }
   async function copyText(txt) {
     let ok = false;
