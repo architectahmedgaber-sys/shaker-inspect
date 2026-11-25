@@ -499,3 +499,7 @@ body:not(.at-home) #refreshBtn { display: inline-flex !important; }
 .ir-chip { border: 1px solid var(--line, rgba(128,128,128,.35)); background: transparent; color: inherit; border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 13.5px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .ir-chip.on { background: var(--accent, #1f3a68); color: #fff; border-color: transparent; }
 .ir-miss, .ir-miss * { overflow-anchor: none; }
+
+/* Pressing a button inside a CARD used to shrink the whole card (ios.css: .card:active scale .97). On a tall card the content far from its
+   centre slid 30+ px away from the finger, so the tap was cancelled ("floating" area, taps that need 3-4 tries). Big cards never scale. */
+.ir-bulk:active, .ir-sortbar:active, #irMissing .card:active, #irList .card:active, #irRules .card:active, #irReorg .card:active, .card:has(.row):active, .card:has(.card-list):active, .card:has(input):active, .card:has(select):active { transform: none !important; }

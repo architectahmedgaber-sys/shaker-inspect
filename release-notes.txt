@@ -1,1 +1,1 @@
-Changed: the "Mark many files" list in Admin > IR files draws 50 files at a time (was all of them), so the whole screen is light. No Apps Script change.
+Fixed: pressing a button inside a big card no longer shrinks and moves the whole card, so taps in the IR files screen register the first time. No Apps Script change.
