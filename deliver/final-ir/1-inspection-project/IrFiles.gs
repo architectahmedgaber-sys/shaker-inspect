@@ -42,6 +42,142 @@ function irHasSame_(folder, name, size) {
   return false;
 }
 
+// DUPLICATE GUARD: true when this file is already ANYWHERE in the IR folder (not only in the folder of the day it is going to):
+//   - same name and same size anywhere in Open, Unsorted or the old layout, or
+//   - same name inside Closed (a closed file was filled by the app, so its size is different from the original).
+// One Drive search by name, so it stays fast even for 200 files. Returns '' (not found), 'same' or 'closed'.
+function irExisting_(root, name, size) {
+  if (!root) return '';
+  const q = "title = '" + String(name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "' and trashed = false";
+  let closed = null, hit = '';
+  try {
+    const it = DriveApp.searchFiles(q);
+    while (it.hasNext()) {
+      const f = it.next();
+      if (f.isTrashed() || f.getName() !== name || !irInside_(f, root)) continue;
+      if (closed === null) closed = irSub_(root, IR_CLOSED, false) || false;
+      if (closed && irInside_(f, closed)) return 'closed';
+      if (f.getSize() === size) hit = 'same';
+    }
+  } catch (e) { console.warn('irExisting_: ' + e); }
+  return hit;
+}
+
+// UPLOAD LOG (sheet tab _IR_Index): one row per IR file the app uploaded or closed: name (lower case), size, Drive file id, zone (open / closed), time.
+// The duplicate check reads this tab ONCE per batch (one fast sheet read) instead of searching Drive for every file.
+// A row is only trusted after one quick look at its file (still on Drive, not in the bin), so a deleted or replaced file never blocks an upload.
+// Files put on Drive by hand are not in the log until "Find duplicates" runs (it rebuilds the whole log from Drive).
+const IR_IDX_TAB = '_IR_Index';
+function irIdxSheet_(create) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(IR_IDX_TAB);
+  if (!sh && create) { sh = ss.insertSheet(IR_IDX_TAB); sh.appendRow(['name', 'size', 'file id', 'zone', 'time']); sh.setFrozenRows(1); }
+  return sh;
+}
+// name -> [{ size, id, zone }], or null when the log does not exist yet (then the old Drive search is used)
+function irIdxLoad_() {
+  try {
+    const sh = irIdxSheet_(false); if (!sh) return null;
+    const map = {}, n = sh.getLastRow() - 1;
+    if (n > 0) sh.getRange(2, 1, n, 4).getValues().forEach(r => { if (r[0]) (map[String(r[0])] = map[String(r[0])] || []).push({ size: Number(r[1]), id: String(r[2]), zone: String(r[3]) }); });
+    return map;
+  } catch (e) { console.warn('irIdxLoad_: ' + e); return null; }
+}
+// rows = [[name, size, id, zone], ...]
+function irIdxAdd_(rows) {
+  try {
+    const sh = irIdxSheet_(false); if (!sh || !rows.length) return;       // no log yet: Find duplicates builds it
+    const now = new Date(), data = rows.map(r => [String(r[0]).toLowerCase(), r[1], r[2], r[3], now]);
+    sh.getRange(sh.getLastRow() + 1, 1, data.length, 5).setValues(data);
+  } catch (e) { console.warn('irIdxAdd_: ' + e); }
+}
+// '' (not there), 'same' (same name and size) or 'closed' (same name already closed); only rows whose file is still alive count
+function irIdxCheck_(map, name, size) {
+  const rows = map[String(name).toLowerCase()]; if (!rows) return '';
+  let hit = '';
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (r.zone !== 'closed' && r.size !== size) continue;
+    try { if (DriveApp.getFileById(r.id).isTrashed()) continue; } catch (e) { continue; }
+    if (r.zone === 'closed') return 'closed';
+    hit = 'same';
+  }
+  return hit;
+}
+// one function for the three Start calls: log first, the Drive search only while there is no log
+function irSeen_(map, root, folder, name, size) {
+  return map ? !!irIdxCheck_(map, name, size) : (irHasSame_(folder, name, size) || !!irExisting_(root, name, size));
+}
+
+// Same file with a different spelling: lower case, no extension, no " (1)" / " - Copy" / "Copy of" added by a phone or a browser.
+function irDupKey_(name) {
+  return String(name || '').replace(/\.[A-Za-z0-9]+$/, '').replace(/^copy of\s+/i, '').replace(/(\s*[-_]?\s*copy)?(\s*\(\d+\))+\s*$/i, '').replace(/\s*[-_]\s*copy\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+// Walks the whole IR folder (Open, Closed, Unsorted, old layout) and plans which extra copies could go to the bin. Changes nothing.
+//   kind 'same'  : same name (spelling ignored) and same size: a byte-for-byte re-upload. Selected by default.
+//   kind 'closed': an Open copy of a file that is already in Closed (the closed one was filled, so the size differs). Not selected by default.
+// The one kept: Closed first, then a file in a company folder, then Unsorted / loose; then the oldest. Files inside Closed are never proposed
+// unless two copies sit in Closed (then the newer one).
+// rewrites the whole log from what the scan saw on Drive (also drops rows of files that are gone)
+function irIdxRebuild_(files) {
+  try {
+    const sh = irIdxSheet_(true), now = new Date();
+    if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 5).clearContent();
+    if (!files.length) return;
+    const data = files.map(f => [String(f.name).toLowerCase(), f.size, f.id, f.zone === 'closed' ? 'closed' : 'open', now]);
+    sh.getRange(2, 1, data.length, 5).setValues(data);
+  } catch (e) { console.warn('irIdxRebuild_: ' + e); }
+}
+function irDupScan_() {
+  const root = irRoot_(false), t0 = Date.now();
+  if (!root) return { groups: [], scanned: 0, truncated: false };
+  const files = []; let truncated = false;
+  const queue = [{ f: root, path: '', zone: 'root' }];
+  while (queue.length) {
+    if (Date.now() - t0 > 200000) { truncated = true; break; }
+    const q = queue.shift();
+    const fi = q.f.getFiles();
+    while (fi.hasNext()) {
+      const x = fi.next();
+      files.push({ id: x.getId(), name: x.getName(), size: x.getSize(), t: x.getDateCreated().getTime(), path: q.path || '/', zone: q.zone });
+    }
+    const ds = q.f.getFolders();
+    while (ds.hasNext()) {
+      const d = ds.next(); if (d.isTrashed()) continue;
+      const n = d.getName();
+      const zone = q.zone === 'root' ? (n === IR_CLOSED ? 'closed' : n === IR_OPEN ? 'open' : 'root') : (q.zone === 'open' && n === IR_UNSORTED ? 'unsorted' : q.zone);
+      queue.push({ f: d, path: (q.path ? q.path + ' / ' : '') + n, zone: zone });
+    }
+  }
+  if (!truncated) irIdxRebuild_(files);
+  const rank = f => (f.zone === 'closed' ? 0 : f.zone === 'open' ? 1 : 2);
+  const order = (a, b) => rank(a) - rank(b) || a.t - b.t || (a.id < b.id ? -1 : 1);
+  const byKey = {};
+  files.forEach(f => { (byKey[irDupKey_(f.name) + '|' + String(f.name).split('.').pop().toLowerCase()] = byKey[irDupKey_(f.name) + '|' + String(f.name).split('.').pop().toLowerCase()] || []).push(f); });
+  const groups = [], pub = f => ({ id: f.id, name: f.name, path: f.path, size: f.size, t: f.t });
+  Object.keys(byKey).forEach(k => {
+    const all = byKey[k]; if (all.length < 2) return;
+    const bySize = {};
+    all.forEach(f => (bySize[f.size] = bySize[f.size] || []).push(f));
+    const gone = {};
+    Object.keys(bySize).forEach(sz => {
+      const g = bySize[sz].sort(order); if (g.length < 2) return;
+      const keep = g[0], extra = g.slice(1);
+      extra.forEach(e => { gone[e.id] = 1; });
+      groups.push({ kind: 'same', keep: pub(keep), extras: extra.map(pub) });
+    });
+    const rest = all.filter(f => !gone[f.id]);
+    const closed = rest.filter(f => f.zone === 'closed').sort(order);
+    if (closed.length) {
+      const left = rest.filter(f => f.zone !== 'closed');
+      if (left.length) groups.push({ kind: 'closed', keep: pub(closed[0]), extras: left.map(pub) });
+    }
+  });
+  groups.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'same' ? -1 : 1) || (a.keep.name < b.keep.name ? -1 : 1));
+  return { groups: groups, scanned: files.length, truncated: truncated };
+}
+
 const IR_MAX_OPEN = 20 * 1024 * 1024;        // bytes of one file sent back to the phone
 const IR_MAX_BIG = 120 * 1024 * 1024;       // bytes of a file the app may read in pieces (fill and close)
 const IR_EXT = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };
@@ -431,6 +567,7 @@ const IR_FUNCS_ = {
           if (openF && !orig.isTrashed() && orig.getId() !== file.getId() && irInside_(orig, openF)) { orig.setTrashed(true); moved = true; }
         } catch (e) { console.warn('move original: ' + e); }
       }
+      irIdxAdd_([[name, bytes.length, file.getId(), 'closed']]);
       try { irDropIndex_(); } catch (e) {}
       apiLog_(me, 'IR form filled', 'Closed / ' + IR_COMPANIES[co] + ' / ' + irEngDir_(me) + ' / ' + day + ' / ' + name + (moved ? ' (original removed from Open)' : ''));
       return { id: file.getId(), url: folder.getUrl(), engUrl: eng.getUrl(), moved: moved };
@@ -534,6 +671,7 @@ const IR_FUNCS_ = {
         if (openF && !orig.isTrashed() && orig.getId() !== file.getId() && irInside_(orig, openF)) { orig.setTrashed(true); moved = true; }
       } catch (e) { console.warn('move original: ' + e); }
     }
+    irIdxAdd_([[name, file.getSize(), file.getId(), 'closed']]);
     try { irDropIndex_(); } catch (e) {}
     apiLog_(me, 'IR form filled', 'Closed / ' + IR_COMPANIES[co] + ' / ' + irEngDir_(me) + ' / ' + day + ' / ' + name + (moved ? ' (original removed from Open)' : '') + ' (direct)');
     const engF = irEngFolder_(root, co, me, false);
@@ -573,6 +711,7 @@ const IR_ADMIN_FUNCS_ = {
       let replaced = false;
       while (old.hasNext()) { old.next().setTrashed(true); replaced = true; }
       const file = folder.createFile(Utilities.newBlob(bytes, IR_EXT[ext], name));
+      irIdxAdd_([[name, bytes.length, file.getId(), 'open']]);
       irDropIndex_();
       const label = auto ? irPathLabel_(info, day) : IR_COMPANIES[co] + ' / ' + day;
       apiLog_(me, 'IR file', 'Open / ' + label + ' / ' + name + (replaced ? ' (replaced)' : ''));
@@ -592,10 +731,11 @@ const IR_ADMIN_FUNCS_ = {
     if (!IR_DAY_RE.test(day)) throw new Error('Pick the day (date).');
     if (!(size > 0)) throw new Error('Empty file: ' + name);
     if (size > IR_MAX_DIRECT) throw new Error(name + ' is bigger than ' + Math.round(IR_MAX_DIRECT / 1048576) + ' MB.');
-    let folderId, folder;
+    let folderId, folder, root0;
     const lock = LockService.getScriptLock(); lock.waitLock(20000);
-    try { folder = irSub_(irSub_(irSub_(irRoot_(true), IR_OPEN, true), IR_COMPANIES[co], true), day, true); folderId = folder.getId(); }
+    try { root0 = irRoot_(true); folder = irSub_(irSub_(irSub_(root0, IR_OPEN, true), IR_COMPANIES[co], true), day, true); folderId = folder.getId(); }
     finally { lock.releaseLock(); }
+    if (irSeen_(irIdxLoad_(), root0, folder, name, size)) return { exists: true, name: name };
     const headers = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken(), 'X-Upload-Content-Type': IR_EXT[ext], 'X-Upload-Content-Length': String(size) };
     if (/^[a-z][a-z0-9+.\-]*:\/\/[A-Za-z0-9.\-]+(:\d+)?$/i.test(origin)) headers.Origin = origin;   // lets the browser read the answer of Drive
     const res = UrlFetchApp.fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id', {
@@ -625,6 +765,7 @@ const IR_ADMIN_FUNCS_ = {
     let replaced = false;
     const old = folder.getFilesByName(name);
     while (old.hasNext()) { const o = old.next(); if (o.getId() !== file.getId()) { o.setTrashed(true); replaced = true; } }
+    irIdxAdd_([[name, file.getSize(), file.getId(), 'open']]);
     try { irDropIndex_(); } catch (e) {}
     apiLog_(me, 'IR file', 'Open / ' + IR_COMPANIES[co] + ' / ' + day + ' / ' + name + (replaced ? ' (replaced)' : '') + ' (fast)');
     return { id: file.getId(), name: name, replaced: replaced };
@@ -637,19 +778,19 @@ const IR_ADMIN_FUNCS_ = {
     if (!IR_COMPANIES[co]) throw new Error('Pick the company first.');
     if (!IR_DAY_RE.test(day)) throw new Error('Pick the day (date).');
     if (!list.length || list.length > 60) throw new Error('Bad batch.');
-    let folderId, folder;
+    let folderId, folder, root0;
     const lock = LockService.getScriptLock(); lock.waitLock(20000);
-    try { folder = irSub_(irSub_(irSub_(irRoot_(true), IR_OPEN, true), IR_COMPANIES[co], true), day, true); folderId = folder.getId(); }
+    try { root0 = irRoot_(true); folder = irSub_(irSub_(irSub_(root0, IR_OPEN, true), IR_COMPANIES[co], true), day, true); folderId = folder.getId(); }
     finally { lock.releaseLock(); }
     const token = ScriptApp.getOAuthToken(), okOrigin = /^[a-z][a-z0-9+.\-]*:\/\/[A-Za-z0-9.\-]+(:\d+)?$/i.test(origin);
-    const meta = [], reqs = [];
+    const meta = [], reqs = [], idx = irIdxLoad_();
     list.forEach((x, i) => {
       try {
         const name = irSafeName_(x[0]), size = Number(x[1]);
         const mime = IR_EXT[name.match(/\.([A-Za-z0-9]+)$/)[1].toLowerCase()];
         if (!(size > 0)) throw new Error('Empty file: ' + name);
         if (size > IR_MAX_DIRECT) throw new Error(name + ' is too big.');
-        if (irHasSame_(folder, name, size)) { meta.push({ i: i, exists: true, name: name }); return; }
+        if (irSeen_(idx, root0, folder, name, size)) { meta.push({ i: i, exists: true, name: name }); return; }
         const headers = { Authorization: 'Bearer ' + token, 'X-Upload-Content-Type': mime, 'X-Upload-Content-Length': String(size) };
         if (okOrigin) headers.Origin = origin;
         reqs.push({ url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id', method: 'post', contentType: 'application/json; charset=UTF-8',
@@ -678,9 +819,10 @@ const IR_ADMIN_FUNCS_ = {
     const open = root && irSub_(root, IR_OPEN, false), comp = open && irSub_(open, IR_COMPANIES[co], false), folder = comp && irSub_(comp, day, false);
     if (!folder) throw new Error('Folder not found.');
     const mine = {}; list.forEach(x => { mine[String(x[0])] = irSafeName_(x[1]); });
-    const seen = {}, olds = [];
+    const seen = {}, olds = [], logRows = [];
     const it = folder.getFiles();
-    while (it.hasNext()) { const f = it.next(); const id = f.getId(); if (mine[id]) seen[id] = true; else olds.push(f); }
+    while (it.hasNext()) { const f = it.next(); const id = f.getId(); if (mine[id]) { seen[id] = true; logRows.push([mine[id], f.getSize(), id, 'open']); } else olds.push(f); }
+    irIdxAdd_(logRows);
     let replaced = 0;
     const names = {}; Object.keys(mine).forEach(id => { if (seen[id]) names[mine[id]] = true; });
     olds.forEach(f => { if (names[f.getName()]) { f.setTrashed(true); replaced++; } });
@@ -688,6 +830,37 @@ const IR_ADMIN_FUNCS_ = {
     const out = list.map(x => ({ id: String(x[0]), ok: !!seen[String(x[0])] }));
     apiLog_(me, 'IR files', 'Open / ' + IR_COMPANIES[co] + ' / ' + day + ' / ' + out.filter(o => o.ok).length + ' files (fast batch)' + (replaced ? ', ' + replaced + ' replaced' : ''));
     return { files: out, replaced: replaced };
+  },
+
+  // FIND DUPLICATES, review only (changes nothing). Admin / DC. Answer: { groups: [{ kind: 'same'|'closed', keep, extras }], scanned, truncated }
+  admin_irDupPlan: (me) => {
+    if (!irIsFull_(me)) throw new Error('Admins and DCs only.');
+    const p = irDupScan_();
+    const n = { same: 0, closed: 0 };
+    p.groups.forEach(g => { n[g.kind] += g.extras.length; });
+    return { groups: p.groups.slice(0, 400), total: p.groups.length, same: n.same, closed: n.closed, scanned: p.scanned, truncated: p.truncated };
+  },
+
+  // REMOVE DUPLICATES (a=[ids ticked in the review]): sends the ticked extra copies to the Drive bin (never deletes for good, restorable 30 days).
+  // The plan is made again first: an id that is not an extra copy any more (or was never one) is ignored, and the kept file is never touched.
+  admin_irDupTrash: (me, a) => {
+    if (!irIsFull_(me)) throw new Error('Admins and DCs only.');
+    const want = {}; (a[0] || []).slice(0, 500).forEach(id => { want[String(id)] = 1; });
+    const lock = LockService.getScriptLock(); lock.waitLock(30000);
+    try {
+      const p = irDupScan_(); if (p.truncated) throw new Error('The folder is too big to check in one go. Try again.');
+      const ok = {}, keepers = {};
+      p.groups.forEach(g => { keepers[g.keep.id] = 1; g.extras.forEach(e => { ok[e.id] = e; }); });
+      let trashed = 0, ignored = 0; const failed = [], t0 = Date.now();
+      Object.keys(want).forEach(id => {
+        if (!ok[id] || keepers[id]) { ignored++; return; }
+        if (Date.now() - t0 > 200000) { failed.push(ok[id].name + ': out of time, press again'); return; }
+        try { DriveApp.getFileById(id).setTrashed(true); trashed++; } catch (e) { failed.push(ok[id].name + ': ' + String(e && e.message || e).slice(0, 80)); }
+      });
+      try { irDropIndex_(); } catch (e) {}
+      apiLog_(me, 'IR duplicates', trashed + ' extra copies sent to the bin' + (failed.length ? ', ' + failed.length + ' failed' : '') + (ignored ? ', ' + ignored + ' ignored' : ''));
+      return { trashed: trashed, ignored: ignored, failed: failed.slice(0, 20), failedN: failed.length };
+    } finally { lock.releaseLock(); }
   },
 
   // MOVE OLD CLOSED FILES, step 1: only LOOKS and gives the list to review. Nothing is changed. Admin only.
@@ -764,7 +937,7 @@ const IR_ADMIN_FUNCS_ = {
     if (!IR_DAY_RE.test(day)) throw new Error('Pick the day (date).');
     if (!list.length || list.length > 60) throw new Error('Bad batch.');
     const lock = LockService.getScriptLock(); lock.waitLock(25000);
-    const meta = [], reqs = [], folders = {};
+    const meta = [], reqs = [], folders = {}, idx = irIdxLoad_();
     try {
       const root = irRoot_(true);
       const token = ScriptApp.getOAuthToken(), okOrigin = /^[a-z][a-z0-9+.\-]*:\/\/[A-Za-z0-9.\-]+(:\d+)?$/i.test(origin);
@@ -776,7 +949,7 @@ const IR_ADMIN_FUNCS_ = {
           if (size > IR_MAX_DIRECT) throw new Error(name + ' is too big.');
           const info = irParse_(name, a[3]), label = irPathLabel_(info, day);
           if (!folders[label]) folders[label] = irOpenDir_(root, info, day, true).getId();
-          if (irHasSame_(DriveApp.getFolderById(folders[label]), name, size)) { meta.push({ exists: true, name: name, sorted: !!info, path: label }); return; }
+          if (irSeen_(idx, root, idx ? null : DriveApp.getFolderById(folders[label]), name, size)) { meta.push({ exists: true, name: name, sorted: !!info, path: label }); return; }
           const headers = { Authorization: 'Bearer ' + token, 'X-Upload-Content-Type': mime, 'X-Upload-Content-Length': String(size) };
           if (okOrigin) headers.Origin = origin;
           reqs.push({ url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id', method: 'post', contentType: 'application/json; charset=UTF-8',
@@ -814,6 +987,7 @@ const IR_ADMIN_FUNCS_ = {
         const old = folder.getFilesByName(name);
         while (old.hasNext()) { const o = old.next(); if (o.getId() !== file.getId()) { o.setTrashed(true); replaced++; } }
         if (!info) un++;
+        irIdxAdd_([[name, file.getSize(), file.getId(), 'open']]);
         out.push({ id: String(x[0]), ok: true, sorted: !!info, path: irPathLabel_(info, day) });
       } catch (e) { out.push({ id: String(x[0]), ok: false }); }
     });
