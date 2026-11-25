@@ -182,7 +182,9 @@ function irDupScan_() {
   const byNo = {};
   files.forEach(f => {
     const info = irParse_(f.name, ''); if (!info || !info.no) return;
-    (byNo[info.co + '|' + info.type + '|' + info.no] = byNo[info.co + '|' + info.type + '|' + info.no] || []).push(f);
+    const rv = String(f.name).match(/(?:^|[^A-Za-z])rev(?:ision)?[\s._-]*0*(\d+)|[-_ ]r0*(\d+)(?=[-_. ]|$)/i), rev = rv ? (rv[1] || rv[2]) : '0';   // Rev 0 and Rev 1 of one IR are different files, never duplicates
+    const kk = info.co + '|' + info.type + '|' + info.no + '|' + rev;
+    (byNo[kk] = byNo[kk] || []).push(f);
   });
   Object.keys(byNo).forEach(k => {
     const g = byNo[k].filter(f => f.zone !== 'closed' || true);
