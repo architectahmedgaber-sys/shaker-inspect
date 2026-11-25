@@ -1,6 +1,6 @@
 {
- "version": "1.0.80",
- "build": 80,
+ "version": "1.0.81",
+ "build": 81,
  "notes": [
   "Changed: Admin > IR files now shows every company (EL-Shorouk, Square, Alexandria): a green check when all its requests have files, otherwise the missing ones listed under the company, with a Copy button per company. No Apps Script change."
  ],
