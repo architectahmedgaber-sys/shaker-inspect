@@ -1,8 +1,8 @@
 {
- "version": "1.0.82",
- "build": 82,
+ "version": "1.0.84",
+ "build": 84,
  "notes": [
-  "Changed: the sort choice in the missing-files list is now three buttons (one tap) instead of a drop-down list. No Apps Script change."
+  "Changed: the list of requests without an IR file is read from the sheet log instead of Drive, so it opens at once. Needs the new IrFiles.gs + New version (steps in deliver/final-ir/SETUP_STEPS_IRHAVE.md)."
  ],
  "apk": "https://github.com/architectahmedgaber-sys/shaker-inspect/releases/latest/download/shaker-inspect.apk"
 }
