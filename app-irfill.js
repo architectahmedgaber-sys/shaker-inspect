@@ -268,7 +268,7 @@
   let busy = Promise.resolve();
   document.addEventListener('shk-closed', ev => {
     const p = (ev.detail && ev.detail.payload) || {};
-    busy = busy.then(() => run(p)).catch(e => console.warn('fill form', e));
+    busy = busy.then(() => run(p, ev.detail && ev.detail.res)).catch(e => console.warn('fill form', e));
   });
 
   // ---- the small tick on the close card: ticked = the IR file on Drive is filled and moved to Closed; not ticked = closed in the sheet only ----
@@ -349,9 +349,11 @@
     } catch (e) { return false; }
   }
 
-  async function run(p) {
+  // a close that does not fill the file: the server still removes the Open file(s) of this request (to the Drive bin)
+  const cleanOpen = (p, res) => { try { api('ir_cleanOpen', [p.irNumber, String(p.rev || '0'), (res && res.undoToken) || '']).catch(() => {}); } catch (e) {} };
+  async function run(p, res) {
     if (!p.irNumber || !p.code) return;
-    if (choice[String(p.irNumber)] === false) { delete choice[String(p.irNumber)]; return note(t('Closed in the sheet only. The IR file stays in Open on Drive.', 'اتقفل في الشيت بس. ملف الـ IR فضل في Open على الدرايف.')); }
+    if (choice[String(p.irNumber)] === false) { delete choice[String(p.irNumber)]; cleanOpen(p, res); return note(t('Closed in the sheet only. The IR file was moved out of Open (Drive bin).', 'اتقفل في الشيت بس. ملف الـ IR اتشال من Open (سلة الدرايف).')); }
     delete choice[String(p.irNumber)];
     try {
       const w = takeWarm(p);
@@ -360,7 +362,7 @@
       if (w) { try { form = await w; } catch (e) { form = null; } }
       if (!form) form = await findForm(Object.assign({}, p, { onProg: f => status(t('Downloading the IR form… ', 'بينزّل فورم الـ IR… ') + Math.round(f * 100) + '%') }), false);
       if (!form) { status(''); return note(t('No IR file was uploaded for this request, so the form was not filled.', 'مفيش ملف IR مرفوع للطلب ده، فالفورم ماتملاش.')); }
-      if (form.notForm) { status(''); return note(t('The IR file is not a CIR form (no Section C), so it was not filled.', 'ملف الـ IR مش فورم CIR (مفيش Section C)، فماتملاش.')); }
+      if (form.notForm) { status(''); cleanOpen(p, res); return note(t('The IR file is not a CIR form (no Section C), so it was not filled.', 'ملف الـ IR مش فورم CIR (مفيش Section C)، فماتملاش.')); }
       status(t('Filling the form…', 'بيملا الفورم…'));
       const out = await fill(form, p);
       const m = (String(p.irNumber || '') + ' ' + String(p.description || '')).toUpperCase().match(/(?:^|[^A-Z])(SH|SQ|AT)-(?:CIR|MIR)/);

@@ -13,3 +13,9 @@ already closed was uploaded again.
 
 Clean up: Admin > IR files > "Duplicate files" > Find duplicates. Nothing changes until you tick files and tap twice.
 Ticked files go to the Drive bin (30 days). Exact copies come ticked; Open copies of already Closed files come unticked.
+
+## Auto clean on close (2 files)
+Paste `1-inspection-project/IrFiles.gs` AND `1-inspection-project/Api.gs` (Api only gets the Undo hook), then New version.
+When a request is closed, its IR files still in Open (same company, CIR/MIR, number; a name with a higher Rev stays) go to the Drive bin by themselves,
+also when the Drive tick is off. Undo within 6 hours of the close brings them back. A file owned by another account cannot be binned by the script; it is named in the log tab.
+Closes done outside the app (directly in the sheet) are not seen by this.

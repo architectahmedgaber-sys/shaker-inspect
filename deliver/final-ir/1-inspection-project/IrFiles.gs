@@ -97,6 +97,7 @@ function irIdxCheck_(map, name, size) {
   let hit = '';
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
+    if (r.zone === 'done') return 'closed';                      // closed in the sheet: its Open file was removed, never upload it again
     if (r.zone !== 'closed' && r.size !== size) continue;
     try { if (DriveApp.getFileById(r.id).isTrashed()) continue; } catch (e) { continue; }
     if (r.zone === 'closed') return 'closed';
@@ -107,6 +108,45 @@ function irIdxCheck_(map, name, size) {
 // one function for the three Start calls: log first, the Drive search only while there is no log
 function irSeen_(map, root, folder, name, size) {
   return map ? !!irIdxCheck_(map, name, size) : (irHasSame_(folder, name, size) || !!irExisting_(root, name, size));
+}
+
+// REV in a file name: Rev1 / Rev 2 / R1 (none = 0)
+function irRevOf_(name) {
+  const rv = String(name).match(/(?:^|[^A-Za-z])rev(?:ision)?[\s._-]*0*(\d+)|[-_ ]r0*(\d+)(?=[-_. ]|$)/i);
+  return rv ? Number(rv[1] || rv[2]) : 0;
+}
+
+// AUTOMATIC CLEAN-UP when a request is closed (any code, with or without the Drive tick, from any phone):
+// the IR files of that request still in Open (same company, CIR/MIR and number; a name with a HIGHER Rev is a later submission and stays)
+// go to the Drive bin. Their names are remembered in the _IR_Index tab so the same file is never uploaded again.
+// The ids are kept 6 hours so an Undo can bring them back. A file owned by someone else cannot be binned by the script: it is listed in the log.
+function irAfterClose_(me, p, res) {
+  try {
+    if (!p || !res || !res.success || res.duplicate) return;
+    const info = irParse_(String(p.irNumber || ''), ''); if (!info || !info.no) return;
+    const root = irRoot_(false), open = root && irSub_(root, IR_OPEN, false); if (!open) return;
+    const rev = Number(String(p.rev || '0').replace(/\D/g, '')) || 0;
+    const gone = [], rows = [], failed = [];
+    const it = DriveApp.searchFiles("title contains '" + info.no + "' and trashed = false");
+    while (it.hasNext()) {
+      const f = it.next(), n = f.getName();
+      if (f.isTrashed() || !irInside_(f, open)) continue;
+      const x = irParse_(n, ''); if (!x || x.co !== info.co || x.type !== info.type || x.no !== info.no) continue;
+      if (irRevOf_(n) > rev) continue;
+      try { rows.push([n, f.getSize(), '', 'done']); f.setTrashed(true); gone.push(f.getId()); } catch (e) { rows.pop(); failed.push(n); }
+    }
+    if (rows.length) irIdxAdd_(rows);
+    if (gone.length && res.undoToken) { try { CacheService.getScriptCache().put('irtrash_' + res.undoToken, JSON.stringify(gone), 21600); } catch (e) {} }
+    if (gone.length || failed.length) { try { irDropIndex_(); } catch (e) {} apiLog_(me, 'IR auto clean', p.irNumber + ': ' + gone.length + ' Open file(s) to the bin' + (failed.length ? ', could not bin (not owned by the script account): ' + failed.join(', ') : '')); }
+  } catch (e) { console.warn('irAfterClose_: ' + e); }
+}
+// Undo of a close: bring back the Open files that the close sent to the bin
+function irAfterUndo_(token) {
+  try {
+    const c = CacheService.getScriptCache(), raw = c.get('irtrash_' + token); if (!raw) return;
+    JSON.parse(raw).forEach(id => { try { DriveApp.getFileById(id).setTrashed(false); } catch (e) {} });
+    c.remove('irtrash_' + token); irDropIndex_();
+  } catch (e) { console.warn('irAfterUndo_: ' + e); }
 }
 
 // Same file with a different spelling: lower case, no extension, no " (1)" / " - Copy" / "Copy of" added by a phone or a browser.
@@ -123,9 +163,10 @@ function irDupKey_(name) {
 function irIdxRebuild_(files) {
   try {
     const sh = irIdxSheet_(true), now = new Date();
-    if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 5).clearContent();
-    if (!files.length) return;
-    const data = files.map(f => [String(f.name).toLowerCase(), f.size, f.id, f.zone === 'closed' ? 'closed' : 'open', now]);
+    let keepDone = [];
+    if (sh.getLastRow() > 1) { keepDone = sh.getRange(2, 1, sh.getLastRow() - 1, 5).getValues().filter(r => r[3] === 'done'); sh.getRange(2, 1, sh.getLastRow() - 1, 5).clearContent(); }
+    if (!files.length && !keepDone.length) return;
+    const data = keepDone.concat(files.map(f => [String(f.name).toLowerCase(), f.size, f.id, f.zone === 'closed' ? 'closed' : 'open', now]));
     sh.getRange(2, 1, data.length, 5).setValues(data);
   } catch (e) { console.warn('irIdxRebuild_: ' + e); }
 }
@@ -509,6 +550,13 @@ function irMigEngNames_(scan) {
 }
 
 const IR_FUNCS_ = {
+  // the app calls this after a close that did not fill the file on Drive (a=[IR number, rev, undo token]): the Open files of that request go to the bin
+  ir_cleanOpen: (me, a) => {
+    need_(me, ['Admin', 'Engineer']);
+    irAfterClose_(me, { irNumber: String(a[0] || ''), rev: String(a[1] || '0') }, { success: true, undoToken: String(a[2] || '') });
+    return true;
+  },
+
   // names of all the IR files (the app matches them to requests by the number in the name)
   ir_index: () => ({ files: irList_(), companies: IR_COMPANIES }),
 
@@ -591,6 +639,7 @@ const IR_FUNCS_ = {
         } catch (e) { console.warn('move original: ' + e); }
       }
       irIdxAdd_([[name, bytes.length, file.getId(), 'closed']]);
+      irAfterClose_(me, { irNumber: name, rev: String(irRevOf_(name)) }, { success: true });
       try { irDropIndex_(); } catch (e) {}
       apiLog_(me, 'IR form filled', 'Closed / ' + IR_COMPANIES[co] + ' / ' + irEngDir_(me) + ' / ' + day + ' / ' + name + (moved ? ' (original removed from Open)' : ''));
       return { id: file.getId(), url: folder.getUrl(), engUrl: eng.getUrl(), moved: moved };
@@ -695,6 +744,7 @@ const IR_FUNCS_ = {
       } catch (e) { console.warn('move original: ' + e); }
     }
     irIdxAdd_([[name, file.getSize(), file.getId(), 'closed']]);
+    irAfterClose_(me, { irNumber: name, rev: String(irRevOf_(name)) }, { success: true });
     try { irDropIndex_(); } catch (e) {}
     apiLog_(me, 'IR form filled', 'Closed / ' + IR_COMPANIES[co] + ' / ' + irEngDir_(me) + ' / ' + day + ' / ' + name + (moved ? ' (original removed from Open)' : '') + ' (direct)');
     const engF = irEngFolder_(root, co, me, false);
